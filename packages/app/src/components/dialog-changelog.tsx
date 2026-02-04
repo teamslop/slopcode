@@ -1,10 +1,10 @@
-import { createSignal, onMount, For, Show } from "solid-js"
+import { createSignal, onMount, Show } from "solid-js"
 import { Dialog } from "@opencode-ai/ui/dialog"
 import { Button } from "@opencode-ai/ui/button"
-import { Markdown } from "@opencode-ai/ui/markdown"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { usePlatform } from "@/context/platform"
 import { getRelativeTime } from "@/utils/time"
+import { ReleaseList } from "@/components/release-list"
 import "./dialog-changelog.css"
 
 const REPO = "anomalyco/opencode"
@@ -105,47 +105,29 @@ export function DialogChangelog() {
   }
 
   return (
-    <Dialog size="x-large" class="dialog-changelog">
-      <div class="flex flex-col h-full">
-        <div class="dialog-changelog-content session-scroller flex-1 p-6">
-          <Show when={loading()}>
-            <p class="text-text-weak">Loading...</p>
-          </Show>
-          <Show when={error()}>
-            <p class="text-text-weak">{error()}</p>
-          </Show>
-          <Show when={!loading() && !error() && releases().length === 0}>
-            <p class="text-text-weak">No releases found.</p>
-          </Show>
-          <Show when={!loading() && !error() && releases().length > 0}>
-            <div class="space-y-6">
-              <For each={releases()}>
-                {(release) => (
-                  <div class="dialog-changelog-release">
-                    <div class="flex items-baseline gap-2">
-                      <span class="dialog-changelog-version">{release.tag}</span>
-                      <Show when={release.date}>
-                        <span class="text-12-regular text-text-weak">{release.date}</span>
-                      </Show>
-                    </div>
-                    <Markdown
-                      text={release.body}
-                      class="dialog-changelog-markdown prose prose-sm max-w-none text-text-base"
-                    />
-                  </div>
-                )}
-              </For>
-            </div>
-            <Show when={hasMore()}>
-              <div class="mt-6 flex justify-center">
-                <Button variant="secondary" size="small" onClick={handleLoadMore} loading={loadingMore()}>
-                  Load more
-                </Button>
-              </div>
-            </Show>
-          </Show>
-        </div>
-      </div>
+    <Dialog
+      title="Changelog"
+      class="dialog-changelog"
+   >
+      <Show when={loading()}>
+        <p class="text-text-weak p-6">Loading...</p>
+      </Show>
+      <Show when={error()}>
+        <p class="text-text-weak p-6">{error()}</p>
+      </Show>
+      <Show when={!loading() && !error() && releases().length === 0}>
+        <p class="text-text-weak p-6">No releases found.</p>
+      </Show>
+      <Show when={!loading() && !error() && releases().length > 0}>
+        <ReleaseList releases={releases()} />
+        <Show when={hasMore()}>
+          <div class="p-4 flex justify-center">
+            <Button variant="secondary" size="small" onClick={handleLoadMore} loading={loadingMore()}>
+              Load more
+            </Button>
+          </div>
+        </Show>
+      </Show>
     </Dialog>
   )
 }
