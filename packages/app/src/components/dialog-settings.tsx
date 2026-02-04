@@ -2,16 +2,24 @@ import { Component } from "solid-js"
 import { Dialog } from "@opencode-ai/ui/dialog"
 import { Tabs } from "@opencode-ai/ui/tabs"
 import { Icon } from "@opencode-ai/ui/icon"
+import { Button } from "@opencode-ai/ui/button"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
+import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { SettingsGeneral } from "./settings-general"
 import { SettingsKeybinds } from "./settings-keybinds"
 import { SettingsProviders } from "./settings-providers"
 import { SettingsModels } from "./settings-models"
+import { DialogChangelog } from "@/components/dialog-changelog"
 
 export const DialogSettings: Component = () => {
   const language = useLanguage()
   const platform = usePlatform()
+  const dialog = useDialog()
+
+  function handleShowChangelog() {
+    dialog.show(() => <DialogChangelog />)
+  }
 
   return (
     <Dialog size="x-large" transition>
@@ -52,6 +60,14 @@ export const DialogSettings: Component = () => {
             <div class="flex flex-col gap-1 pl-1 py-1 text-12-medium text-text-weak">
               <span>{language.t("app.name.desktop")}</span>
               <span class="text-11-regular">v{platform.version}</span>
+              <Button
+                variant="ghost"
+                size="small"
+                class="text-11-regular text-text-weak hover:text-text-base px-0 py-0 h-auto -ml-1"
+                onClick={handleShowChangelog}
+              >
+                Changelog
+              </Button>
             </div>
           </div>
         </Tabs.List>
@@ -67,15 +83,6 @@ export const DialogSettings: Component = () => {
         <Tabs.Content value="models" class="no-scrollbar">
           <SettingsModels />
         </Tabs.Content>
-        {/* <Tabs.Content value="agents" class="no-scrollbar"> */}
-        {/*   <SettingsAgents /> */}
-        {/* </Tabs.Content> */}
-        {/* <Tabs.Content value="commands" class="no-scrollbar"> */}
-        {/*   <SettingsCommands /> */}
-        {/* </Tabs.Content> */}
-        {/* <Tabs.Content value="mcp" class="no-scrollbar"> */}
-        {/*   <SettingsMcp /> */}
-        {/* </Tabs.Content> */}
       </Tabs>
     </Dialog>
   )
