@@ -92,7 +92,7 @@ export function DialogChangelog() {
   return (
     <Dialog size="x-large" class="dialog-changelog">
       <div class="flex flex-col h-full">
-        <div class="dialog-changelog-content flex-1 overflow-y-auto p-6">
+        <div class="dialog-changelog-content session-scroller flex-1 p-6">
           <Show when={loading()}>
             <p class="text-text-weak">Loading...</p>
           </Show>

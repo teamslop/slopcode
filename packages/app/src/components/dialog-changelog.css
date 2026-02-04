@@ -1,5 +1,32 @@
-.dialog-changelog-content {
+.dialog-changelog {
   min-height: 0;
+}
+
+.dialog-changelog-content {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-weak-base) transparent;
+}
+
+.dialog-changelog-content::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.dialog-changelog-content::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 5px;
+}
+
+.dialog-changelog-content::-webkit-scrollbar-thumb {
+  background: var(--border-weak-base);
+  border-radius: 5px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.dialog-changelog-content::-webkit-scrollbar-thumb:hover {
+  background: var(--border-weak-base);
 }
 
 .dialog-changelog-version {
