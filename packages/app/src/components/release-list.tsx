@@ -54,7 +54,7 @@ export const ReleaseList: Component<ReleaseListProps> = (props) => {
       search={false}
       emptyMessage="No releases found"
       loadingMessage="Loading..."
-      class="dialog-changelog-list"
+      class="dialog-changelog-list flex-1 min-h-0"
       add={{
         render: () =>
           props.hasMore ? (
@@ -69,7 +69,6 @@ export const ReleaseList: Component<ReleaseListProps> = (props) => {
       {(item) => (
         <>
           <StickyHeader tag={item.tag} date={item.date} />
-          <div class="dialog-changelog-divider" />
           <div class="dialog-changelog-content">
             <Markdown text={item.body} class="dialog-changelog-markdown prose prose-sm max-w-none text-text-base" />
           </div>

@@ -1,5 +1,7 @@
 .dialog-changelog {
-  min-height: 0;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
 }
 
 .dialog-changelog [data-slot="dialog-body"] {
@@ -7,15 +9,19 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .dialog-changelog-list {
   flex: 1;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .dialog-changelog-list [data-slot="list-scroll"] {
-  height: 100%;
+  flex: 1;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border-weak-base) transparent;
@@ -44,6 +50,7 @@
 
 .dialog-changelog-header {
   padding: 8px 12px 8px 8px;
+  margin-top: 32px;
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -70,9 +77,7 @@
   opacity: 1;
 }
 
-.dialog-changelog-divider {
-  border-bottom: 1px solid var(--border-weak-base);
-}
+
 
 .dialog-changelog-version {
   font-size: 20px;
