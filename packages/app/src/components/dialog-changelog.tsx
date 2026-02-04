@@ -4,6 +4,7 @@ import { Button } from "@opencode-ai/ui/button"
 import { Markdown } from "@opencode-ai/ui/markdown"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { usePlatform } from "@/context/platform"
+import { getRelativeTime } from "@/utils/time"
 import "./dialog-changelog.css"
 
 const REPO = "anomalyco/opencode"
@@ -27,7 +28,7 @@ function parseReleases(json: unknown): Release[] {
     releases.push({
       tag: typeof release.tag_name === "string" ? release.tag_name : "Unknown",
       body: typeof release.body === "string" ? release.body : "",
-      date: typeof release.published_at === "string" ? new Date(release.published_at).toLocaleDateString() : "",
+      date: typeof release.published_at === "string" ? getRelativeTime(release.published_at) : "",
     })
   }
 
@@ -91,7 +92,6 @@ export function DialogChangelog() {
   return (
     <Dialog size="x-large" class="dialog-changelog">
       <div class="flex flex-col h-full">
-  
         <div class="dialog-changelog-content flex-1 overflow-y-auto p-6">
           <Show when={loading()}>
             <p class="text-text-weak">Loading...</p>
