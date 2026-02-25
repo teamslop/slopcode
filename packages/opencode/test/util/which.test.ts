@@ -22,6 +22,15 @@ function env(PATH: string): NodeJS.ProcessEnv {
   }
 }
 
+function same(a: string | null, b: string) {
+  if (process.platform === "win32") {
+    expect(a?.toLowerCase()).toBe(b.toLowerCase())
+    return
+  }
+
+  expect(a).toBe(b)
+}
+
 describe("util.which", () => {
   test("returns null when command is missing", () => {
     expect(which("opencode-missing-command-for-test")).toBeNull()
@@ -33,7 +42,7 @@ describe("util.which", () => {
     await fs.mkdir(bin)
     const file = await cmd(bin, "tool")
 
-    expect(which("tool", env(bin))).toBe(file)
+    same(which("tool", env(bin)), file)
   })
 
   test("uses first PATH match", async () => {
@@ -45,7 +54,7 @@ describe("util.which", () => {
     const first = await cmd(a, "dupe")
     await cmd(b, "dupe")
 
-    expect(which("dupe", env([a, b].join(path.delimiter)))).toBe(first)
+    same(which("dupe", env([a, b].join(path.delimiter))), first)
   })
 
   test("returns null for non-executable file on unix", async () => {
