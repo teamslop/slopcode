@@ -1,5 +1,5 @@
 ---
-title: Providers
+title: Provider
 description: Usa qualsiasi provider LLM in OpenCode.
 ---
 
@@ -135,6 +135,8 @@ Per usare Amazon Bedrock con OpenCode:
 
 2. **Configura l'autenticazione** usando uno dei seguenti metodi:
 
+   ***
+
    #### Variabili d'ambiente (Avvio rapido)
 
    Imposta una di queste variabili d'ambiente mentre esegui opencode:
@@ -156,6 +158,8 @@ Per usare Amazon Bedrock con OpenCode:
    export AWS_PROFILE=my-dev-profile
    export AWS_REGION=us-east-1
    ```
+
+   ***
 
    #### File di configurazione (Consigliato)
 
@@ -184,6 +188,8 @@ Per usare Amazon Bedrock con OpenCode:
    Le opzioni del file di configurazione hanno la precedenza sulle variabili d'ambiente.
    :::
 
+   ***
+
    #### Avanzato: VPC Endpoints
 
    Se stai usando VPC endpoints per Bedrock:
@@ -207,11 +213,15 @@ Per usare Amazon Bedrock con OpenCode:
    L'opzione `endpoint` è un alias per l'opzione generica `baseURL`, usando terminologia specifica AWS. Se vengono specificati sia `endpoint` sia `baseURL`, `endpoint` ha la precedenza.
    :::
 
+   ***
+
    #### Metodi di autenticazione
    - **`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`**: Crea un utente IAM e genera chiavi di accesso nella Console AWS
    - **`AWS_PROFILE`**: Usa profili nominati da `~/.aws/credentials`. Configura prima con `aws configure --profile my-profile` o `aws sso login`
    - **`AWS_BEARER_TOKEN_BEDROCK`**: Genera chiavi API a lungo termine dalla console Amazon Bedrock
    - **`AWS_WEB_IDENTITY_TOKEN_FILE` / `AWS_ROLE_ARN`**: Per EKS IRSA (IAM Roles for Service Accounts) o altri ambienti Kubernetes con federazione OIDC. Queste variabili d'ambiente vengono iniettate automaticamente da Kubernetes quando usi le annotazioni del service account.
+
+   ***
 
    #### Precedenza autenticazione
 
@@ -230,7 +240,8 @@ Per usare Amazon Bedrock con OpenCode:
    ```
 
 :::note
-Per profili di inferenza personalizzati, usa il nome del modello e del provider nella chiave e imposta la proprietà `id` all'arn. Questo assicura una cache corretta:
+Per profili di inferenza personalizzati, usa il nome del modello e del provider nella chiave e imposta la proprietà `id` all'arn. Questo assicura una cache corretta.
+:::
 
 ```json title="opencode.json"
 {
@@ -247,8 +258,6 @@ Per profili di inferenza personalizzati, usa il nome del modello e del provider 
   }
 }
 ```
-
-:::
 
 ---
 
@@ -284,9 +293,9 @@ L'uso dell'abbonamento Claude Pro/Max in OpenCode non è ufficialmente supportat
 
 ##### Usare chiavi API
 
-Puoi anche selezionare **Create an API Key** se non hai un abbonamento Pro/Max. Aprirà il browser, ti chiederà di accedere ad Anthropic e ti darà un codice da incollare nel terminal.
+Puoi anche selezionare **Create an API Key** se non hai un abbonamento Pro/Max. Aprirà il browser, ti chiederà di accedere ad Anthropic e ti darà un codice da incollare nel terminale.
 
-Oppure se hai già una chiave API, puoi selezionare **Manually enter API Key** e incollarla nel terminal.
+Oppure se hai già una chiave API, puoi selezionare **Manually enter API Key** e incollarla nel terminale.
 
 ---
 
@@ -664,7 +673,7 @@ GitLab Duo fornisce una chat agentic basata su AI con capacità di chiamata stru
    2. Clicca **Add new token**
    3. Nome: `OpenCode`, Scopes: `api`
    4. Copia il token (inizia con `glpat-`)
-   5. Inseriscilo nel terminal
+   5. Inseriscilo nel terminale
 
 3. Esegui il comando `/models` per vedere i modelli disponibili.
 
@@ -1161,6 +1170,8 @@ Per usare Kimi K2 di Moonshot AI:
    /models
    ```
 
+---
+
 ### MiniMax
 
 1. Vai alla [MiniMax API Console](https://platform.minimax.io/login), crea un account e genera una chiave API.
@@ -1325,7 +1336,7 @@ Consigliamo di iscriversi a [ChatGPT Plus o Pro](https://chatgpt.com/pricing).
 
 ##### Usare chiavi API
 
-Se hai già una chiave API, puoi selezionare **Manually enter API Key** e incollarla nel terminal.
+Se hai già una chiave API, puoi selezionare **Manually enter API Key** e incollarla nel terminale.
 
 ---
 

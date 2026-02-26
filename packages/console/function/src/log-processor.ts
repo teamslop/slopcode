@@ -13,12 +13,15 @@ export default {
         url.pathname !== "/zen/v1/chat/completions" &&
         url.pathname !== "/zen/v1/messages" &&
         url.pathname !== "/zen/v1/responses" &&
-        !url.pathname.startsWith("/zen/v1/models/")
+        !url.pathname.startsWith("/zen/v1/models/") &&
+        url.pathname !== "/zen/go/v1/chat/completions" &&
+        url.pathname !== "/zen/go/v1/messages" &&
+        url.pathname !== "/zen/go/v1/responses" &&
+        !url.pathname.startsWith("/zen/go/v1/models/")
       )
         return
 
       let data = {
-        event_type: "completions",
         "cf.continent": event.event.request.cf?.continent,
         "cf.country": event.event.request.cf?.country,
         "cf.city": event.event.request.cf?.city,
@@ -31,7 +34,7 @@ export default {
         status: event.event.response?.status ?? 0,
         ip: event.event.request.headers["x-real-ip"],
       }
-      const time = event.eventTimestamp ?? Date.now()
+      const time = new Date(event.eventTimestamp ?? Date.now()).toISOString()
       const events = []
       for (const log of event.logs) {
         for (const message of log.message) {
@@ -39,11 +42,11 @@ export default {
           const json = JSON.parse(message.slice(8))
           data = { ...data, ...json }
           if ("llm.error.code" in json) {
-            events.push({ time, data: { ...data } })
+            events.push({ time, data: { ...data, event_type: "llm.error" } })
           }
         }
       }
-      events.push({ time, data })
+      events.push({ time, data: { ...data, event_type: "completions" } })
       console.log(JSON.stringify(data, null, 2))
 
       const ret = await fetch("https://api.honeycomb.io/1/batch/zen", {
