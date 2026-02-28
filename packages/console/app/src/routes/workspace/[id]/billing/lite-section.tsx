@@ -1,12 +1,12 @@
 import { action, useParams, useAction, useSubmission, json, query, createAsync } from "@solidjs/router"
 import { createStore } from "solid-js/store"
 import { Show } from "solid-js"
-import { Billing } from "@opencode-ai/console-core/billing.js"
-import { Database, eq, and, isNull } from "@opencode-ai/console-core/drizzle/index.js"
-import { BillingTable, LiteTable } from "@opencode-ai/console-core/schema/billing.sql.js"
-import { Actor } from "@opencode-ai/console-core/actor.js"
-import { Subscription } from "@opencode-ai/console-core/subscription.js"
-import { LiteData } from "@opencode-ai/console-core/lite.js"
+import { Billing } from "@slopcode-ai/console-core/billing.js"
+import { Database, eq, and, isNull } from "@slopcode-ai/console-core/drizzle/index.js"
+import { BillingTable, LiteTable } from "@slopcode-ai/console-core/schema/billing.sql.js"
+import { Actor } from "@slopcode-ai/console-core/actor.js"
+import { Subscription } from "@slopcode-ai/console-core/subscription.js"
+import { LiteData } from "@slopcode-ai/console-core/lite.js"
 import { withActor } from "~/context/auth.withActor"
 import { queryBillingInfo } from "../../common"
 import styles from "./lite-section.module.css"
@@ -186,7 +186,7 @@ export function LiteSection() {
             </div>
             <div data-slot="beta-notice">
               {i18n.t("workspace.lite.subscription.selectProvider")}{" "}
-              <a href={language.route("/docs/providers/#opencode-go")} target="_blank" rel="noopener noreferrer">
+              <a href={language.route("/docs/providers/#slopcode-go")} target="_blank" rel="noopener noreferrer">
                 {i18n.t("common.learnMore")}
               </a>
               .

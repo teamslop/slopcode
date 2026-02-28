@@ -4,23 +4,23 @@ import { useLanguage } from "@/context/language"
 import { useLayout, type LocalProject, getAvatarColors } from "@/context/layout"
 import { useNotification } from "@/context/notification"
 import { usePermission } from "@/context/permission"
-import { base64Encode } from "@opencode-ai/util/encode"
-import { Avatar } from "@opencode-ai/ui/avatar"
-import { DiffChanges } from "@opencode-ai/ui/diff-changes"
-import { HoverCard } from "@opencode-ai/ui/hover-card"
-import { Icon } from "@opencode-ai/ui/icon"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { MessageNav } from "@opencode-ai/ui/message-nav"
-import { Spinner } from "@opencode-ai/ui/spinner"
-import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { getFilename } from "@opencode-ai/util/path"
-import { type Message, type Session, type TextPart, type UserMessage } from "@opencode-ai/sdk/v2/client"
+import { base64Encode } from "@slopcode-ai/util/encode"
+import { Avatar } from "@slopcode-ai/ui/avatar"
+import { DiffChanges } from "@slopcode-ai/ui/diff-changes"
+import { HoverCard } from "@slopcode-ai/ui/hover-card"
+import { Icon } from "@slopcode-ai/ui/icon"
+import { IconButton } from "@slopcode-ai/ui/icon-button"
+import { MessageNav } from "@slopcode-ai/ui/message-nav"
+import { Spinner } from "@slopcode-ai/ui/spinner"
+import { Tooltip } from "@slopcode-ai/ui/tooltip"
+import { getFilename } from "@slopcode-ai/util/path"
+import { type Message, type Session, type TextPart, type UserMessage } from "@slopcode-ai/sdk/v2/client"
 import { For, Match, Show, Switch, createMemo, onCleanup, type Accessor, type JSX } from "solid-js"
 import { agentColor } from "@/utils/agent"
 import { hasProjectPermissions } from "./helpers"
 import { sessionPermissionRequest } from "../session/composer/session-request-tree"
 
-const OPENCODE_PROJECT_ID = "4b0ea68d7af9a6031a7ffda7ad66e0cb83315750"
+const SLOPCODE_PROJECT_ID = "4b0ea68d7af9a6031a7ffda7ad66e0cb83315750"
 
 export const ProjectIcon = (props: { project: LocalProject; class?: string; notify?: boolean }): JSX.Element => {
   const globalSync = useGlobalSync()
@@ -45,7 +45,7 @@ export const ProjectIcon = (props: { project: LocalProject; class?: string; noti
         <Avatar
           fallback={name()}
           src={
-            props.project.id === OPENCODE_PROJECT_ID ? "https://opencode.ai/favicon.svg" : props.project.icon?.override
+            props.project.id === SLOPCODE_PROJECT_ID ? "https://slopcode.ai/favicon.svg" : props.project.icon?.override
           }
           {...getAvatarColors(props.project.icon?.color)}
           class="size-full rounded"

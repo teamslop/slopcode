@@ -1,0 +1,13 @@
+{
+  "$schema": "https://slopcode.ai/config.json",
+  "provider": {
+    "slopcode": {
+      "options": {},
+    },
+  },
+  "mcp": {},
+  "tools": {
+    "github-triage": false,
+    "github-pr-search": false,
+  },
+}

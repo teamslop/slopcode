@@ -1,14 +1,14 @@
 import type {
   Config,
-  OpencodeClient,
+  SlopcodeClient,
   Path,
   Project,
   ProviderAuthResponse,
   ProviderListResponse,
   Todo,
-} from "@opencode-ai/sdk/v2/client"
-import { showToast } from "@opencode-ai/ui/toast"
-import { getFilename } from "@opencode-ai/util/path"
+} from "@slopcode-ai/sdk/v2/client"
+import { showToast } from "@slopcode-ai/ui/toast"
+import { getFilename } from "@slopcode-ai/util/path"
 import {
   createContext,
   createEffect,
@@ -59,7 +59,7 @@ function createGlobalSync() {
   const owner = getOwner()
   if (!owner) throw new Error("GlobalSync must be created within owner")
 
-  const sdkCache = new Map<string, OpencodeClient>()
+  const sdkCache = new Map<string, SlopcodeClient>()
   const booting = new Map<string, Promise<void>>()
   const sessionLoads = new Map<string, Promise<void>>()
   const sessionMeta = new Map<string, { limit: number }>()

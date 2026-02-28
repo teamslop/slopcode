@@ -17,14 +17,14 @@ ts-dist
 /result
 refs
 Session.vim
-opencode.json
+slopcode.json
 a.out
 target
 .scripts
 .direnv/
 
 # Local dev files
-opencode-dev
+slopcode-dev
 logs/
 *.bun-build
 tsconfig.tsbuildinfo

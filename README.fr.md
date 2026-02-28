@@ -1,17 +1,17 @@
 <p align="center">
-  <a href="https://opencode.ai">
+  <a href="https://slopcode.ai">
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="Logo OpenCode">
+      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="Logo SlopCode">
     </picture>
   </a>
 </p>
 <p align="center">L'agent de codage IA open source.</p>
 <p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://slopcode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
+  <a href="https://www.npmjs.com/package/slopcode-ai"><img alt="npm" src="https://img.shields.io/npm/v/slopcode-ai?style=flat-square" /></a>
+  <a href="https://github.com/anomalyco/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@
   <a href="README.gr.md">Ελληνικά</a>
 </p>
 
-[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
+[![SlopCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://slopcode.ai)
 
 ---
 
@@ -45,18 +45,18 @@
 
 ```bash
 # YOLO
-curl -fsSL https://opencode.ai/install | bash
+curl -fsSL https://slopcode.ai/install | bash
 
 # Gestionnaires de paquets
-npm i -g opencode-ai@latest        # ou bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS et Linux (recommandé, toujours à jour)
-brew install opencode              # macOS et Linux (formule officielle brew, mise à jour moins fréquente)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-bin               # Arch Linux (Latest from AUR)
-mise use -g opencode               # n'importe quel OS
-nix run nixpkgs#opencode           # ou github:anomalyco/opencode pour la branche dev la plus récente
+npm i -g slopcode-ai@latest        # ou bun/pnpm/yarn
+scoop install slopcode             # Windows
+choco install slopcode             # Windows
+brew install anomalyco/tap/slopcode # macOS et Linux (recommandé, toujours à jour)
+brew install slopcode              # macOS et Linux (formule officielle brew, mise à jour moins fréquente)
+sudo pacman -S slopcode            # Arch Linux (Stable)
+paru -S slopcode-bin               # Arch Linux (Latest from AUR)
+mise use -g slopcode               # n'importe quel OS
+nix run nixpkgs#slopcode           # ou github:anomalyco/slopcode pour la branche dev la plus récente
 ```
 
 > [!TIP]
@@ -64,40 +64,40 @@ nix run nixpkgs#opencode           # ou github:anomalyco/opencode pour la branch
 
 ### Application de bureau (BETA)
 
-OpenCode est aussi disponible en application de bureau. Téléchargez-la directement depuis la [page des releases](https://github.com/anomalyco/opencode/releases) ou [opencode.ai/download](https://opencode.ai/download).
+SlopCode est aussi disponible en application de bureau. Téléchargez-la directement depuis la [page des releases](https://github.com/anomalyco/slopcode/releases) ou [slopcode.ai/download](https://slopcode.ai/download).
 
 | Plateforme            | Téléchargement                        |
 | --------------------- | ------------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-darwin-aarch64.dmg` |
-| macOS (Intel)         | `opencode-desktop-darwin-x64.dmg`     |
-| Windows               | `opencode-desktop-windows-x64.exe`    |
+| macOS (Apple Silicon) | `slopcode-desktop-darwin-aarch64.dmg` |
+| macOS (Intel)         | `slopcode-desktop-darwin-x64.dmg`     |
+| Windows               | `slopcode-desktop-windows-x64.exe`    |
 | Linux                 | `.deb`, `.rpm`, ou AppImage           |
 
 ```bash
 # macOS (Homebrew)
-brew install --cask opencode-desktop
+brew install --cask slopcode-desktop
 # Windows (Scoop)
-scoop bucket add extras; scoop install extras/opencode-desktop
+scoop bucket add extras; scoop install extras/slopcode-desktop
 ```
 
 #### Répertoire d'installation
 
 Le script d'installation respecte l'ordre de priorité suivant pour le chemin d'installation :
 
-1. `$OPENCODE_INSTALL_DIR` - Répertoire d'installation personnalisé
+1. `$SLOPCODE_INSTALL_DIR` - Répertoire d'installation personnalisé
 2. `$XDG_BIN_DIR` - Chemin conforme à la spécification XDG Base Directory
 3. `$HOME/bin` - Répertoire binaire utilisateur standard (s'il existe ou peut être créé)
-4. `$HOME/.opencode/bin` - Repli par défaut
+4. `$HOME/.slopcode/bin` - Repli par défaut
 
 ```bash
 # Exemples
-OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
+SLOPCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://slopcode.ai/install | bash
+XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.ai/install | bash
 ```
 
 ### Agents
 
-OpenCode inclut deux agents intégrés que vous pouvez basculer avec la touche `Tab`.
+SlopCode inclut deux agents intégrés que vous pouvez basculer avec la touche `Tab`.
 
 - **build** - Par défaut, agent avec accès complet pour le travail de développement
 - **plan** - Agent en lecture seule pour l'analyse et l'exploration du code
@@ -108,19 +108,19 @@ OpenCode inclut deux agents intégrés que vous pouvez basculer avec la touche `
 Un sous-agent **general** est aussi inclus pour les recherches complexes et les tâches en plusieurs étapes.
 Il est utilisé en interne et peut être invoqué via `@general` dans les messages.
 
-En savoir plus sur les [agents](https://opencode.ai/docs/agents).
+En savoir plus sur les [agents](https://slopcode.ai/docs/agents).
 
 ### Documentation
 
-Pour plus d'informations sur la configuration d'OpenCode, [**consultez notre documentation**](https://opencode.ai/docs).
+Pour plus d'informations sur la configuration d'SlopCode, [**consultez notre documentation**](https://slopcode.ai/docs).
 
 ### Contribuer
 
-Si vous souhaitez contribuer à OpenCode, lisez nos [docs de contribution](./CONTRIBUTING.md) avant de soumettre une pull request.
+Si vous souhaitez contribuer à SlopCode, lisez nos [docs de contribution](./CONTRIBUTING.md) avant de soumettre une pull request.
 
-### Construire avec OpenCode
+### Construire avec SlopCode
 
-Si vous travaillez sur un projet lié à OpenCode et que vous utilisez "opencode" dans le nom du projet (par exemple, "opencode-dashboard" ou "opencode-mobile"), ajoutez une note dans votre README pour préciser qu'il n'est pas construit par l'équipe OpenCode et qu'il n'est pas affilié à nous.
+Si vous travaillez sur un projet lié à SlopCode et que vous utilisez "slopcode" dans le nom du projet (par exemple, "slopcode-dashboard" ou "slopcode-mobile"), ajoutez une note dans votre README pour préciser qu'il n'est pas construit par l'équipe SlopCode et qu'il n'est pas affilié à nous.
 
 ### FAQ
 
@@ -129,11 +129,11 @@ Si vous travaillez sur un projet lié à OpenCode et que vous utilisez "opencode
 C'est très similaire à Claude Code en termes de capacités. Voici les principales différences :
 
 - 100% open source
-- Pas couplé à un fournisseur. Nous recommandons les modèles proposés via [OpenCode Zen](https://opencode.ai/zen) ; OpenCode peut être utilisé avec Claude, OpenAI, Google ou même des modèles locaux. Au fur et à mesure que les modèles évoluent, les écarts se réduiront et les prix baisseront, donc être agnostique au fournisseur est important.
+- Pas couplé à un fournisseur. Nous recommandons les modèles proposés via [SlopCode Zen](https://slopcode.ai/zen) ; SlopCode peut être utilisé avec Claude, OpenAI, Google ou même des modèles locaux. Au fur et à mesure que les modèles évoluent, les écarts se réduiront et les prix baisseront, donc être agnostique au fournisseur est important.
 - Support LSP prêt à l'emploi
-- Un focus sur la TUI. OpenCode est construit par des utilisateurs de neovim et les créateurs de [terminal.shop](https://terminal.shop) ; nous allons repousser les limites de ce qui est possible dans le terminal.
-- Architecture client/serveur. Cela permet par exemple de faire tourner OpenCode sur votre ordinateur tout en le pilotant à distance depuis une application mobile. Cela signifie que la TUI n'est qu'un des clients possibles.
+- Un focus sur la TUI. SlopCode est construit par des utilisateurs de neovim et les créateurs de [terminal.shop](https://terminal.shop) ; nous allons repousser les limites de ce qui est possible dans le terminal.
+- Architecture client/serveur. Cela permet par exemple de faire tourner SlopCode sur votre ordinateur tout en le pilotant à distance depuis une application mobile. Cela signifie que la TUI n'est qu'un des clients possibles.
 
 ---
 
-**Rejoignez notre communauté** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+**Rejoignez notre communauté** [Discord](https://discord.gg/slopcode) | [X.com](https://x.com/slopcode)

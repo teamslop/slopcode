@@ -42,18 +42,18 @@ beforeAll(async () => {
     useParams: () => ({}),
   }))
 
-  mock.module("@opencode-ai/sdk/v2/client", () => ({
-    createOpencodeClient: (input: { directory: string }) => {
+  mock.module("@slopcode-ai/sdk/v2/client", () => ({
+    createSlopcodeClient: (input: { directory: string }) => {
       createdClients.push(input.directory)
       return clientFor(input.directory)
     },
   }))
 
-  mock.module("@opencode-ai/ui/toast", () => ({
+  mock.module("@slopcode-ai/ui/toast", () => ({
     showToast: () => 0,
   }))
 
-  mock.module("@opencode-ai/util/encode", () => ({
+  mock.module("@slopcode-ai/util/encode", () => ({
     base64Encode: (value: string) => value,
   }))
 

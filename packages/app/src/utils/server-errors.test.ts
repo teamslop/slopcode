@@ -7,7 +7,7 @@ describe("parseReabaleConfigInvalidError", () => {
     const error = {
       name: "ConfigInvalidError",
       data: {
-        path: "opencode.config.ts",
+        path: "slopcode.config.ts",
         issues: [
           { path: ["settings", "host"], message: "Required" },
           { path: ["mode"], message: "Invalid" },
@@ -18,7 +18,7 @@ describe("parseReabaleConfigInvalidError", () => {
     const result = parseReabaleConfigInvalidError(error)
 
     expect(result).toBe(
-      ["Invalid configuration", "opencode.config.ts", "settings.host: Required", "mode: Invalid"].join("\n"),
+      ["Invalid configuration", "slopcode.config.ts", "settings.host: Required", "mode: Invalid"].join("\n"),
     )
   })
 

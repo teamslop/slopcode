@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { fn } from "./util/fn"
-import { Resource } from "@opencode-ai/console-resource"
+import { Resource } from "@slopcode-ai/console-resource"
 import { BlackPlans } from "./schema/billing.sql"
 
 export namespace BlackData {

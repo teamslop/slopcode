@@ -1,6 +1,6 @@
-# OpenCode Desktop
+# SlopCode Desktop
 
-Native OpenCode desktop app, built with Tauri v2.
+Native SlopCode desktop app, built with Tauri v2.
 
 ## Prerequisites
 
