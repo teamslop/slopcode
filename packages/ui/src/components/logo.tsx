@@ -46,10 +46,10 @@ export const Logo = (props: { class?: string }) => {
           x="34"
           y="27"
           fill="var(--icon-strong-base)"
-          fontFamily="'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif"
-          fontSize="22"
-          fontWeight="700"
-          letterSpacing="0.4"
+          font-family="'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif"
+          font-size="22"
+          font-weight="700"
+          letter-spacing="0.4"
         >
           SlopCode
         </text>
