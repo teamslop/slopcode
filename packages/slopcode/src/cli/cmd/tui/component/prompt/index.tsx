@@ -1133,14 +1133,13 @@ export function Prompt(props: PromptProps) {
                     {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>edit mode</span>
                   </text>
                   <text fg={theme.text}>
-                    {keybind.print("history_previous")}/{keybind.print("history_next")}{" "}
-                    <span style={{ fg: theme.textMuted }}>navigate prompt</span>
+                    ↑/↓ <span style={{ fg: theme.textMuted }}>navigate prompt</span>
                   </text>
                   <text fg={theme.text}>
-                    left/right <span style={{ fg: theme.textMuted }}>navigate trace</span>
+                    ←/→ <span style={{ fg: theme.textMuted }}>navigate trace</span>
                   </text>
                   <text fg={theme.text}>
-                    Space <span style={{ fg: theme.textMuted }}>expand</span>
+                    space <span style={{ fg: theme.textMuted }}>expand</span>
                   </text>
                 </Match>
                 <Match when={store.mode === "normal"}>
