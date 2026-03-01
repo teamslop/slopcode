@@ -137,6 +137,15 @@ export default function Download() {
                 </code>
                 <CopyStatus />
               </button>
+              <button
+                data-component="cli-row"
+                onClick={handleCopyClick("nix profile install github:grappeggia/slopcode#slopcode")}
+              >
+                <code>
+                  nix profile install <strong>github:grappeggia/slopcode#slopcode</strong>
+                </code>
+                <CopyStatus />
+              </button>
               <button data-component="cli-row" onClick={handleCopyClick("brew install grappeggia/slopcode/slopcode")}>
                 <code>
                   brew install <strong>grappeggia/slopcode/slopcode</strong>

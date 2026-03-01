@@ -57,7 +57,8 @@ brew install slopcode              # macOS and Linux (official brew formula, upd
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # Any OS
-nix run nixpkgs#slopcode           # or github:grappeggia/slopcode for latest dev branch
+nix profile install github:grappeggia/slopcode#slopcode # Any OS (persistent install)
+nix run github:grappeggia/slopcode#slopcode             # One-off run
 ```
 
 > [!TIP]

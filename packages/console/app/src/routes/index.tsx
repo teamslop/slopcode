@@ -104,6 +104,9 @@ export default function Home() {
                   <Tabs.Trigger value="bun" data-slot="tab">
                     bun
                   </Tabs.Trigger>
+                  <Tabs.Trigger value="nix" data-slot="tab">
+                    nix
+                  </Tabs.Trigger>
                   <Tabs.Trigger value="brew" data-slot="tab">
                     brew
                   </Tabs.Trigger>
@@ -138,6 +141,15 @@ export default function Home() {
                       <span>
                         <span data-slot="protocol">bun install -g </span>
                         <span data-slot="highlight">slopcode</span>
+                      </span>
+                      <CopyStatus />
+                    </button>
+                  </Tabs.Content>
+                  <Tabs.Content as="pre" data-slot="panel" value="nix">
+                    <button data-copy data-slot="command" onClick={handleCopyClick}>
+                      <span>
+                        <span data-slot="protocol">nix profile install </span>
+                        <span data-slot="highlight">github:grappeggia/slopcode#slopcode</span>
                       </span>
                       <CopyStatus />
                     </button>

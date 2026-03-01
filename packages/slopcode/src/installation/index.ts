@@ -14,8 +14,80 @@ declare global {
 
 export namespace Installation {
   const log = Log.create({ service: "installation" })
+  const nixMatch = /(^|[^a-z0-9])slopcode([^a-z0-9]|$)/i
+
+  const nixVersionInstallable = (source: string) => {
+    const normalized = source.startsWith("flake:") ? source.replace(/^flake:/, "") : source
+    const arch = process.arch === "x64" ? "x86_64" : process.arch === "arm64" ? "aarch64" : process.arch
+    const os = process.platform === "darwin" ? "darwin" : process.platform === "linux" ? "linux" : process.platform
+    return `${normalized}#packages.${arch}-${os}.slopcode.version`
+  }
+
+  const isNixEntry = (entry: {
+    attrPath?: string
+    flake?: string
+    originalUrl?: string
+    url?: string
+    storePaths?: string[]
+  }) => {
+    const source = [entry.attrPath, entry.flake, entry.originalUrl, entry.url, ...(entry.storePaths ?? [])]
+    return source.some((item) => !!item && nixMatch.test(item))
+  }
+
+  const nixEntry = async () => {
+    const output = await $`nix profile list --json`.throws(false).quiet().text()
+    if (!output.trim()) {
+      return
+    }
+    try {
+      const parsed = JSON.parse(output) as Record<
+        string,
+        {
+          attrPath?: string
+          flake?: string
+          originalUrl?: string
+          url?: string
+          storePaths?: string[]
+        }
+      >
+      const pair = Object.entries(parsed).find(([, value]) => isNixEntry(value))
+      if (!pair) {
+        return
+      }
+      const [index, value] = pair
+      return {
+        index,
+        ...value,
+      }
+    } catch {
+      return
+    }
+  }
+
+  const nixSource = (entry: {
+    attrPath?: string
+    flake?: string
+    originalUrl?: string
+    url?: string
+    storePaths?: string[]
+  }) => {
+    if (entry.flake) {
+      return entry.flake
+    }
+    if (entry.originalUrl) {
+      return entry.originalUrl
+    }
+    if (entry.url) {
+      return entry.url
+    }
+    return
+  }
 
   export type Method = Awaited<ReturnType<typeof method>>
+
+  export async function nixSelector() {
+    return (await nixEntry())?.index
+  }
 
   export const Event = {
     Updated: BusEvent.define(
@@ -61,6 +133,7 @@ export namespace Installation {
     if (process.execPath.includes(path.join(".slopcode", "bin"))) return "curl"
     if (process.execPath.includes(path.join(".local", "bin"))) return "curl"
     const exec = process.execPath.toLowerCase()
+    if (await nixSelector()) return "nix"
 
     const checks = [
       {
@@ -145,6 +218,17 @@ export namespace Installation {
       case "bun":
         cmd = $`bun install -g slopcode@${target}`
         break
+      case "nix": {
+        const selector = await nixSelector()
+        if (!selector) {
+          throw new UpgradeFailedError({
+            stderr:
+              "Could not find slopcode in your nix profile. Install with: nix profile install github:grappeggia/slopcode#slopcode",
+          })
+        }
+        cmd = $`nix profile upgrade ${selector}`
+        break
+      }
       case "brew": {
         const formula = await getBrewFormula()
         if (formula.includes("/")) {
@@ -210,6 +294,28 @@ export namespace Installation {
           return res.json()
         })
         .then((data: any) => data.versions.stable)
+    }
+
+    if (detectedMethod === "nix") {
+      const entry = await nixEntry()
+      if (!entry) {
+        return VERSION
+      }
+      const source = nixSource(entry)
+      if (!source) {
+        return VERSION
+      }
+      if (source.includes("nixpkgs")) {
+        const latest = (await $`nix eval --raw nixpkgs#slopcode.version`.quiet().nothrow().text()).trim()
+        if (latest) {
+          return latest
+        }
+      }
+      const latest = (await $`nix eval --raw ${nixVersionInstallable(source)}`.quiet().nothrow().text()).trim()
+      if (latest) {
+        return latest
+      }
+      return VERSION
     }
 
     if (detectedMethod === "npm" || detectedMethod === "bun" || detectedMethod === "pnpm") {
