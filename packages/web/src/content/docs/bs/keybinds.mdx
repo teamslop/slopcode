@@ -128,6 +128,29 @@ Možete onemogućiti spajanje tipki dodavanjem ključa u svoju konfiguraciju s v
 
 ---
 
+## History mode keybinds
+
+Use `history_mode_toggle` to switch between edit mode and history mode.
+
+Use `history_previous` and `history_next` to move through history-mode prompt entries.
+
+```json title="tui.json"
+{
+  "$schema": "https://slopcode.dev/tui.json",
+  "keybinds": {
+    "history_mode_toggle": "ctrl+h",
+    "history_previous": "pageup",
+    "history_next": "pagedown"
+  }
+}
+```
+
+:::tip
+By default, `history_mode_toggle` includes `ctrl+j`, which can conflict with `input_newline`.
+:::
+
+---
+
 ## Prečice za radnu površinu
 
 Unos prompta aplikacije SlopCode za desktop podržava uobičajene prečice u stilu Readline/Emacs za uređivanje teksta. One su ugrađene i trenutno se ne mogu konfigurirati putem `slopcode.json`.

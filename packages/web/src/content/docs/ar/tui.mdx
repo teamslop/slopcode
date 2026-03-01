@@ -151,6 +151,18 @@ How is auth handled in @packages/functions/src/api/index.ts?
 
 ---
 
+### history
+
+Toggle history mode for session navigation.
+
+```bash frame="none"
+/history
+```
+
+**اختصار لوحة المفاتيح:** `history_mode_toggle` defaults to `ctrl+h,ctrl+j`
+
+---
+
 ### init
 
 أنشئ ملف `AGENTS.md` أو حدّثه. [اعرف المزيد](/docs/rules).
@@ -282,6 +294,21 @@ How is auth handled in @packages/functions/src/api/index.ts?
 ```
 
 ---
+
+## History mode
+
+Use history mode when you want to navigate existing session messages and traces without moving your hands to the mouse.
+
+While history mode is active, `up` and `down` move between prompts, `left` and `right` move between traces, and `space` runs the context action.
+
+Pressing `space` expands or collapses tool output, and opens a child task session when the selected item supports it.
+
+Use `history_mode_toggle` (defaults to `ctrl+h,ctrl+j`) to exit history mode and return to normal edit mode.
+
+Unlike normal prompt input history (`history_previous` and `history_next`), history mode navigates rendered session content instead of cycling through text in the input box.
+
+---
+
 
 ## إعداد المحرر
 

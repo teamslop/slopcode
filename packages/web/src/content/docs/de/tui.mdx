@@ -154,6 +154,18 @@ Show the help dialog.
 
 ---
 
+### history
+
+Toggle history mode for session navigation.
+
+```bash frame="none"
+/history
+```
+
+**Keybind:** `history_mode_toggle` defaults to `ctrl+h,ctrl+j`
+
+---
+
 ### init
 
 Create or update `AGENTS.md` file. [Learn more](/docs/rules).
@@ -287,6 +299,21 @@ Unshare current session. [Learn more](/docs/share#un-sharing).
 ```
 
 ---
+
+## History mode
+
+Use history mode when you want to navigate existing session messages and traces without moving your hands to the mouse.
+
+While history mode is active, `up` and `down` move between prompts, `left` and `right` move between traces, and `space` runs the context action.
+
+Pressing `space` expands or collapses tool output, and opens a child task session when the selected item supports it.
+
+Use `history_mode_toggle` (defaults to `ctrl+h,ctrl+j`) to exit history mode and return to normal edit mode.
+
+Unlike normal prompt input history (`history_previous` and `history_next`), history mode navigates rendered session content instead of cycling through text in the input box.
+
+---
+
 
 ## Editor-Einrichtung
 

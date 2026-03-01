@@ -130,6 +130,29 @@ Puede deshabilitar una combinación de teclas agregando la clave a su configurac
 
 ---
 
+## History mode keybinds
+
+Use `history_mode_toggle` to switch between edit mode and history mode.
+
+Use `history_previous` and `history_next` to move through history-mode prompt entries.
+
+```json title="tui.json"
+{
+  "$schema": "https://slopcode.dev/tui.json",
+  "keybinds": {
+    "history_mode_toggle": "ctrl+h",
+    "history_previous": "pageup",
+    "history_next": "pagedown"
+  }
+}
+```
+
+:::tip
+By default, `history_mode_toggle` includes `ctrl+j`, which can conflict with `input_newline`.
+:::
+
+---
+
 ## Atajos de mensajes de escritorio
 
 La entrada de solicitud de la aplicación de escritorio SlopCode admite atajos comunes de estilo Readline/Emacs para editar texto. Estos están integrados y actualmente no se pueden configurar a través de `slopcode.json`.

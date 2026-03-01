@@ -130,6 +130,29 @@ Você pode desativar um atalho adicionando a tecla à sua configuração com um 
 
 ---
 
+## History mode keybinds
+
+Use `history_mode_toggle` to switch between edit mode and history mode.
+
+Use `history_previous` and `history_next` to move through history-mode prompt entries.
+
+```json title="tui.json"
+{
+  "$schema": "https://slopcode.dev/tui.json",
+  "keybinds": {
+    "history_mode_toggle": "ctrl+h",
+    "history_previous": "pageup",
+    "history_next": "pagedown"
+  }
+}
+```
+
+:::tip
+By default, `history_mode_toggle` includes `ctrl+j`, which can conflict with `input_newline`.
+:::
+
+---
+
 ## Atalhos do prompt do desktop
 
 O prompt de entrada do aplicativo desktop slopcode suporta atalhos comuns de estilo Readline/Emacs para edição de texto. Estes são embutidos e atualmente não são configuráveis via `slopcode.json`.
