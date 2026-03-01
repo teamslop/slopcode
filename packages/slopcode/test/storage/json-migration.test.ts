@@ -47,9 +47,7 @@ const fixtures = {
 }
 
 // Helper to create test storage directory structure
-async function setupStorageDir() {
-  const storageDir = path.join(Global.Path.data, "storage")
-  await fs.rm(storageDir, { recursive: true, force: true })
+async function createStorageDirs(storageDir: string) {
   await fs.mkdir(path.join(storageDir, "project"), { recursive: true })
   await fs.mkdir(path.join(storageDir, "session", "proj_test123abc"), { recursive: true })
   await fs.mkdir(path.join(storageDir, "message", "ses_test456def"), { recursive: true })
@@ -58,6 +56,12 @@ async function setupStorageDir() {
   await fs.mkdir(path.join(storageDir, "todo"), { recursive: true })
   await fs.mkdir(path.join(storageDir, "permission"), { recursive: true })
   await fs.mkdir(path.join(storageDir, "session_share"), { recursive: true })
+}
+
+async function setupStorageDir() {
+  const storageDir = path.join(Global.Path.data, "storage")
+  await fs.rm(storageDir, { recursive: true, force: true })
+  await createStorageDirs(storageDir)
   // Create legacy marker to indicate JSON storage exists
   await Bun.write(path.join(storageDir, "migration"), "1")
   return storageDir
@@ -474,6 +478,99 @@ describe("JSON to SQLite migration", () => {
     const db = drizzle({ client: sqlite })
     const projects = db.select().from(ProjectTable).all()
     expect(projects.length).toBe(1) // Still only 1 due to onConflictDoNothing
+  })
+
+  test("migrates from multiple storage directories", async () => {
+    const legacyDir = path.join(storageDir, "legacy")
+    await createStorageDirs(legacyDir)
+
+    await writeProject(legacyDir, {
+      id: "proj_test123abc",
+      worktree: "/legacy/path",
+      vcs: "git",
+      name: "Legacy Project",
+      time: { created: 1700000000000, updated: 1700000001000 },
+      sandboxes: [],
+    })
+    await writeSession(legacyDir, "proj_test123abc", {
+      id: "ses_test456def",
+      projectID: "proj_test123abc",
+      slug: "legacy-session",
+      directory: "/legacy/path",
+      title: "Legacy Session",
+      version: "1.0.0",
+      time: { created: 1700000000000, updated: 1700000001000 },
+    })
+    await Bun.write(
+      path.join(legacyDir, "message", "ses_test456def", "msg_test789ghi.json"),
+      JSON.stringify({
+        role: "user",
+        agent: "default",
+        model: { providerID: "openai", modelID: "gpt-4" },
+        time: { created: 1700000000000 },
+      }),
+    )
+    await Bun.write(
+      path.join(legacyDir, "part", "msg_test789ghi", "prt_testabc123.json"),
+      JSON.stringify({ type: "text", text: "legacy" }),
+    )
+
+    const stats = await JsonMigration.run(sqlite, {
+      storageDirs: [storageDir, legacyDir],
+    })
+
+    expect(stats.projects).toBe(1)
+    expect(stats.sessions).toBe(1)
+    expect(stats.messages).toBe(1)
+    expect(stats.parts).toBe(1)
+
+    const db = drizzle({ client: sqlite })
+    const projects = db.select().from(ProjectTable).all()
+    const sessions = db.select().from(SessionTable).all()
+    const messages = db.select().from(MessageTable).all()
+    const parts = db.select().from(PartTable).all()
+
+    expect(projects.length).toBe(1)
+    expect(projects[0].name).toBe("Legacy Project")
+    expect(sessions.length).toBe(1)
+    expect(sessions[0].title).toBe("Legacy Session")
+    expect(messages.length).toBe(1)
+    expect(parts.length).toBe(1)
+  })
+
+  test("prefers earlier storage directories when IDs conflict", async () => {
+    const legacyDir = path.join(storageDir, "legacy")
+    await createStorageDirs(legacyDir)
+
+    await writeProject(storageDir, {
+      id: "proj_test123abc",
+      worktree: "/primary/path",
+      vcs: "git",
+      name: "Primary Project",
+      time: { created: 1700000000000, updated: 1700000001000 },
+      sandboxes: [],
+    })
+    await writeProject(legacyDir, {
+      id: "proj_test123abc",
+      worktree: "/legacy/path",
+      vcs: "git",
+      name: "Legacy Project",
+      time: { created: 1700000000000, updated: 1700000001000 },
+      sandboxes: [],
+    })
+
+    await JsonMigration.run(sqlite, {
+      storageDirs: [storageDir, legacyDir],
+    })
+
+    const db = drizzle({ client: sqlite })
+    const project = db
+      .select()
+      .from(ProjectTable)
+      .all()
+      .find((item) => item.id === "proj_test123abc")
+    expect(project?.name).toBe("Primary Project")
+    expect(project?.worktree).toBe("/primary/path")
   })
 
   test("migrates todos", async () => {

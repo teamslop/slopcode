@@ -21,13 +21,17 @@ export namespace JsonMigration {
 
   type Options = {
     progress?: (event: Progress) => void
+    storageDirs?: string[]
   }
 
   export async function run(sqlite: Database, options?: Options) {
-    const storageDir = path.join(Global.Path.data, "storage")
+    const inputDirs = options?.storageDirs ?? [path.join(Global.Path.data, "storage")]
+    const storageDirs = Array.from(new Set(inputDirs.map((item) => path.resolve(item)))).filter((item) =>
+      existsSync(item),
+    )
 
-    if (!existsSync(storageDir)) {
-      log.info("storage directory does not exist, skipping migration")
+    if (storageDirs.length === 0) {
+      log.info("storage directories do not exist, skipping migration", { storageDirs: inputDirs })
       return {
         projects: 0,
         sessions: 0,
@@ -40,7 +44,7 @@ export namespace JsonMigration {
       }
     }
 
-    log.info("starting json to sqlite migration", { storageDir })
+    log.info("starting json to sqlite migration", { storageDirs })
     const start = performance.now()
 
     const db = drizzle({ client: sqlite })
@@ -72,7 +76,10 @@ export namespace JsonMigration {
     const now = Date.now()
 
     async function list(pattern: string) {
-      return Glob.scan(pattern, { cwd: storageDir, absolute: true })
+      const files = await Promise.all(
+        storageDirs.map((storageDir) => Glob.scan(pattern, { cwd: storageDir, absolute: true })),
+      )
+      return Array.from(new Set(files.flat()))
     }
 
     async function read(files: string[], start: number, end: number) {

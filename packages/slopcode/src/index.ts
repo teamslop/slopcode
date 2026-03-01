@@ -83,9 +83,26 @@ let cli = yargs(hideBin(process.argv))
     })
 
     const marker = path.join(Global.Path.data, "slopcode.db")
-    if (!(await Filesystem.exists(marker))) {
+    const storageDir = path.join(Global.Path.data, "storage")
+    const legacyStorageDir = path.join(path.dirname(Global.Path.data), "opencode", "storage")
+    const legacyMarker = path.join(Global.Path.data, "opencode-history-import.json")
+
+    async function hasStorageData(dir: string) {
+      if (!(await Filesystem.isDir(dir))) return false
+      if (await Filesystem.exists(path.join(dir, "migration"))) return true
+
+      return (
+        await Promise.all(
+          ["project", "session", "message", "part", "todo", "permission", "session_share"].map((item) =>
+            Filesystem.isDir(path.join(dir, item)),
+          ),
+        )
+      ).some(Boolean)
+    }
+
+    async function migrate(label: string, done: string, storageDirs: string[]) {
       const tty = process.stderr.isTTY
-      process.stderr.write("Performing one time database migration, may take a few minutes..." + EOL)
+      process.stderr.write(label + EOL)
       const width = 36
       const orange = "\x1b[38;5;214m"
       const muted = "\x1b[0;2m"
@@ -94,6 +111,7 @@ let cli = yargs(hideBin(process.argv))
       if (tty) process.stderr.write("\x1b[?25l")
       try {
         await JsonMigration.run(Database.Client().$client, {
+          storageDirs,
           progress: (event) => {
             const percent = Math.floor((event.current / event.total) * 100)
             if (percent === last && event.current !== event.total) return
@@ -105,9 +123,9 @@ let cli = yargs(hideBin(process.argv))
                 `\r${orange}${bar} ${percent.toString().padStart(3)}%${reset} ${muted}${event.label.padEnd(12)} ${event.current}/${event.total}${reset}`,
               )
               if (event.current === event.total) process.stderr.write("\n")
-            } else {
-              process.stderr.write(`sqlite-migration:${percent}${EOL}`)
+              return
             }
+            process.stderr.write(`sqlite-migration:${percent}${EOL}`)
           },
         })
       } finally {
@@ -116,8 +134,37 @@ let cli = yargs(hideBin(process.argv))
           process.stderr.write(`sqlite-migration:done${EOL}`)
         }
       }
-      process.stderr.write("Database migration complete." + EOL)
+      process.stderr.write(done + EOL)
     }
+
+    const hasLegacyStorageData = await hasStorageData(legacyStorageDir)
+
+    if (!(await Filesystem.exists(marker))) {
+      await migrate(
+        "Performing one time database migration, may take a few minutes...",
+        "Database migration complete.",
+        hasLegacyStorageData ? [storageDir, legacyStorageDir] : [storageDir],
+      )
+
+      if (hasLegacyStorageData) {
+        await Filesystem.writeJson(legacyMarker, {
+          time: Date.now(),
+          storageDir: legacyStorageDir,
+        })
+      }
+      return
+    }
+
+    if (!hasLegacyStorageData) return
+    if (await Filesystem.exists(legacyMarker)) return
+
+    await migrate("Importing one-time OpenCode history into SlopCode...", "OpenCode history import complete.", [
+      legacyStorageDir,
+    ])
+    await Filesystem.writeJson(legacyMarker, {
+      time: Date.now(),
+      storageDir: legacyStorageDir,
+    })
   })
   .usage("\n" + UI.logo())
   .completion("completion", "generate shell completion script")
