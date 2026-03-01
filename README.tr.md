@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -51,12 +51,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # veya bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS ve Linux (önerilir, her zaman güncel)
+brew install teamslop/slopcode/slopcode # macOS ve Linux (önerilir, her zaman güncel)
 brew install slopcode              # macOS ve Linux (resmi brew formülü, daha az güncellenir)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # Tüm işletim sistemleri
-nix run nixpkgs#slopcode           # veya en güncel geliştirme dalı için github:grappeggia/slopcode
+nix run nixpkgs#slopcode           # veya en güncel geliştirme dalı için github:teamslop/slopcode
 ```
 
 > [!TIP]
@@ -64,7 +64,7 @@ nix run nixpkgs#slopcode           # veya en güncel geliştirme dalı için git
 
 ### Masaüstü Uygulaması (BETA)
 
-SlopCode ayrıca masaüstü uygulaması olarak da mevcuttur. Doğrudan [sürüm sayfasından](http://github.com/grappeggia/slopcode/releases) veya [slopcode.dev/download](https://slopcode.dev/download) adresinden indirebilirsiniz.
+SlopCode ayrıca masaüstü uygulaması olarak da mevcuttur. Doğrudan [sürüm sayfasından](http://github.com/teamslop/slopcode/releases) veya [slopcode.dev/download](https://slopcode.dev/download) adresinden indirebilirsiniz.
 
 | Platform              | İndirme                               |
 | --------------------- | ------------------------------------- |

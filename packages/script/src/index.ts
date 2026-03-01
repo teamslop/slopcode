@@ -46,7 +46,7 @@ const VERSION = await (async () => {
   return `${major}.${minor}.${patch + 1}`
 })()
 
-const team = ["grappeggia"]
+const team = ["teamslop"]
 
 export const Script = {
   get channel() {

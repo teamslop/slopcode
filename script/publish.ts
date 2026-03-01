@@ -70,11 +70,14 @@ if (Script.release) {
 
   // Non-npm publishing channels are intentionally disabled for npm-only rollout.
   // await import(`../packages/desktop/scripts/finalize-latest-json.ts`)
-  // await $`gh release edit v${Script.version} --draft=false --repo ${process.env.GH_REPO}`
 }
 
 console.log("\n=== cli ===\n")
 await import(`../packages/slopcode/script/publish.ts`)
+
+if (Script.release && !Script.preview) {
+  await $`gh release edit v${Script.version} --draft=false --repo ${process.env.GH_REPO}`
+}
 
 // Non-npm publishing channels are intentionally disabled for npm-only rollout.
 // console.log("\n=== sdk ===\n")

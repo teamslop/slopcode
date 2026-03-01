@@ -15,7 +15,7 @@ This extension requires the [slopcode CLI](https://slopcode.dev) to be installed
 
 ## Support
 
-This is an early release. If you encounter issues or have feedback, please create an issue at http://github.com/grappeggia/slopcode/issues.
+This is an early release. If you encounter issues or have feedback, please create an issue at http://github.com/teamslop/slopcode/issues.
 
 ## Development
 

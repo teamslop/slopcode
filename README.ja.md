@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -51,12 +51,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # bun/pnpm/yarn でもOK
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS と Linux（推奨。常に最新）
+brew install teamslop/slopcode/slopcode # macOS と Linux（推奨。常に最新）
 brew install slopcode              # macOS と Linux（公式 brew formula。更新頻度は低め）
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # どのOSでも
-nix run nixpkgs#slopcode           # または github:grappeggia/slopcode で最新 dev ブランチ
+nix run nixpkgs#slopcode           # または github:teamslop/slopcode で最新 dev ブランチ
 ```
 
 > [!TIP]
@@ -64,7 +64,7 @@ nix run nixpkgs#slopcode           # または github:grappeggia/slopcode で最
 
 ### デスクトップアプリ (BETA)
 
-SlopCode はデスクトップアプリとしても利用できます。[releases page](http://github.com/grappeggia/slopcode/releases) から直接ダウンロードするか、[slopcode.dev/download](https://slopcode.dev/download) を利用してください。
+SlopCode はデスクトップアプリとしても利用できます。[releases page](http://github.com/teamslop/slopcode/releases) から直接ダウンロードするか、[slopcode.dev/download](https://slopcode.dev/download) を利用してください。
 
 | プラットフォーム      | ダウンロード                          |
 | --------------------- | ------------------------------------- |

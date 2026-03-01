@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -52,12 +52,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # ή bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS και Linux (προτείνεται, πάντα ενημερωμένο)
+brew install teamslop/slopcode/slopcode # macOS και Linux (προτείνεται, πάντα ενημερωμένο)
 brew install slopcode              # macOS και Linux (επίσημος τύπος brew, λιγότερο συχνές ενημερώσεις)
 sudo pacman -S slopcode            # Arch Linux (Σταθερό)
 paru -S slopcode-bin               # Arch Linux (Τελευταία έκδοση από AUR)
 mise use -g slopcode               # Οποιοδήποτε λειτουργικό σύστημα
-nix run nixpkgs#slopcode           # ή github:grappeggia/slopcode με βάση την πιο πρόσφατη αλλαγή από το dev branch
+nix run nixpkgs#slopcode           # ή github:teamslop/slopcode με βάση την πιο πρόσφατη αλλαγή από το dev branch
 ```
 
 > [!TIP]
@@ -65,7 +65,7 @@ nix run nixpkgs#slopcode           # ή github:grappeggia/slopcode με βάση
 
 ### Εφαρμογή Desktop (BETA)
 
-Το SlopCode είναι επίσης διαθέσιμο ως εφαρμογή. Κατέβασε το απευθείας από τη [σελίδα εκδόσεων](http://github.com/grappeggia/slopcode/releases) ή το [slopcode.dev/download](https://slopcode.dev/download).
+Το SlopCode είναι επίσης διαθέσιμο ως εφαρμογή. Κατέβασε το απευθείας από τη [σελίδα εκδόσεων](http://github.com/teamslop/slopcode/releases) ή το [slopcode.dev/download](https://slopcode.dev/download).
 
 | Πλατφόρμα             | Λήψη                                  |
 | --------------------- | ------------------------------------- |

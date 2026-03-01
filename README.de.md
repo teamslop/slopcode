@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -51,12 +51,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # oder bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS und Linux (empfohlen, immer aktuell)
+brew install teamslop/slopcode/slopcode # macOS und Linux (empfohlen, immer aktuell)
 brew install slopcode              # macOS und Linux (offizielle Brew-Formula, seltener aktualisiert)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # jedes Betriebssystem
-nix run nixpkgs#slopcode           # oder github:grappeggia/slopcode für den neuesten dev-Branch
+nix run nixpkgs#slopcode           # oder github:teamslop/slopcode für den neuesten dev-Branch
 ```
 
 > [!TIP]
@@ -64,7 +64,7 @@ nix run nixpkgs#slopcode           # oder github:grappeggia/slopcode für den ne
 
 ### Desktop-App (BETA)
 
-SlopCode ist auch als Desktop-Anwendung verfügbar. Lade sie direkt von der [Releases-Seite](http://github.com/grappeggia/slopcode/releases) oder [slopcode.dev/download](https://slopcode.dev/download) herunter.
+SlopCode ist auch als Desktop-Anwendung verfügbar. Lade sie direkt von der [Releases-Seite](http://github.com/teamslop/slopcode/releases) oder [slopcode.dev/download](https://slopcode.dev/download) herunter.
 
 | Plattform             | Download                              |
 | --------------------- | ------------------------------------- |

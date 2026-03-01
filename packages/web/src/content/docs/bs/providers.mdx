@@ -3,9 +3,6 @@ title: Provajderi
 description: Korištenje bilo kojeg LLM provajdera u SlopCode.
 ---
 
-import config from "../../../../config.mjs"
-export const console = config.console
-
 SlopCode koristi [AI SDK](https://ai-sdk.dev/) i [Models.dev](https://models.dev) za podršku **75+ LLM provajdera** i podržava pokretanje lokalnih modela.
 
 Za dodavanje provajdera potrebno je:
@@ -45,42 +42,6 @@ Možete prilagoditi osnovni URL za bilo kojeg provajdera postavljanjem opcije `b
   }
 }
 ```
-
----
-
-## SlopCode Zen
-
-SlopCode Zen je lista modela koje je obezbedio SlopCode tim koji su bili
-testirano i potvrđeno da dobro radi sa SlopCode. [Saznajte više](/docs/zen).
-
-:::tip
-Ako ste novi, preporučujemo da počnete sa SlopCode Zen.
-:::
-
-1. Pokrenite naredbu `/connect` u TUI-u, odaberite slopcode i idite na [slopcode.dev/auth](https://slopcode.dev/auth).
-
-```txt
-   /connect
-```
-
-2. Prijavite se, dodajte svoje detalje naplate i kopirajte svoj API ključ.
-
-3. Zalijepite svoj API ključ.
-
-```txt
-   ┌ API key
-   │
-   │
-   └ enter
-```
-
-4. Pokrenite `/models` u TUI da vidite listu modela koje preporučujemo.
-
-```txt
-   /models
-```
-
-Radi kao i svaki drugi provajder u SlopCode i potpuno je opcionalan za korištenje.
 
 ---
 
@@ -1334,35 +1295,6 @@ Preporučujemo da se prijavite za [ChatGPT Plus ili Pro](https://chatgpt.com/pri
 ##### Korištenje API ključeva
 
 Ako već imate API ključ, možete odabrati **Ručno unesite API ključ** i zalijepite ga u svoj terminal.
-
----
-
-### SlopCode Zen
-
-SlopCode Zen je lista testiranih i verifikovanih modela koju je obezbedio SlopCode tim. [Saznajte više](/docs/zen).
-
-1. Prijavite se na **<a href={console}>SlopCode Zen</a>** i kliknite na **Kreiraj API ključ**.
-
-2. Pokrenite naredbu `/connect` i potražite **SlopCode Zen**.
-
-```txt
-   /connect
-```
-
-3. Unesite svoj SlopCode API ključ.
-
-```txt
-   ┌ API key
-   │
-   │
-   └ enter
-```
-
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Qwen 3 Coder 480B_.
-
-```txt
-   /models
-```
 
 ---
 

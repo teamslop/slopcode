@@ -88,7 +88,7 @@ This will walk you through installing the GitHub app, creating the workflow, and
               persist-credentials: false
 
           - name: Run slopcode
-           uses: grappeggia/slopcode/github@latest
+           uses: teamslop/slopcode/github@latest
            env:
              ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -101,7 +101,7 @@ This will walk you through installing the GitHub app, creating the workflow, and
 
 ## Support
 
-This is an early release. If you encounter issues or have feedback, please create an issue at http://github.com/grappeggia/slopcode/issues.
+This is an early release. If you encounter issues or have feedback, please create an issue at http://github.com/teamslop/slopcode/issues.
 
 ## Development
 

@@ -3,9 +3,6 @@ title: Proveedores
 description: Usando cualquier proveedor LLM en SlopCode.
 ---
 
-import config from "../../../../config.mjs"
-export const console = config.console
-
 SlopCode usa el [AI SDK](https://ai-sdk.dev/) y [Models.dev](https://models.dev) para admitir **75+ proveedores LLM** y admite la ejecución de modelos locales.
 
 Para agregar un proveedor necesita:
@@ -45,42 +42,6 @@ Puede personalizar la URL base para cualquier proveedor configurando la opción 
   }
 }
 ```
-
----
-
-## SlopCode Zen
-
-SlopCode Zen es una lista de modelos proporcionados por el equipo SlopCode que han sido
-probado y verificado para funcionar bien con SlopCode. [Más información](/docs/zen).
-
-:::tip
-Si eres nuevo, te recomendamos comenzar con SlopCode Zen.
-:::
-
-1. Ejecute el comando `/connect` en TUI, seleccione slopcode y diríjase a [slopcode.dev/auth](https://slopcode.dev/auth).
-
-   ```txt
-   /connect
-   ```
-
-2. Inicie sesión, agregue sus datos de facturación y copie su clave API.
-
-3. Pega tu clave API.
-
-   ```txt
-   ┌ API key
-   │
-   │
-   └ enter
-   ```
-
-4. Ejecute `/models` en TUI para ver la lista de modelos que recomendamos.
-
-   ```txt
-   /models
-   ```
-
-Funciona como cualquier otro proveedor en SlopCode y su uso es completamente opcional.
 
 ---
 
@@ -1332,35 +1293,6 @@ Recomendamos registrarse en [ChatGPT Plus o Pro](https://chatgpt.com/pricing).
 ##### Usando las teclas API
 
 Si ya tiene una clave API, puede seleccionar **Ingresar manualmente la clave API** y pegarla en su terminal.
-
----
-
-### SlopCode Zen
-
-SlopCode Zen es una lista de modelos probados y verificados proporcionada por el equipo SlopCode. [Más información](/docs/zen).
-
-1. Inicie sesión en **<a href={console}>SlopCode Zen</a>** y haga clic en **Crear API clave**.
-
-2. Ejecute el comando `/connect` y busque **SlopCode Zen**.
-
-   ```txt
-   /connect
-   ```
-
-3. Ingrese su clave SlopCode API.
-
-   ```txt
-   ┌ API key
-   │
-   │
-   └ enter
-   ```
-
-4. Ejecute el comando `/models` para seleccionar un modelo como _Qwen 3 Coder 480B_.
-
-   ```txt
-   /models
-   ```
 
 ---
 

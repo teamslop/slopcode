@@ -7,7 +7,7 @@ export const config = {
 
   // GitHub
   github: {
-    repoUrl: "http://github.com/grappeggia/slopcode",
+    repoUrl: "http://github.com/teamslop/slopcode",
     starsFormatted: {
       compact: "100K",
       full: "100,000",

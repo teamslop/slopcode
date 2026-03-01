@@ -13,7 +13,7 @@ permissions:
 jobs:
   sign-cli:
     runs-on: ubuntu-latest
-    if: github.repository == 'grappeggia/slopcode'
+    if: github.repository == 'teamslop/slopcode'
     steps:
       - uses: actions/checkout@v3
         with:

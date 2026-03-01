@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -52,12 +52,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # ili bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS i Linux (preporučeno, uvijek ažurno)
+brew install teamslop/slopcode/slopcode # macOS i Linux (preporučeno, uvijek ažurno)
 brew install slopcode              # macOS i Linux (zvanična brew formula, rjeđe se ažurira)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # Bilo koji OS
-nix run nixpkgs#slopcode           # ili github:grappeggia/slopcode za najnoviji dev branch
+nix run nixpkgs#slopcode           # ili github:teamslop/slopcode za najnoviji dev branch
 ```
 
 > [!TIP]
@@ -65,7 +65,7 @@ nix run nixpkgs#slopcode           # ili github:grappeggia/slopcode za najnoviji
 
 ### Desktop aplikacija (BETA)
 
-SlopCode je dostupan i kao desktop aplikacija. Preuzmi je direktno sa [stranice izdanja](http://github.com/grappeggia/slopcode/releases) ili sa [slopcode.dev/download](https://slopcode.dev/download).
+SlopCode je dostupan i kao desktop aplikacija. Preuzmi je direktno sa [stranice izdanja](http://github.com/teamslop/slopcode/releases) ili sa [slopcode.dev/download](https://slopcode.dev/download).
 
 | Platforma             | Preuzimanje                           |
 | --------------------- | ------------------------------------- |

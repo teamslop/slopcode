@@ -403,7 +403,7 @@ jobs:
           persist-credentials: false
 
       - name: Run slopcode
-        uses: grappeggia/slopcode/github@latest${envStr}
+        uses: teamslop/slopcode/github@latest${envStr}
         with:
           model: ${provider}/${model}`,
             )

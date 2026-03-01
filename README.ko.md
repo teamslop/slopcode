@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -51,12 +51,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # bun/pnpm/yarn 도 가능
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS 및 Linux (권장, 항상 최신)
+brew install teamslop/slopcode/slopcode # macOS 및 Linux (권장, 항상 최신)
 brew install slopcode              # macOS 및 Linux (공식 brew formula, 업데이트 빈도 낮음)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # 어떤 OS든
-nix run nixpkgs#slopcode           # 또는 github:grappeggia/slopcode 로 최신 dev 브랜치
+nix run nixpkgs#slopcode           # 또는 github:teamslop/slopcode 로 최신 dev 브랜치
 ```
 
 > [!TIP]
@@ -64,7 +64,7 @@ nix run nixpkgs#slopcode           # 또는 github:grappeggia/slopcode 로 최�
 
 ### 데스크톱 앱 (BETA)
 
-SlopCode 는 데스크톱 앱으로도 제공됩니다. [releases page](http://github.com/grappeggia/slopcode/releases) 에서 직접 다운로드하거나 [slopcode.dev/download](https://slopcode.dev/download) 를 이용하세요.
+SlopCode 는 데스크톱 앱으로도 제공됩니다. [releases page](http://github.com/teamslop/slopcode/releases) 에서 직접 다운로드하거나 [slopcode.dev/download](https://slopcode.dev/download) 를 이용하세요.
 
 | 플랫폼                | 다운로드                              |
 | --------------------- | ------------------------------------- |

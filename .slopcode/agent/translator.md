@@ -658,7 +658,7 @@ zod
 ```text
 24601/slopcode-zellij-namer
 angristan/slopcode-wakatime
-grappeggia/slopcode
+teamslop/slopcode
 apps/slopcode-agent
 athal7/slopcode-devcontainers
 awesome-slopcode/awesome-slopcode

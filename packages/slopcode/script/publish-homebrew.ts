@@ -3,7 +3,7 @@
 import { Script } from "@slopcode-ai/script"
 
 const pkg = "slopcode"
-const repo = process.env.HOMEBREW_TAP_REPO ?? "grappeggia/homebrew-slopcode"
+const repo = process.env.HOMEBREW_TAP_REPO ?? "teamslop/homebrew-slopcode"
 const branch = process.env.HOMEBREW_TAP_BRANCH ?? "main"
 const file = process.env.HOMEBREW_TAP_PATH ?? "Formula/slopcode.rb"
 const token = process.env.HOMEBREW_TAP_TOKEN ?? process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN

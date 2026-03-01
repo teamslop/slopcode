@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -52,12 +52,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # or bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS and Linux (recommended, always up to date)
+brew install teamslop/slopcode/slopcode # macOS and Linux (recommended, always up to date)
 brew install slopcode              # macOS and Linux (official brew formula, updated less)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # Any OS
-nix run nixpkgs#slopcode           # or github:grappeggia/slopcode for latest dev branch
+nix run nixpkgs#slopcode           # or github:teamslop/slopcode for latest dev branch
 ```
 
 > [!TIP]
@@ -65,7 +65,7 @@ nix run nixpkgs#slopcode           # or github:grappeggia/slopcode for latest de
 
 ### ডেস্কটপ অ্যাপ (BETA)
 
-SlopCode ডেস্কটপ অ্যাপ্লিকেশন হিসেবেও উপলব্ধ। সরাসরি [রিলিজ পেজ](http://github.com/grappeggia/slopcode/releases) অথবা [slopcode.dev/download](https://slopcode.dev/download) থেকে ডাউনলোড করুন।
+SlopCode ডেস্কটপ অ্যাপ্লিকেশন হিসেবেও উপলব্ধ। সরাসরি [রিলিজ পেজ](http://github.com/teamslop/slopcode/releases) অথবা [slopcode.dev/download](https://slopcode.dev/download) থেকে ডাউনলোড করুন।
 
 | প্ল্যাটফর্ম           | ডাউনলোড                               |
 | --------------------- | ------------------------------------- |

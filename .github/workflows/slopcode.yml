@@ -39,7 +39,7 @@ jobs:
 
       - name: Run slopcode
         if: steps.guard.outputs.ready == 'true'
-        uses: grappeggia/slopcode/github@latest
+        uses: teamslop/slopcode/github@latest
         env:
           SLOPCODE_API_KEY: ${{ secrets.SLOPCODE_API_KEY }}
           SLOPCODE_PERMISSION: '{"bash": "deny"}'

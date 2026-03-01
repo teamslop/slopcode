@@ -3,9 +3,6 @@ title: Provider
 description: Usa qualsiasi provider LLM in SlopCode.
 ---
 
-import config from "../../../../config.mjs"
-export const console = config.console
-
 SlopCode usa [AI SDK](https://ai-sdk.dev/) e [Models.dev](https://models.dev) per supportare **oltre 75 provider LLM** e anche modelli locali.
 
 Per aggiungere un provider devi:
@@ -45,42 +42,6 @@ Puoi personalizzare l'URL base per qualsiasi provider impostando l'opzione `base
   }
 }
 ```
-
----
-
-## SlopCode Zen
-
-SlopCode Zen e una lista di modelli forniti dal team SlopCode, testati e
-verificati per funzionare bene con SlopCode. [Scopri di piu](/docs/zen).
-
-:::tip
-Se sei all'inizio, ti consigliamo di partire da SlopCode Zen.
-:::
-
-1. Esegui `/connect` nella TUI, seleziona slopcode e vai su [slopcode.dev/auth](https://slopcode.dev/auth).
-
-   ```txt
-   /connect
-   ```
-
-2. Accedi, aggiungi i dati di fatturazione e copia la tua API key.
-
-3. Incolla la tua API key.
-
-   ```txt
-   ┌ API key
-   │
-   │
-   └ enter
-   ```
-
-4. Esegui `/models` nella TUI per vedere la lista di modelli consigliati.
-
-   ```txt
-   /models
-   ```
-
-Funziona come qualsiasi altro provider in SlopCode ed e totalmente opzionale.
 
 ---
 
@@ -1337,35 +1298,6 @@ Consigliamo di iscriversi a [ChatGPT Plus o Pro](https://chatgpt.com/pricing).
 ##### Usare chiavi API
 
 Se hai già una chiave API, puoi selezionare **Manually enter API Key** e incollarla nel terminale.
-
----
-
-### SlopCode Zen
-
-SlopCode Zen è una lista di modelli testati e verificati forniti dal team SlopCode. [Scopri di più](/docs/zen).
-
-1. Accedi a **<a href={console}>SlopCode Zen</a>** e clicca **Create API Key**.
-
-2. Esegui il comando `/connect` e cerca **SlopCode Zen**.
-
-   ```txt
-   /connect
-   ```
-
-3. Inserisci la tua chiave API di SlopCode.
-
-   ```txt
-   ┌ API key
-   │
-   │
-   └ enter
-   ```
-
-4. Esegui il comando `/models` per selezionare un modello come _Qwen 3 Coder 480B_.
-
-   ```txt
-   /models
-   ```
 
 ---
 

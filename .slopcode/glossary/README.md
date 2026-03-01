@@ -33,7 +33,7 @@ Prefer guidance that is:
 
 ## Sources
 
-- PR #12345: http://github.com/grappeggia/slopcode/pull/12345
+- PR #12345: http://github.com/teamslop/slopcode/pull/12345
 
 ## Do Not Translate (Locale Additions)
 

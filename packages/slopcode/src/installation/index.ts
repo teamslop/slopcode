@@ -193,8 +193,8 @@ export namespace Installation {
   )
 
   async function getBrewFormula() {
-    const tapFormula = await $`brew list --formula grappeggia/slopcode/slopcode`.throws(false).quiet().text()
-    if (tapFormula.includes("slopcode")) return "grappeggia/slopcode/slopcode"
+    const tapFormula = await $`brew list --formula teamslop/slopcode/slopcode`.throws(false).quiet().text()
+    if (tapFormula.includes("slopcode")) return "teamslop/slopcode/slopcode"
     const coreFormula = await $`brew list --formula slopcode`.throws(false).quiet().text()
     if (coreFormula.includes("slopcode")) return "slopcode"
     return "slopcode"
@@ -223,7 +223,7 @@ export namespace Installation {
         if (!selector) {
           throw new UpgradeFailedError({
             stderr:
-              "Could not find slopcode in your nix profile. Install with: nix profile install github:grappeggia/slopcode#slopcode",
+              "Could not find slopcode in your nix profile. Install with: nix profile install github:teamslop/slopcode#slopcode",
           })
         }
         cmd = $`nix profile upgrade ${selector}`
@@ -233,7 +233,7 @@ export namespace Installation {
         const formula = await getBrewFormula()
         if (formula.includes("/")) {
           cmd =
-            $`brew tap grappeggia/slopcode && cd "$(brew --repo grappeggia/slopcode)" && git pull --ff-only && brew upgrade ${formula}`.env(
+            $`brew tap teamslop/slopcode && cd "$(brew --repo teamslop/slopcode)" && git pull --ff-only && brew upgrade ${formula}`.env(
               {
                 HOMEBREW_NO_AUTO_UPDATE: "1",
                 ...process.env,
@@ -356,7 +356,7 @@ export namespace Installation {
         .then((data: any) => data.version)
     }
 
-    return fetch("https://api.github.com/repos/grappeggia/slopcode/releases/latest")
+    return fetch("https://api.github.com/repos/teamslop/slopcode/releases/latest")
       .then((res) => {
         if (!res.ok) throw new Error(res.statusText)
         return res.json()

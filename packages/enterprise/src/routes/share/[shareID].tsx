@@ -320,7 +320,7 @@ export default function () {
                             <div class="flex gap-3 items-center">
                               <IconButton
                                 as={"a"}
-                                href="http://github.com/grappeggia/slopcode"
+                                href="http://github.com/teamslop/slopcode"
                                 target="_blank"
                                 icon="github"
                                 variant="ghost"

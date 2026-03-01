@@ -134,7 +134,7 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
       pnpm: "pnpm uninstall -g slopcode",
       bun: "bun remove -g slopcode",
       yarn: "yarn global remove slopcode",
-      nix: nix ? `nix profile remove ${nix}` : "nix profile remove github:grappeggia/slopcode#slopcode",
+      nix: nix ? `nix profile remove ${nix}` : "nix profile remove github:teamslop/slopcode#slopcode",
       brew: "brew uninstall slopcode",
       choco: "choco uninstall slopcode",
       scoop: "scoop uninstall slopcode",
@@ -189,7 +189,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
       yarn: ["yarn", "global", "remove", "slopcode"],
       nix: nix
         ? ["nix", "profile", "remove", nix]
-        : ["nix", "profile", "remove", "github:grappeggia/slopcode#slopcode"],
+        : ["nix", "profile", "remove", "github:teamslop/slopcode#slopcode"],
       brew: ["brew", "uninstall", "slopcode"],
       choco: ["choco", "uninstall", "slopcode"],
       scoop: ["scoop", "uninstall", "slopcode"],

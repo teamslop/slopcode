@@ -161,7 +161,7 @@ export default function Home() {
             <a href="https://x.com/slopcode">{i18n.t("footer.x")}</a>
           </div>
           <div data-slot="cell">
-            <a href="http://github.com/grappeggia/slopcode">{i18n.t("footer.github")}</a>
+            <a href="http://github.com/teamslop/slopcode">{i18n.t("footer.github")}</a>
           </div>
           <div data-slot="cell">
             <a href="https://slopcode.dev/discord">{i18n.t("footer.discord")}</a>

@@ -3,9 +3,6 @@ title: Sağlayıcılar
 description: slopcode'da herhangi bir LLM sağlayıcısını kullanma.
 ---
 
-import config from "../../../../config.mjs"
-export const console = config.console
-
 slopcode, **75'ten fazla LLM sağlayıcısını** desteklemek için [AI SDK](https://ai-sdk.dev/) ve [Models.dev](https://models.dev) kullanır ve yerel modellerin çalıştırılmasını destekler.
 
 Bir sağlayıcı eklemek için şunları yapmanız gerekir:
@@ -45,42 +42,6 @@ config.
   }
 }
 ```
-
----
-
-## SlopCode Zen
-
-SlopCode Zen, slopcode ekibi tarafından sağlanan modellerin bir listesidir.
-slopcode ile iyi çalıştığı test edilip doğrulandı. [Daha fazla bilgi](/docs/zen).
-
-:::tip
-Yeniyseniz SlopCode Zen ile başlamanızı öneririz.
-:::
-
-1. TUI'de `/connect` komutunu çalıştırın, slopcode'u seçin ve [slopcode.dev/auth](https://slopcode.dev/auth)'ye gidin.
-
-   ```txt
-   /connect
-   ```
-
-2. Oturum açın, fatura ayrıntılarınızı ekleyin ve API anahtarınızı kopyalayın.
-
-3. API anahtarınızı yapıştırın.
-
-   ```txt
-   ┌ API key
-   │
-   │
-   └ enter
-   ```
-
-4. Önerdiğimiz modellerin listesini görmek için TUI'de `/models` komutunu çalıştırın.
-
-   ```txt
-   /models
-   ```
-
-slopcode'daki diğer sağlayıcılar gibi çalışır ve kullanımı tamamen isteğe bağlıdır.
 
 ---
 
@@ -1330,35 +1291,6 @@ Ollama Cloud'u slopcode ile kullanmak için:
 ##### API anahtarlarını kullanma
 
 Zaten bir API anahtarınız varsa, **API Anahtarını Manuel Olarak Girin** seçeneğini seçip terminalinize yapıştırabilirsiniz.
-
----
-
-### SlopCode Zen
-
-SlopCode Zen, slopcode ekibinin test edip doğruladığı modellerin bir listesidir. [Daha fazla bilgi](/docs/zen).
-
-1. **<a href={console}>SlopCode Zen</a>**'de oturum açın ve **API Anahtarı Oluştur**'u tıklayın.
-
-2. `/connect` komutunu çalıştırın ve **SlopCode Zen**'i arayın.
-
-   ```txt
-   /connect
-   ```
-
-3. slopcode API anahtarınızı girin.
-
-   ```txt
-   ┌ API key
-   │
-   │
-   └ enter
-   ```
-
-4. _Qwen 3 Coder 480B_ gibi bir model seçmek için `/models` komutunu çalıştırın.
-
-   ```txt
-   /models
-   ```
 
 ---
 

@@ -10,7 +10,7 @@ env:
 
 jobs:
   update-docs:
-    if: github.repository == 'grappeggia/slopcode'
+    if: github.repository == 'teamslop/slopcode'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -56,7 +56,7 @@ jobs:
 
       - name: Run slopcode
         if: steps.guard.outputs.ready == 'true' && steps.commits.outputs.has_commits == 'true'
-        uses: grappeggia/slopcode/github@latest
+        uses: teamslop/slopcode/github@latest
         env:
           SLOPCODE_API_KEY: ${{ secrets.SLOPCODE_API_KEY }}
         with:

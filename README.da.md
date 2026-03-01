@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -51,12 +51,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # eller bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS og Linux (anbefalet, altid up to date)
+brew install teamslop/slopcode/slopcode # macOS og Linux (anbefalet, altid up to date)
 brew install slopcode              # macOS og Linux (officiel brew formula, opdateres sjældnere)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # alle OS
-nix run nixpkgs#slopcode           # eller github:grappeggia/slopcode for nyeste dev-branch
+nix run nixpkgs#slopcode           # eller github:teamslop/slopcode for nyeste dev-branch
 ```
 
 > [!TIP]
@@ -64,7 +64,7 @@ nix run nixpkgs#slopcode           # eller github:grappeggia/slopcode for nyeste
 
 ### Desktop-app (BETA)
 
-SlopCode findes også som desktop-app. Download direkte fra [releases-siden](http://github.com/grappeggia/slopcode/releases) eller [slopcode.dev/download](https://slopcode.dev/download).
+SlopCode findes også som desktop-app. Download direkte fra [releases-siden](http://github.com/teamslop/slopcode/releases) eller [slopcode.dev/download](https://slopcode.dev/download).
 
 | Platform              | Download                              |
 | --------------------- | ------------------------------------- |

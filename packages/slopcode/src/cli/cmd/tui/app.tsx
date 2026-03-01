@@ -784,7 +784,7 @@ function ErrorComponent(props: {
   })
   const [copied, setCopied] = createSignal(false)
 
-  const issueURL = new URL("http://github.com/grappeggia/slopcode/issues/new?template=bug-report.yml")
+  const issueURL = new URL("http://github.com/teamslop/slopcode/issues/new?template=bug-report.yml")
 
   // Choose safe fallback colors per mode since theme context may not be available
   const isLight = props.mode === "light"

@@ -149,7 +149,7 @@ export default function Home() {
                     <button data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
                         <span data-slot="protocol">nix profile install </span>
-                        <span data-slot="highlight">github:grappeggia/slopcode#slopcode</span>
+                        <span data-slot="highlight">github:teamslop/slopcode#slopcode</span>
                       </span>
                       <CopyStatus />
                     </button>
@@ -158,7 +158,7 @@ export default function Home() {
                     <button data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
                         <span data-slot="protocol">brew install </span>
-                        <span data-slot="highlight">grappeggia/slopcode/slopcode</span>
+                        <span data-slot="highlight">teamslop/slopcode/slopcode</span>
                       </span>
                       <CopyStatus />
                     </button>

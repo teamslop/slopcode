@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -51,12 +51,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # 也可使用 bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS 和 Linux（推荐，始终保持最新）
+brew install teamslop/slopcode/slopcode # macOS 和 Linux（推荐，始终保持最新）
 brew install slopcode              # macOS 和 Linux（官方 brew formula，更新频率较低）
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # 任意系统
-nix run nixpkgs#slopcode           # 或用 github:grappeggia/slopcode 获取最新 dev 分支
+nix run nixpkgs#slopcode           # 或用 github:teamslop/slopcode 获取最新 dev 分支
 ```
 
 > [!TIP]
@@ -64,7 +64,7 @@ nix run nixpkgs#slopcode           # 或用 github:grappeggia/slopcode 获取最
 
 ### 桌面应用程序 (BETA)
 
-SlopCode 也提供桌面版应用。可直接从 [发布页 (releases page)](http://github.com/grappeggia/slopcode/releases) 或 [slopcode.dev/download](https://slopcode.dev/download) 下载。
+SlopCode 也提供桌面版应用。可直接从 [发布页 (releases page)](http://github.com/teamslop/slopcode/releases) 或 [slopcode.dev/download](https://slopcode.dev/download) 下载。
 
 | 平台                  | 下载文件                              |
 | --------------------- | ------------------------------------- |

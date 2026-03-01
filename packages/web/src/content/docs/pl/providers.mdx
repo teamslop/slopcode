@@ -3,9 +3,6 @@ title: Dostawcy
 description: Korzystanie z dowolnego dostawcy LLM w slopcode.
 ---
 
-import config from "../../../../config.mjs"
-export const console = config.console
-
 slopcode używa [AI SDK](https://ai-sdk.dev/) i [Models.dev](https://models.dev) do obsługi **ponad 75 dostawców LLM** i obsługuje uruchamianie modeli lokalnych.
 
 Aby dodać dostawcę należy:
@@ -45,42 +42,6 @@ Możesz dostosować podstawowy adres URL dla dowolnego dostawcy, ustawiając opc
   }
 }
 ```
-
----
-
-## SlopCode Zen
-
-SlopCode Zen to lista modeli dostarczonych przez zespół slopcode, które zostały
-przetestowane i zweryfikowane, aby dobrze współpracować z slopcode. [Dowiedz się więcej](/docs/zen).
-
-:::tip
-Jeśli jesteś nowy, zalecamy rozpoczęcie od SlopCode Zen.
-:::
-
-1. Uruchom polecenie `/connect` w TUI, wybierz slopcode i przejdź do [slopcode.dev/auth](https://slopcode.dev/auth).
-
-   ```txt
-   /connect
-   ```
-
-2. Zaloguj się, dodaj szczegóły rozliczeniowe i skopiuj klucz API.
-
-3. Wklej swój klucz API.
-
-   ```txt
-   ┌ API key
-   │
-   │
-   └ enter
-   ```
-
-4. Uruchom `/models` w TUI, aby zobaczyć listę zalecanych przez nas modeli.
-
-   ```txt
-   /models
-   ```
-
-Działa jak każdy inny dostawca w slopcode i jest całkowicie opcjonalny w użyciu.
 
 ---
 
@@ -1328,35 +1289,6 @@ Zalecamy zarejestrowanie się w [ChatGPT Plus lub Pro](https://chatgpt.com/prici
 ##### Użycie kluczy API
 
 Jeśli posiadasz już klucz API, możesz wybrać opcję **Wprowadź klucz API ręcznie** i wkleić go w terminalu.
-
----
-
-### SlopCode Zen
-
-SlopCode Zen to lista przetestowanych i zweryfikowanych modeli udostępniona przez zespół slopcode. [Dowiedz się więcej](/docs/zen).
-
-1. Zaloguj się do **<a href={console}>SlopCode Zen</a>** i kliknij **Utwórz klucz API**.
-
-2. Uruchom polecenie `/connect` i wyszukaj **SlopCode Zen**.
-
-   ```txt
-   /connect
-   ```
-
-3. Wprowadź klucz API slopcode.
-
-   ```txt
-   ┌ API key
-   │
-   │
-   └ enter
-   ```
-
-4. Uruchom polecenie `/models`, aby wybrać model taki jak _Qwen 3 Coder 480B_.
-
-   ```txt
-   /models
-   ```
 
 ---
 

@@ -9,7 +9,7 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   stats:
-    if: github.repository == 'grappeggia/slopcode'
+    if: github.repository == 'teamslop/slopcode'
     runs-on: ubuntu-latest
     permissions:
       contents: write

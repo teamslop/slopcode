@@ -33,7 +33,7 @@ permissions:
 jobs:
   version:
     runs-on: ubuntu-latest
-    if: github.repository == 'grappeggia/slopcode'
+    if: github.repository == 'teamslop/slopcode'
     steps:
       - uses: actions/checkout@v3
         with:
@@ -74,7 +74,7 @@ jobs:
           SLOPCODE_BUMP: ${{ inputs.bump }}
           SLOPCODE_VERSION: ${{ inputs.version }}
           SLOPCODE_API_KEY: ${{ secrets.SLOPCODE_API_KEY }}
-          GH_REPO: ${{ (github.ref_name == 'beta' && 'grappeggia/slopcode-beta') || github.repository }}
+          GH_REPO: ${{ (github.ref_name == 'beta' && 'teamslop/slopcode-beta') || github.repository }}
     outputs:
       version: ${{ steps.version.outputs.version }}
       release: ${{ steps.version.outputs.release }}
@@ -84,7 +84,7 @@ jobs:
   build-cli:
     needs: version
     runs-on: ubuntu-latest
-    if: github.repository == 'grappeggia/slopcode' && needs.version.outputs.version != ''
+    if: github.repository == 'teamslop/slopcode' && needs.version.outputs.version != ''
     steps:
       - uses: actions/checkout@v3
         with:
@@ -105,7 +105,7 @@ jobs:
           ./packages/slopcode/script/build.ts
         env:
           SLOPCODE_VERSION: ${{ needs.version.outputs.version }}
-          # SLOPCODE_RELEASE: ${{ needs.version.outputs.release }} # Non-npm publishing channel disabled
+          SLOPCODE_RELEASE: ${{ needs.version.outputs.release }}
           GH_REPO: ${{ needs.version.outputs.repo }}
           GH_TOKEN: ${{ steps.committer.outputs.token }}
 
@@ -341,11 +341,11 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           # Homebrew tap sync (from npm tarball)
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || steps.committer.outputs.token }}
-          HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO || 'grappeggia/homebrew-slopcode' }}
+          HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO || 'teamslop/homebrew-slopcode' }}
           HOMEBREW_TAP_BRANCH: ${{ vars.HOMEBREW_TAP_BRANCH || 'main' }}
           HOMEBREW_TAP_PATH: ${{ vars.HOMEBREW_TAP_PATH || 'Formula/slopcode.rb' }}
           SLOPCODE_VERSION: ${{ needs.version.outputs.version }}
-          # SLOPCODE_RELEASE: ${{ needs.version.outputs.release }} # Non-npm publishing channel disabled
+          SLOPCODE_RELEASE: ${{ needs.version.outputs.release }}
           # AUR_KEY: ${{ secrets.AUR_KEY }} # Non-npm publishing channel disabled
           GITHUB_TOKEN: ${{ steps.committer.outputs.token }}
           GH_REPO: ${{ needs.version.outputs.repo }}

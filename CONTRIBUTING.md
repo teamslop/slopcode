@@ -14,10 +14,10 @@ However, any UI or core product feature must go through a design review with the
 
 If you are unsure if a PR would be accepted, feel free to ask a maintainer or look for issues with any of the following labels:
 
-- [`help wanted`](http://github.com/grappeggia/slopcode/issues?q=is%3Aissue%20state%3Aopen%20label%3Ahelp-wanted)
-- [`good first issue`](http://github.com/grappeggia/slopcode/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)
-- [`bug`](http://github.com/grappeggia/slopcode/issues?q=is%3Aissue%20state%3Aopen%20label%3Abug)
-- [`perf`](http://github.com/grappeggia/slopcode/issues?q=is%3Aopen%20is%3Aissue%20label%3A%22perf%22)
+- [`help wanted`](http://github.com/teamslop/slopcode/issues?q=is%3Aissue%20state%3Aopen%20label%3Ahelp-wanted)
+- [`good first issue`](http://github.com/teamslop/slopcode/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)
+- [`bug`](http://github.com/teamslop/slopcode/issues?q=is%3Aissue%20state%3Aopen%20label%3Abug)
+- [`perf`](http://github.com/teamslop/slopcode/issues?q=is%3Aopen%20is%3Aissue%20label%3A%22perf%22)
 
 > [!NOTE]
 > PRs that ignore these guardrails will likely be closed.

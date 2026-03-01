@@ -2,7 +2,7 @@
 
 ## Sources
 
-- PR #13942: http://github.com/grappeggia/slopcode/pull/13942
+- PR #13942: http://github.com/teamslop/slopcode/pull/13942
 
 ## Do Not Translate (Locale Additions)
 

@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
-  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="http://github.com/teamslop/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/teamslop/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -51,12 +51,12 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # или bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install grappeggia/slopcode/slopcode # macOS и Linux (рекомендуем, всегда актуально)
+brew install teamslop/slopcode/slopcode # macOS и Linux (рекомендуем, всегда актуально)
 brew install slopcode              # macOS и Linux (официальная формула brew, обновляется реже)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # любая ОС
-nix run nixpkgs#slopcode           # или github:grappeggia/slopcode для самой свежей ветки dev
+nix run nixpkgs#slopcode           # или github:teamslop/slopcode для самой свежей ветки dev
 ```
 
 > [!TIP]
@@ -64,7 +64,7 @@ nix run nixpkgs#slopcode           # или github:grappeggia/slopcode для с
 
 ### Десктопное приложение (BETA)
 
-SlopCode также доступен как десктопное приложение. Скачайте его со [страницы релизов](http://github.com/grappeggia/slopcode/releases) или с [slopcode.dev/download](https://slopcode.dev/download).
+SlopCode также доступен как десктопное приложение. Скачайте его со [страницы релизов](http://github.com/teamslop/slopcode/releases) или с [slopcode.dev/download](https://slopcode.dev/download).
 
 | Платформа             | Загрузка                              |
 | --------------------- | ------------------------------------- |
