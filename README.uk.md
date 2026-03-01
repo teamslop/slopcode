@@ -52,7 +52,7 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # або bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install anomalyco/tap/slopcode # macOS і Linux (рекомендовано, завжди актуально)
+brew install grappeggia/slopcode/slopcode # macOS і Linux (рекомендовано, завжди актуально)
 brew install slopcode              # macOS і Linux (офіційна формула Homebrew, оновлюється рідше)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)

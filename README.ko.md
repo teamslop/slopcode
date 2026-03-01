@@ -51,7 +51,7 @@ curl -fsSL https://slopcode.dev/install | bash
 npm i -g slopcode@latest        # bun/pnpm/yarn 도 가능
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
-brew install anomalyco/tap/slopcode # macOS 및 Linux (권장, 항상 최신)
+brew install grappeggia/slopcode/slopcode # macOS 및 Linux (권장, 항상 최신)
 brew install slopcode              # macOS 및 Linux (공식 brew formula, 업데이트 빈도 낮음)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)

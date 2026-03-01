@@ -120,8 +120,8 @@ export namespace Installation {
   )
 
   async function getBrewFormula() {
-    const tapFormula = await $`brew list --formula anomalyco/tap/slopcode`.throws(false).quiet().text()
-    if (tapFormula.includes("slopcode")) return "anomalyco/tap/slopcode"
+    const tapFormula = await $`brew list --formula grappeggia/slopcode/slopcode`.throws(false).quiet().text()
+    if (tapFormula.includes("slopcode")) return "grappeggia/slopcode/slopcode"
     const coreFormula = await $`brew list --formula slopcode`.throws(false).quiet().text()
     if (coreFormula.includes("slopcode")) return "slopcode"
     return "slopcode"
@@ -149,7 +149,7 @@ export namespace Installation {
         const formula = await getBrewFormula()
         if (formula.includes("/")) {
           cmd =
-            $`brew tap anomalyco/tap && cd "$(brew --repo anomalyco/tap)" && git pull --ff-only && brew upgrade ${formula}`.env(
+            $`brew tap grappeggia/slopcode && cd "$(brew --repo grappeggia/slopcode)" && git pull --ff-only && brew upgrade ${formula}`.env(
               {
                 HOMEBREW_NO_AUTO_UPDATE: "1",
                 ...process.env,

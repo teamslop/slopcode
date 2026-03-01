@@ -3,9 +3,9 @@
 import { Script } from "@slopcode-ai/script"
 
 const pkg = "slopcode"
-const repo = process.env.HOMEBREW_TAP_REPO ?? "anomalyco/homebrew-tap"
-const branch = process.env.HOMEBREW_TAP_BRANCH ?? "master"
-const file = process.env.HOMEBREW_TAP_PATH ?? "slopcode.rb"
+const repo = process.env.HOMEBREW_TAP_REPO ?? "grappeggia/homebrew-slopcode"
+const branch = process.env.HOMEBREW_TAP_BRANCH ?? "main"
+const file = process.env.HOMEBREW_TAP_PATH ?? "Formula/slopcode.rb"
 const token = process.env.HOMEBREW_TAP_TOKEN ?? process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN
 
 if (Script.channel !== "latest") {

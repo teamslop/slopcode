@@ -115,9 +115,12 @@ const main = (async () => {
 
 await Promise.all([...tasks, main])
 
-// Non-npm publishing channels are intentionally disabled for npm-only rollout.
+if (Script.channel === "latest") {
+  await import("./publish-homebrew.ts")
+}
+
+// Supplemental channels sourced from npm artifacts.
 //
 // Disabled channels:
 // - GHCR container publish
 // - AUR publish
-// - Homebrew publish
