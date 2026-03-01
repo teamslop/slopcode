@@ -298,6 +298,9 @@ export namespace Config {
     const nodeModules = path.join(dir, "node_modules")
     if (!existsSync(nodeModules)) return true
 
+    const pluginPkg = path.join(nodeModules, "@slopcode-ai", "plugin", "package.json")
+    if (!existsSync(pluginPkg)) return true
+
     const pkg = path.join(dir, "package.json")
     const pkgExists = await Filesystem.exists(pkg)
     if (!pkgExists) return true
