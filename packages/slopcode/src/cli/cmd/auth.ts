@@ -394,7 +394,7 @@ export const AuthLoginCommand = cmd({
         }
 
         if (provider === "slopcode") {
-          prompts.log.info("Create an api key at https://slopcode.ai/auth")
+          prompts.log.info("Create an api key at https://slopcode.dev/auth")
         }
 
         if (provider === "vercel") {
@@ -403,7 +403,7 @@ export const AuthLoginCommand = cmd({
 
         if (["cloudflare", "cloudflare-ai-gateway"].includes(provider)) {
           prompts.log.info(
-            "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables. Read more: https://slopcode.ai/docs/providers/#cloudflare-ai-gateway",
+            "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables. Read more: https://slopcode.dev/docs/providers/#cloudflare-ai-gateway",
           )
         }
 

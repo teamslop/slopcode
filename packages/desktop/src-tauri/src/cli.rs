@@ -403,7 +403,7 @@ pub fn spawn_command(
                 "BIN=\"$HOME/.slopcode/bin/slopcode\"".to_string(),
                 "if [ ! -x \"$BIN\" ]; then".to_string(),
                 format!(
-                    "  curl -fsSL https://slopcode.ai/install | bash -s -- --version {} --no-modify-path",
+                    "  curl -fsSL https://slopcode.dev/install | bash -s -- --version {} --no-modify-path",
                     shell_escape(&version)
                 ),
                 "fi".to_string(),

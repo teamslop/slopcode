@@ -224,7 +224,7 @@ function ApiMethod(props: ApiMethodProps) {
                 key.
               </text>
               <text fg={theme.text}>
-                Go to <span style={{ fg: theme.primary }}>https://slopcode.ai/zen</span> to get a key
+                Go to <span style={{ fg: theme.primary }}>https://slopcode.dev/zen</span> to get a key
               </text>
             </box>
           ),
@@ -235,7 +235,7 @@ function ApiMethod(props: ApiMethodProps) {
                 with generous usage limits.
               </text>
               <text fg={theme.text}>
-                Go to <span style={{ fg: theme.primary }}>https://slopcode.ai/zen</span> and enable SlopCode Go
+                Go to <span style={{ fg: theme.primary }}>https://slopcode.dev/zen</span> and enable SlopCode Go
               </text>
             </box>
           ),

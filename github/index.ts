@@ -362,7 +362,7 @@ function useIssueId() {
 }
 
 function useShareUrl() {
-  return isMock() ? "https://dev.slopcode.ai" : "https://slopcode.ai"
+  return isMock() ? "https://dev.slopcode.ai" : "https://slopcode.dev"
 }
 
 async function getAccessToken() {

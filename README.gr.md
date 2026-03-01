@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://slopcode.ai">
+  <a href="https://slopcode.dev">
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
@@ -9,9 +9,9 @@
 </p>
 <p align="center">Ο πράκτορας τεχνητής νοημοσύνης ανοικτού κώδικα για προγραμματισμό.</p>
 <p align="center">
-  <a href="https://slopcode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/slopcode-ai"><img alt="npm" src="https://img.shields.io/npm/v/slopcode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
+  <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
+  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -38,7 +38,7 @@
   <a href="README.gr.md">Ελληνικά</a>
 </p>
 
-[![SlopCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://slopcode.ai)
+[![SlopCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://slopcode.dev)
 
 ---
 
@@ -46,10 +46,10 @@
 
 ```bash
 # YOLO
-curl -fsSL https://slopcode.ai/install | bash
+curl -fsSL https://slopcode.dev/install | bash
 
 # Διαχειριστές πακέτων
-npm i -g slopcode-ai@latest        # ή bun/pnpm/yarn
+npm i -g slopcode@latest        # ή bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
 brew install anomalyco/tap/slopcode # macOS και Linux (προτείνεται, πάντα ενημερωμένο)
@@ -57,7 +57,7 @@ brew install slopcode              # macOS και Linux (επίσημος τύπ
 sudo pacman -S slopcode            # Arch Linux (Σταθερό)
 paru -S slopcode-bin               # Arch Linux (Τελευταία έκδοση από AUR)
 mise use -g slopcode               # Οποιοδήποτε λειτουργικό σύστημα
-nix run nixpkgs#slopcode           # ή github:anomalyco/slopcode με βάση την πιο πρόσφατη αλλαγή από το dev branch
+nix run nixpkgs#slopcode           # ή github:grappeggia/slopcode με βάση την πιο πρόσφατη αλλαγή από το dev branch
 ```
 
 > [!TIP]
@@ -65,7 +65,7 @@ nix run nixpkgs#slopcode           # ή github:anomalyco/slopcode με βάση 
 
 ### Εφαρμογή Desktop (BETA)
 
-Το SlopCode είναι επίσης διαθέσιμο ως εφαρμογή. Κατέβασε το απευθείας από τη [σελίδα εκδόσεων](https://github.com/anomalyco/slopcode/releases) ή το [slopcode.ai/download](https://slopcode.ai/download).
+Το SlopCode είναι επίσης διαθέσιμο ως εφαρμογή. Κατέβασε το απευθείας από τη [σελίδα εκδόσεων](http://github.com/grappeggia/slopcode/releases) ή το [slopcode.dev/download](https://slopcode.dev/download).
 
 | Πλατφόρμα             | Λήψη                                  |
 | --------------------- | ------------------------------------- |
@@ -92,8 +92,8 @@ scoop bucket add extras; scoop install extras/slopcode-desktop
 
 ```bash
 # Παραδείγματα
-SLOPCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://slopcode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.ai/install | bash
+SLOPCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://slopcode.dev/install | bash
+XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.dev/install | bash
 ```
 
 ### Πράκτορες
@@ -109,11 +109,11 @@ XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.ai/install | bash
 Περιλαμβάνεται επίσης ένας **general** υποπράκτορας για σύνθετες αναζητήσεις και πολυβηματικές διεργασίες.
 Χρησιμοποιείται εσωτερικά και μπορεί να κληθεί χρησιμοποιώντας `@general` στα μηνύματα.
 
-Μάθετε περισσότερα για τους [πράκτορες](https://slopcode.ai/docs/agents).
+Μάθετε περισσότερα για τους [πράκτορες](https://slopcode.dev/docs/agents).
 
 ### Οδηγός Χρήσης
 
-Για περισσότερες πληροφορίες σχετικά με τη ρύθμιση του SlopCode, [**πλοηγήσου στον οδηγό χρήσης μας**](https://slopcode.ai/docs).
+Για περισσότερες πληροφορίες σχετικά με τη ρύθμιση του SlopCode, [**πλοηγήσου στον οδηγό χρήσης μας**](https://slopcode.dev/docs).
 
 ### Συνεισφορά
 
@@ -130,7 +130,7 @@ XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.ai/install | bash
 Είναι πολύ παρόμοιο με το Claude Code ως προς τις δυνατότητες. Ακολουθούν οι βασικές διαφορές:
 
 - 100% ανοιχτού κώδικα
-- Δεν είναι συνδεδεμένο με κανέναν πάροχο. Αν και συνιστούμε τα μοντέλα που παρέχουμε μέσω του [SlopCode Zen](https://slopcode.ai/zen), το SlopCode μπορεί να χρησιμοποιηθεί με Claude, OpenAI, Google, ή ακόμα και τοπικά μοντέλα. Καθώς τα μοντέλα εξελίσσονται, τα κενά μεταξύ τους θα κλείσουν και οι τιμές θα μειωθούν, οπότε είναι σημαντικό να είσαι ανεξάρτητος από τον πάροχο.
+- Δεν είναι συνδεδεμένο με κανέναν πάροχο. Αν και συνιστούμε τα μοντέλα που παρέχουμε μέσω του [SlopCode Zen](https://slopcode.dev/zen), το SlopCode μπορεί να χρησιμοποιηθεί με Claude, OpenAI, Google, ή ακόμα και τοπικά μοντέλα. Καθώς τα μοντέλα εξελίσσονται, τα κενά μεταξύ τους θα κλείσουν και οι τιμές θα μειωθούν, οπότε είναι σημαντικό να είσαι ανεξάρτητος από τον πάροχο.
 - Out-of-the-box υποστήριξη LSP
 - Εστίαση στο TUI. Το SlopCode είναι κατασκευασμένο από χρήστες που χρησιμοποιούν neovim και τους δημιουργούς του [terminal.shop](https://terminal.shop)· θα εξαντλήσουμε τα όρια του τι είναι δυνατό στο terminal.
 - Αρχιτεκτονική client/server. Αυτό, για παράδειγμα, μπορεί να επιτρέψει στο SlopCode να τρέχει στον υπολογιστή σου ενώ το χειρίζεσαι εξ αποστάσεως από μια εφαρμογή κινητού, που σημαίνει ότι το TUI frontend είναι μόνο ένας από τους πιθανούς clients.

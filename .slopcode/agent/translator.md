@@ -69,7 +69,7 @@ Node.js
 npm
 Obsidian
 slopcode
-slopcode-ai
+slopcode
 Paru
 pnpm
 ripgrep
@@ -658,7 +658,7 @@ zod
 ```text
 24601/slopcode-zellij-namer
 angristan/slopcode-wakatime
-anomalyco/slopcode
+grappeggia/slopcode
 apps/slopcode-agent
 athal7/slopcode-devcontainers
 awesome-slopcode/awesome-slopcode
@@ -816,11 +816,11 @@ http://localhost:4096
 http://localhost:4096/doc
 https://app.example.com
 https://AZURE_COGNITIVE_SERVICES_RESOURCE_NAME.cognitiveservices.azure.com/
-https://slopcode.ai/zen/v1/chat/completions
-https://slopcode.ai/zen/v1/messages
-https://slopcode.ai/zen/v1/models/gemini-3-flash
-https://slopcode.ai/zen/v1/models/gemini-3-pro
-https://slopcode.ai/zen/v1/responses
+https://slopcode.dev/zen/v1/chat/completions
+https://slopcode.dev/zen/v1/messages
+https://slopcode.dev/zen/v1/models/gemini-3-flash
+https://slopcode.dev/zen/v1/models/gemini-3-pro
+https://slopcode.dev/zen/v1/responses
 https://RESOURCE_NAME.openai.azure.com/
 laravel/pint
 log/
@@ -828,7 +828,7 @@ model: "anthropic/claude-sonnet-4-5"
 modes/
 node_modules/
 openai/gpt-4.1
-slopcode.ai/config.json
+slopcode.dev/config.json
 slopcode/<model-id>
 slopcode/gpt-5.1-codex
 slopcode/gpt-5.2-codex

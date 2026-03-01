@@ -26,7 +26,7 @@ jobs:
       - uses: ./.github/actions/setup-bun
 
       - name: Run slopcode
-        uses: anomalyco/slopcode/github@latest
+        uses: grappeggia/slopcode/github@latest
         env:
           SLOPCODE_API_KEY: ${{ secrets.SLOPCODE_API_KEY }}
           SLOPCODE_PERMISSION: '{"bash": "deny"}'

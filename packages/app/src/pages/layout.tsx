@@ -2014,7 +2014,7 @@ export default function Layout(props: ParentProps) {
               settingsKeybind={() => command.keybind("settings.open")}
               onOpenSettings={openSettings}
               helpLabel={() => language.t("sidebar.help")}
-              onOpenHelp={() => platform.openLink("https://slopcode.ai/desktop-feedback")}
+              onOpenHelp={() => platform.openLink("https://slopcode.dev/desktop-feedback")}
               renderPanel={() => <SidebarPanel project={currentProject()} />}
             />
           </div>
@@ -2079,7 +2079,7 @@ export default function Layout(props: ParentProps) {
               settingsKeybind={() => command.keybind("settings.open")}
               onOpenSettings={openSettings}
               helpLabel={() => language.t("sidebar.help")}
-              onOpenHelp={() => platform.openLink("https://slopcode.ai/desktop-feedback")}
+              onOpenHelp={() => platform.openLink("https://slopcode.dev/desktop-feedback")}
               renderPanel={() => <SidebarPanel project={currentProject()} mobile />}
             />
           </nav>

@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://slopcode.ai">
+  <a href="https://slopcode.dev">
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
@@ -9,9 +9,9 @@
 </p>
 <p align="center">ওপেন সোর্স এআই কোডিং এজেন্ট।</p>
 <p align="center">
-  <a href="https://slopcode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/slopcode-ai"><img alt="npm" src="https://img.shields.io/npm/v/slopcode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
+  <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
+  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -38,7 +38,7 @@
   <a href="README.gr.md">Ελληνικά</a>
 </p>
 
-[![SlopCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://slopcode.ai)
+[![SlopCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://slopcode.dev)
 
 ---
 
@@ -46,10 +46,10 @@
 
 ```bash
 # YOLO
-curl -fsSL https://slopcode.ai/install | bash
+curl -fsSL https://slopcode.dev/install | bash
 
 # Package managers
-npm i -g slopcode-ai@latest        # or bun/pnpm/yarn
+npm i -g slopcode@latest        # or bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
 brew install anomalyco/tap/slopcode # macOS and Linux (recommended, always up to date)
@@ -57,7 +57,7 @@ brew install slopcode              # macOS and Linux (official brew formula, upd
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # Any OS
-nix run nixpkgs#slopcode           # or github:anomalyco/slopcode for latest dev branch
+nix run nixpkgs#slopcode           # or github:grappeggia/slopcode for latest dev branch
 ```
 
 > [!TIP]
@@ -65,7 +65,7 @@ nix run nixpkgs#slopcode           # or github:anomalyco/slopcode for latest dev
 
 ### ডেস্কটপ অ্যাপ (BETA)
 
-SlopCode ডেস্কটপ অ্যাপ্লিকেশন হিসেবেও উপলব্ধ। সরাসরি [রিলিজ পেজ](https://github.com/anomalyco/slopcode/releases) অথবা [slopcode.ai/download](https://slopcode.ai/download) থেকে ডাউনলোড করুন।
+SlopCode ডেস্কটপ অ্যাপ্লিকেশন হিসেবেও উপলব্ধ। সরাসরি [রিলিজ পেজ](http://github.com/grappeggia/slopcode/releases) অথবা [slopcode.dev/download](https://slopcode.dev/download) থেকে ডাউনলোড করুন।
 
 | প্ল্যাটফর্ম           | ডাউনলোড                               |
 | --------------------- | ------------------------------------- |
@@ -92,8 +92,8 @@ scoop bucket add extras; scoop install extras/slopcode-desktop
 
 ```bash
 # উদাহরণ
-SLOPCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://slopcode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.ai/install | bash
+SLOPCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://slopcode.dev/install | bash
+XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.dev/install | bash
 ```
 
 ### এজেন্টস (Agents)
@@ -109,11 +109,11 @@ SlopCode এ দুটি বিল্ট-ইন এজেন্ট রয়ে
 এছাড়াও জটিল অনুসন্ধান এবং মাল্টিস্টেপ টাস্কের জন্য একটি **general** সাবএজেন্ট অন্তর্ভুক্ত রয়েছে।
 এটি অভ্যন্তরীণভাবে ব্যবহৃত হয় এবং মেসেজে `@general` লিখে ব্যবহার করা যেতে পারে।
 
-এজেন্টদের সম্পর্কে আরও জানুন: [docs](https://slopcode.ai/docs/agents)।
+এজেন্টদের সম্পর্কে আরও জানুন: [docs](https://slopcode.dev/docs/agents)।
 
 ### ডকুমেন্টেশন (Documentation)
 
-কিভাবে SlopCode কনফিগার করবেন সে সম্পর্কে আরও তথ্যের জন্য, [**আমাদের ডকস দেখুন**](https://slopcode.ai/docs)।
+কিভাবে SlopCode কনফিগার করবেন সে সম্পর্কে আরও তথ্যের জন্য, [**আমাদের ডকস দেখুন**](https://slopcode.dev/docs)।
 
 ### অবদান (Contributing)
 
@@ -130,7 +130,7 @@ SlopCode এ দুটি বিল্ট-ইন এজেন্ট রয়ে
 ক্যাপাবিলিটির দিক থেকে এটি ক্লড কোডের (Claude Code) মতই। এখানে মূল পার্থক্যগুলো দেওয়া হলো:
 
 - ১০০% ওপেন সোর্স
-- কোনো প্রোভাইডারের সাথে আবদ্ধ নয়। যদিও আমরা [SlopCode Zen](https://slopcode.ai/zen) এর মাধ্যমে মডেলসমূহ ব্যবহারের পরামর্শ দিই, SlopCode ক্লড (Claude), ওপেনএআই (OpenAI), গুগল (Google), অথবা লোকাল মডেলগুলোর সাথেও ব্যবহার করা যেতে পারে। যেমন যেমন মডেলগুলো উন্নত হবে, তাদের মধ্যকার পার্থক্য কমে আসবে এবং দামও কমবে, তাই প্রোভাইডার-অজ্ঞাস্টিক হওয়া খুবই গুরুত্বপূর্ণ।
+- কোনো প্রোভাইডারের সাথে আবদ্ধ নয়। যদিও আমরা [SlopCode Zen](https://slopcode.dev/zen) এর মাধ্যমে মডেলসমূহ ব্যবহারের পরামর্শ দিই, SlopCode ক্লড (Claude), ওপেনএআই (OpenAI), গুগল (Google), অথবা লোকাল মডেলগুলোর সাথেও ব্যবহার করা যেতে পারে। যেমন যেমন মডেলগুলো উন্নত হবে, তাদের মধ্যকার পার্থক্য কমে আসবে এবং দামও কমবে, তাই প্রোভাইডার-অজ্ঞাস্টিক হওয়া খুবই গুরুত্বপূর্ণ।
 - আউট-অফ-দ্য-বক্স LSP সাপোর্ট
 - TUI এর উপর ফোকাস। SlopCode নিওভিম (neovim) ব্যবহারকারী এবং [terminal.shop](https://terminal.shop) এর নির্মাতাদের দ্বারা তৈরি; আমরা টার্মিনালে কী কী সম্ভব তার সীমাবদ্ধতা ছাড়িয়ে যাওয়ার চেষ্টা করছি।
 - ক্লায়েন্ট/সার্ভার আর্কিটেকচার। এটি যেমন SlopCode কে আপনার কম্পিউটারে চালানোর সুযোগ দেয়, তেমনি আপনি মোবাইল অ্যাপ থেকে রিমোটলি এটি নিয়ন্ত্রণ করতে পারবেন, অর্থাৎ TUI ফ্রন্টএন্ড কেবল সম্ভাব্য ক্লায়েন্টগুলোর মধ্যে একটি।

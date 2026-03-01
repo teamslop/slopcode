@@ -40,7 +40,7 @@ test("loads JSON config file", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         model: "test/model",
         username: "testuser",
       })
@@ -60,7 +60,7 @@ test("ignores legacy tui keys in slopcode config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         model: "test/model",
         theme: "legacy",
         tui: { scroll_speed: 4 },
@@ -85,7 +85,7 @@ test("loads JSONC config file", async () => {
         path.join(dir, "slopcode.jsonc"),
         `{
         // This is a comment
-        "$schema": "https://slopcode.ai/config.json",
+        "$schema": "https://slopcode.dev/config.json",
         "model": "test/model",
         "username": "testuser"
       }`,
@@ -108,14 +108,14 @@ test("merges multiple config files with correct precedence", async () => {
       await writeConfig(
         dir,
         {
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           model: "base",
           username: "base",
         },
         "slopcode.jsonc",
       )
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         model: "override",
       })
     },
@@ -138,7 +138,7 @@ test("handles environment variable substitution", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
         await writeConfig(dir, {
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           username: "{env:TEST_VAR}",
         })
       },
@@ -202,7 +202,7 @@ test("handles file inclusion substitution", async () => {
     init: async (dir) => {
       await Filesystem.write(path.join(dir, "included.txt"), "test-user")
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         username: "{file:included.txt}",
       })
     },
@@ -221,7 +221,7 @@ test("handles file inclusion with replacement tokens", async () => {
     init: async (dir) => {
       await Filesystem.write(path.join(dir, "included.md"), "const out = await Bun.$`echo hi`")
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         username: "{file:included.md}",
       })
     },
@@ -239,7 +239,7 @@ test("validates config schema and throws on invalid fields", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         invalid_field: "should cause error",
       })
     },
@@ -271,7 +271,7 @@ test("handles agent configuration", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         agent: {
           test_agent: {
             model: "test/model",
@@ -301,7 +301,7 @@ test("treats agent variant as model-scoped setting (not provider option)", async
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         agent: {
           test_agent: {
             model: "openai/gpt-5.2",
@@ -332,7 +332,7 @@ test("handles command configuration", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         command: {
           test_command: {
             template: "test template",
@@ -362,7 +362,7 @@ test("migrates autoshare to share field", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           autoshare: true,
         }),
       )
@@ -384,7 +384,7 @@ test("migrates mode field to agent field", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           mode: {
             test_mode: {
               model: "test/model",
@@ -699,7 +699,7 @@ test("resolves scoped npm plugins in config", async () => {
 
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
-        JSON.stringify({ $schema: "https://slopcode.ai/config.json", plugin: ["@scope/plugin"] }, null, 2),
+        JSON.stringify({ $schema: "https://slopcode.dev/config.json", plugin: ["@scope/plugin"] }, null, 2),
       )
     },
   })
@@ -734,7 +734,7 @@ test("merges plugin arrays from global and local configs", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           plugin: ["global-plugin-1", "global-plugin-2"],
         }),
       )
@@ -743,7 +743,7 @@ test("merges plugin arrays from global and local configs", async () => {
       await Filesystem.write(
         path.join(slopcodeDir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           plugin: ["local-plugin-1"],
         }),
       )
@@ -810,7 +810,7 @@ test("merges instructions arrays from global and local configs", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           instructions: ["global-instructions.md", "shared-rules.md"],
         }),
       )
@@ -818,7 +818,7 @@ test("merges instructions arrays from global and local configs", async () => {
       await Filesystem.write(
         path.join(slopcodeDir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           instructions: ["local-instructions.md"],
         }),
       )
@@ -849,7 +849,7 @@ test("deduplicates duplicate instructions from global and local configs", async 
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           instructions: ["duplicate.md", "global-only.md"],
         }),
       )
@@ -857,7 +857,7 @@ test("deduplicates duplicate instructions from global and local configs", async 
       await Filesystem.write(
         path.join(slopcodeDir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           instructions: ["duplicate.md", "local-only.md"],
         }),
       )
@@ -893,7 +893,7 @@ test("deduplicates duplicate plugins from global and local configs", async () =>
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           plugin: ["duplicate-plugin", "global-plugin-1"],
         }),
       )
@@ -902,7 +902,7 @@ test("deduplicates duplicate plugins from global and local configs", async () =>
       await Filesystem.write(
         path.join(slopcodeDir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           plugin: ["duplicate-plugin", "local-plugin-1"],
         }),
       )
@@ -941,7 +941,7 @@ test("migrates legacy tools config to permissions - allow", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -972,7 +972,7 @@ test("migrates legacy tools config to permissions - deny", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1003,7 +1003,7 @@ test("migrates legacy write tool to edit permission", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1033,7 +1033,7 @@ test("managed settings override user settings", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         model: "user/model",
         share: "auto",
         username: "testuser",
@@ -1042,7 +1042,7 @@ test("managed settings override user settings", async () => {
   })
 
   await writeManagedSettings({
-    $schema: "https://slopcode.ai/config.json",
+    $schema: "https://slopcode.dev/config.json",
     model: "managed/model",
     share: "disabled",
   })
@@ -1062,7 +1062,7 @@ test("managed settings override project settings", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         autoupdate: true,
         disabled_providers: [],
       })
@@ -1070,7 +1070,7 @@ test("managed settings override project settings", async () => {
   })
 
   await writeManagedSettings({
-    $schema: "https://slopcode.ai/config.json",
+    $schema: "https://slopcode.dev/config.json",
     autoupdate: false,
     disabled_providers: ["openai"],
   })
@@ -1089,7 +1089,7 @@ test("missing managed settings file is not an error", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeConfig(dir, {
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         model: "user/model",
       })
     },
@@ -1110,7 +1110,7 @@ test("migrates legacy edit tool to edit permission", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1139,7 +1139,7 @@ test("migrates legacy patch tool to edit permission", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1168,7 +1168,7 @@ test("migrates legacy multiedit tool to edit permission", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1197,7 +1197,7 @@ test("migrates mixed legacy tools config", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           agent: {
             test: {
               tools: {
@@ -1232,7 +1232,7 @@ test("merges legacy tools with existing permission config", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           agent: {
             test: {
               permission: {
@@ -1265,7 +1265,7 @@ test("permission config preserves key order", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           permission: {
             "*": "deny",
             edit: "ask",
@@ -1313,7 +1313,7 @@ test("project config can override MCP server enabled status", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.jsonc"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           mcp: {
             jira: {
               type: "remote",
@@ -1332,7 +1332,7 @@ test("project config can override MCP server enabled status", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           mcp: {
             jira: {
               type: "remote",
@@ -1371,7 +1371,7 @@ test("MCP config deep merges preserving base config properties", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.jsonc"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           mcp: {
             myserver: {
               type: "remote",
@@ -1388,7 +1388,7 @@ test("MCP config deep merges preserving base config properties", async () => {
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           mcp: {
             myserver: {
               type: "remote",
@@ -1423,7 +1423,7 @@ test("local .slopcode config can override MCP from project config", async () => 
       await Filesystem.write(
         path.join(dir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           mcp: {
             docs: {
               type: "remote",
@@ -1439,7 +1439,7 @@ test("local .slopcode config can override MCP from project config", async () => 
       await Filesystem.write(
         path.join(slopcodeDir, "slopcode.json"),
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           mcp: {
             docs: {
               type: "remote",
@@ -1507,7 +1507,7 @@ test("project config overrides remote well-known config", async () => {
         await Filesystem.write(
           path.join(dir, "slopcode.json"),
           JSON.stringify({
-            $schema: "https://slopcode.ai/config.json",
+            $schema: "https://slopcode.dev/config.json",
             mcp: {
               jira: {
                 type: "remote",
@@ -1600,7 +1600,7 @@ describe("deduplicatePlugins", () => {
         await Filesystem.write(
           path.join(dir, "slopcode.json"),
           JSON.stringify({
-            $schema: "https://slopcode.ai/config.json",
+            $schema: "https://slopcode.dev/config.json",
             plugin: ["my-plugin@1.0.0"],
           }),
         )
@@ -1635,7 +1635,7 @@ describe("SLOPCODE_DISABLE_PROJECT_CONFIG", () => {
           await Filesystem.write(
             path.join(dir, "slopcode.json"),
             JSON.stringify({
-              $schema: "https://slopcode.ai/config.json",
+              $schema: "https://slopcode.dev/config.json",
               model: "project/model",
               username: "project-user",
             }),
@@ -1730,7 +1730,7 @@ describe("SLOPCODE_DISABLE_PROJECT_CONFIG", () => {
           await Filesystem.write(
             path.join(dir, "slopcode.json"),
             JSON.stringify({
-              $schema: "https://slopcode.ai/config.json",
+              $schema: "https://slopcode.dev/config.json",
               instructions: ["./CUSTOM.md"],
             }),
           )
@@ -1776,7 +1776,7 @@ describe("SLOPCODE_DISABLE_PROJECT_CONFIG", () => {
           await Filesystem.write(
             path.join(dir, "slopcode.json"),
             JSON.stringify({
-              $schema: "https://slopcode.ai/config.json",
+              $schema: "https://slopcode.dev/config.json",
               model: "configdir/model",
             }),
           )
@@ -1789,7 +1789,7 @@ describe("SLOPCODE_DISABLE_PROJECT_CONFIG", () => {
           await Filesystem.write(
             path.join(dir, "slopcode.json"),
             JSON.stringify({
-              $schema: "https://slopcode.ai/config.json",
+              $schema: "https://slopcode.dev/config.json",
               model: "project/model",
             }),
           )
@@ -1828,7 +1828,7 @@ describe("SLOPCODE_CONFIG_CONTENT token substitution", () => {
     const originalTestVar = process.env["TEST_CONFIG_VAR"]
     process.env["TEST_CONFIG_VAR"] = "test_api_key_12345"
     process.env["SLOPCODE_CONFIG_CONTENT"] = JSON.stringify({
-      $schema: "https://slopcode.ai/config.json",
+      $schema: "https://slopcode.dev/config.json",
       username: "{env:TEST_CONFIG_VAR}",
     })
 
@@ -1863,7 +1863,7 @@ describe("SLOPCODE_CONFIG_CONTENT token substitution", () => {
         init: async (dir) => {
           await Filesystem.write(path.join(dir, "api_key.txt"), "secret_key_from_file")
           process.env["SLOPCODE_CONFIG_CONTENT"] = JSON.stringify({
-            $schema: "https://slopcode.ai/config.json",
+            $schema: "https://slopcode.dev/config.json",
             username: "{file:./api_key.txt}",
           })
         },

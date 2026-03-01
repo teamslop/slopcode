@@ -20,7 +20,7 @@ jobs:
       - uses: ./.github/actions/setup-bun
 
       - name: Install slopcode
-        run: curl -fsSL https://slopcode.ai/install | bash
+        run: curl -fsSL https://slopcode.dev/install | bash
 
       - name: Check duplicates and compliance
         env:
@@ -132,7 +132,7 @@ jobs:
       - uses: ./.github/actions/setup-bun
 
       - name: Install slopcode
-        run: curl -fsSL https://slopcode.ai/install | bash
+        run: curl -fsSL https://slopcode.dev/install | bash
 
       - name: Recheck compliance
         env:

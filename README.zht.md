@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://slopcode.ai">
+  <a href="https://slopcode.dev">
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
@@ -9,9 +9,9 @@
 </p>
 <p align="center">開源的 AI Coding Agent。</p>
 <p align="center">
-  <a href="https://slopcode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/slopcode-ai"><img alt="npm" src="https://img.shields.io/npm/v/slopcode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://slopcode.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
+  <a href="https://www.npmjs.com/package/slopcode"><img alt="npm" src="https://img.shields.io/npm/v/slopcode?style=flat-square" /></a>
+  <a href="http://github.com/grappeggia/slopcode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/grappeggia/slopcode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@
   <a href="README.gr.md">Ελληνικά</a>
 </p>
 
-[![SlopCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://slopcode.ai)
+[![SlopCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://slopcode.dev)
 
 ---
 
@@ -45,10 +45,10 @@
 
 ```bash
 # 直接安裝 (YOLO)
-curl -fsSL https://slopcode.ai/install | bash
+curl -fsSL https://slopcode.dev/install | bash
 
 # 套件管理員
-npm i -g slopcode-ai@latest        # 也可使用 bun/pnpm/yarn
+npm i -g slopcode@latest        # 也可使用 bun/pnpm/yarn
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
 brew install anomalyco/tap/slopcode # macOS 與 Linux（推薦，始終保持最新）
@@ -56,7 +56,7 @@ brew install slopcode              # macOS 與 Linux（官方 brew formula，更
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # 任何作業系統
-nix run nixpkgs#slopcode           # 或使用 github:anomalyco/slopcode 以取得最新開發分支
+nix run nixpkgs#slopcode           # 或使用 github:grappeggia/slopcode 以取得最新開發分支
 ```
 
 > [!TIP]
@@ -64,7 +64,7 @@ nix run nixpkgs#slopcode           # 或使用 github:anomalyco/slopcode 以取�
 
 ### 桌面應用程式 (BETA)
 
-SlopCode 也提供桌面版應用程式。您可以直接從 [發佈頁面 (releases page)](https://github.com/anomalyco/slopcode/releases) 或 [slopcode.ai/download](https://slopcode.ai/download) 下載。
+SlopCode 也提供桌面版應用程式。您可以直接從 [發佈頁面 (releases page)](http://github.com/grappeggia/slopcode/releases) 或 [slopcode.dev/download](https://slopcode.dev/download) 下載。
 
 | 平台                  | 下載連結                              |
 | --------------------- | ------------------------------------- |
@@ -91,8 +91,8 @@ scoop bucket add extras; scoop install extras/slopcode-desktop
 
 ```bash
 # 範例
-SLOPCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://slopcode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.ai/install | bash
+SLOPCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://slopcode.dev/install | bash
+XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.dev/install | bash
 ```
 
 ### Agents
@@ -107,11 +107,11 @@ SlopCode 內建了兩種 Agent，您可以使用 `Tab` 鍵快速切換。
 
 此外，SlopCode 還包含一個 **general** 子 Agent，用於處理複雜搜尋與多步驟任務。此 Agent 供系統內部使用，亦可透過在訊息中輸入 `@general` 來呼叫。
 
-了解更多關於 [Agents](https://slopcode.ai/docs/agents) 的資訊。
+了解更多關於 [Agents](https://slopcode.dev/docs/agents) 的資訊。
 
 ### 線上文件
 
-關於如何設定 SlopCode 的詳細資訊，請參閱我們的 [**官方文件**](https://slopcode.ai/docs)。
+關於如何設定 SlopCode 的詳細資訊，請參閱我們的 [**官方文件**](https://slopcode.dev/docs)。
 
 ### 參與貢獻
 
@@ -128,7 +128,7 @@ SlopCode 內建了兩種 Agent，您可以使用 `Tab` 鍵快速切換。
 在功能面上與 Claude Code 非常相似。以下是關鍵差異：
 
 - 100% 開源。
-- 不綁定特定的服務提供商。雖然我們推薦使用透過 [SlopCode Zen](https://slopcode.ai/zen) 提供的模型，但 SlopCode 也可搭配 Claude, OpenAI, Google 甚至本地模型使用。隨著模型不斷演進，彼此間的差距會縮小且價格會下降，因此具備「不限廠商 (provider-agnostic)」的特性至關重要。
+- 不綁定特定的服務提供商。雖然我們推薦使用透過 [SlopCode Zen](https://slopcode.dev/zen) 提供的模型，但 SlopCode 也可搭配 Claude, OpenAI, Google 甚至本地模型使用。隨著模型不斷演進，彼此間的差距會縮小且價格會下降，因此具備「不限廠商 (provider-agnostic)」的特性至關重要。
 - 內建 LSP (語言伺服器協定) 支援。
 - 專注於終端機介面 (TUI)。SlopCode 由 Neovim 愛好者與 [terminal.shop](https://terminal.shop) 的創作者打造。我們將不斷挑戰終端機介面的極限。
 - 客戶端/伺服器架構 (Client/Server Architecture)。這讓 SlopCode 能夠在您的電腦上運行的同時，由行動裝置進行遠端操控。這意味著 TUI 前端只是眾多可能的客戶端之一。

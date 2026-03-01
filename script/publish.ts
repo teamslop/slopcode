@@ -55,7 +55,8 @@ console.log("updated:", extensionToml)
 await Bun.file(extensionToml).write(toml)
 
 await $`bun install`
-await import(`../packages/sdk/js/script/build.ts`)
+// Non-npm publishing channels are intentionally disabled for npm-only rollout.
+// await import(`../packages/sdk/js/script/build.ts`)
 
 if (Script.release) {
   if (!Script.preview) {
@@ -67,19 +68,19 @@ if (Script.release) {
     await new Promise((resolve) => setTimeout(resolve, 5_000))
   }
 
-  await import(`../packages/desktop/scripts/finalize-latest-json.ts`)
-
-  await $`gh release edit v${Script.version} --draft=false --repo ${process.env.GH_REPO}`
+  // Non-npm publishing channels are intentionally disabled for npm-only rollout.
+  // await import(`../packages/desktop/scripts/finalize-latest-json.ts`)
+  // await $`gh release edit v${Script.version} --draft=false --repo ${process.env.GH_REPO}`
 }
 
 console.log("\n=== cli ===\n")
 await import(`../packages/slopcode/script/publish.ts`)
 
-console.log("\n=== sdk ===\n")
-await import(`../packages/sdk/js/script/publish.ts`)
-
-console.log("\n=== plugin ===\n")
-await import(`../packages/plugin/script/publish.ts`)
+// Non-npm publishing channels are intentionally disabled for npm-only rollout.
+// console.log("\n=== sdk ===\n")
+// await import(`../packages/sdk/js/script/publish.ts`)
+// console.log("\n=== plugin ===\n")
+// await import(`../packages/plugin/script/publish.ts`)
 
 const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)

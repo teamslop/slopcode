@@ -13,7 +13,7 @@ permissions:
 jobs:
   sign-cli:
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    if: github.repository == 'anomalyco/slopcode'
+    if: github.repository == 'grappeggia/slopcode'
     steps:
       - uses: actions/checkout@v3
         with:

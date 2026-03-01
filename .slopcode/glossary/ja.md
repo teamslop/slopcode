@@ -2,8 +2,8 @@
 
 ## Sources
 
-- PR #9821: https://github.com/anomalyco/slopcode/pull/9821
-- PR #13160: https://github.com/anomalyco/slopcode/pull/13160
+- PR #9821: http://github.com/grappeggia/slopcode/pull/9821
+- PR #13160: http://github.com/grappeggia/slopcode/pull/13160
 
 ## Do Not Translate (Locale Additions)
 

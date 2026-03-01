@@ -26,7 +26,7 @@ export async function tmpdir<T>(options?: TmpDirOptions<T>) {
     await Bun.write(
       path.join(dirpath, "slopcode.json"),
       JSON.stringify({
-        $schema: "https://slopcode.ai/config.json",
+        $schema: "https://slopcode.dev/config.json",
         ...options.config,
       }),
     )

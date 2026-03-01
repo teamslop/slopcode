@@ -118,22 +118,22 @@ export default function Download() {
             <div data-component="section-content">
               <button
                 data-component="cli-row"
-                onClick={handleCopyClick("curl -fsSL https://slopcode.ai/install | bash")}
+                onClick={handleCopyClick("curl -fsSL https://slopcode.dev/install | bash")}
               >
                 <code>
-                  curl -fsSL https://<strong>slopcode.ai/install</strong> | bash
+                  curl -fsSL https://<strong>slopcode.dev/install</strong> | bash
                 </code>
                 <CopyStatus />
               </button>
-              <button data-component="cli-row" onClick={handleCopyClick("npm i -g slopcode-ai")}>
+              <button data-component="cli-row" onClick={handleCopyClick("npm i -g slopcode")}>
                 <code>
-                  npm i -g <strong>slopcode-ai</strong>
+                  npm i -g <strong>slopcode</strong>
                 </code>
                 <CopyStatus />
               </button>
-              <button data-component="cli-row" onClick={handleCopyClick("bun add -g slopcode-ai")}>
+              <button data-component="cli-row" onClick={handleCopyClick("bun add -g slopcode")}>
                 <code>
-                  bun add -g <strong>slopcode-ai</strong>
+                  bun add -g <strong>slopcode</strong>
                 </code>
                 <CopyStatus />
               </button>

@@ -361,7 +361,7 @@ export namespace Provider {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://slopcode.ai/",
+            "HTTP-Referer": "https://slopcode.dev/",
             "X-Title": "slopcode",
           },
         },
@@ -372,7 +372,7 @@ export namespace Provider {
         autoload: false,
         options: {
           headers: {
-            "http-referer": "https://slopcode.ai/",
+            "http-referer": "https://slopcode.dev/",
             "x-title": "slopcode",
           },
         },
@@ -458,7 +458,7 @@ export namespace Provider {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://slopcode.ai/",
+            "HTTP-Referer": "https://slopcode.dev/",
             "X-Title": "slopcode",
           },
         },
@@ -582,7 +582,7 @@ export namespace Provider {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://slopcode.ai/",
+            "HTTP-Referer": "https://slopcode.dev/",
             "X-Title": "slopcode",
           },
         },

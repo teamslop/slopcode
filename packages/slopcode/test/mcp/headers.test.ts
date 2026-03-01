@@ -53,7 +53,7 @@ test("headers are passed to transports when oauth is enabled (default)", async (
       await Bun.write(
         `${dir}/slopcode.json`,
         JSON.stringify({
-          $schema: "https://slopcode.ai/config.json",
+          $schema: "https://slopcode.dev/config.json",
           mcp: {
             "test-server": {
               type: "remote",

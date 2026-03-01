@@ -1,12 +1,12 @@
 const stage = process.env.SST_STAGE || "dev"
 
 export default {
-  url: stage === "production" ? "https://slopcode.ai" : `https://${stage}.slopcode.ai`,
-  console: stage === "production" ? "https://slopcode.ai/auth" : `https://${stage}.slopcode.ai/auth`,
+  url: stage === "production" ? "https://slopcode.dev" : `https://${stage}.slopcode.ai`,
+  console: stage === "production" ? "https://slopcode.dev/auth" : `https://${stage}.slopcode.ai/auth`,
   email: "contact@anoma.ly",
   socialCard: "https://social-cards.sst.dev",
-  github: "https://github.com/anomalyco/slopcode",
-  discord: "https://slopcode.ai/discord",
+  github: "http://github.com/grappeggia/slopcode",
+  discord: "https://slopcode.dev/discord",
   headerLinks: [
     { name: "app.header.home", url: "/" },
     { name: "app.header.docs", url: "/docs/" },

@@ -1,10 +1,10 @@
 # slopcode VS Code Extension
 
-A Visual Studio Code extension that integrates [slopcode](https://slopcode.ai) directly into your development workflow.
+A Visual Studio Code extension that integrates [slopcode](https://slopcode.dev) directly into your development workflow.
 
 ## Prerequisites
 
-This extension requires the [slopcode CLI](https://slopcode.ai) to be installed on your system. Visit [slopcode.ai](https://slopcode.ai) for installation instructions.
+This extension requires the [slopcode CLI](https://slopcode.dev) to be installed on your system. Visit [slopcode.dev](https://slopcode.dev) for installation instructions.
 
 ## Features
 
@@ -15,7 +15,7 @@ This extension requires the [slopcode CLI](https://slopcode.ai) to be installed 
 
 ## Support
 
-This is an early release. If you encounter issues or have feedback, please create an issue at https://github.com/anomalyco/slopcode/issues.
+This is an early release. If you encounter issues or have feedback, please create an issue at http://github.com/grappeggia/slopcode/issues.
 
 ## Development
 

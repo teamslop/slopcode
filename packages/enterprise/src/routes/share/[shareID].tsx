@@ -313,21 +313,21 @@ export default function () {
                         <div class="relative bg-background-stronger w-screen h-screen overflow-hidden flex flex-col">
                           <header class="h-12 px-6 py-2 flex items-center justify-between self-stretch bg-background-base border-b border-border-weak-base">
                             <div class="">
-                              <a href="https://slopcode.ai">
+                              <a href="https://slopcode.dev">
                                 <Mark />
                               </a>
                             </div>
                             <div class="flex gap-3 items-center">
                               <IconButton
                                 as={"a"}
-                                href="https://github.com/anomalyco/slopcode"
+                                href="http://github.com/grappeggia/slopcode"
                                 target="_blank"
                                 icon="github"
                                 variant="ghost"
                               />
                               <IconButton
                                 as={"a"}
-                                href="https://slopcode.ai/discord"
+                                href="https://slopcode.dev/discord"
                                 target="_blank"
                                 icon="discord"
                                 variant="ghost"

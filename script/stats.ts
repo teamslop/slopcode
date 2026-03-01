@@ -73,7 +73,7 @@ async function fetchReleases(): Promise<Release[]> {
   const per = 100
 
   while (true) {
-    const url = `https://api.github.com/repos/anomalyco/slopcode/releases?page=${page}&per_page=${per}`
+    const url = `https://api.github.com/repos/grappeggia/slopcode/releases?page=${page}&per_page=${per}`
 
     const response = await fetch(url)
     if (!response.ok) {
@@ -188,15 +188,15 @@ async function save(githubTotal: number, npmDownloads: number) {
   )
 }
 
-console.log("Fetching GitHub releases for anomalyco/slopcode...\n")
+console.log("Fetching GitHub releases for grappeggia/slopcode...\n")
 
 const releases = await fetchReleases()
 console.log(`\nFetched ${releases.length} releases total\n`)
 
 const { total: githubTotal, stats } = calculate(releases)
 
-console.log("Fetching npm all-time downloads for slopcode-ai...\n")
-const npmDownloads = await fetchNpmDownloads("slopcode-ai")
+console.log("Fetching npm all-time downloads for slopcode...\n")
+const npmDownloads = await fetchNpmDownloads("slopcode")
 console.log(`Fetched npm all-time downloads: ${npmDownloads.toLocaleString()}\n`)
 
 await save(githubTotal, npmDownloads)

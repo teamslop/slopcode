@@ -37,7 +37,7 @@ jobs:
 
       - name: Install slopcode
         if: steps.team-check.outputs.is_team != 'true'
-        run: curl -fsSL https://slopcode.ai/install | bash
+        run: curl -fsSL https://slopcode.dev/install | bash
 
       - name: Build prompt
         if: steps.team-check.outputs.is_team != 'true'

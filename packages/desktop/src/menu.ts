@@ -159,7 +159,7 @@ export async function createMenu(trigger: (id: string) => void) {
         items: [
           // missing native macos search
           await MenuItem.new({
-            action: () => openUrl("https://slopcode.ai/docs"),
+            action: () => openUrl("https://slopcode.dev/docs"),
             text: t("desktop.menu.help.documentation"),
           }),
           await MenuItem.new({
@@ -176,11 +176,11 @@ export async function createMenu(trigger: (id: string) => void) {
             item: "Separator",
           }),
           await MenuItem.new({
-            action: () => openUrl("https://github.com/anomalyco/slopcode/issues/new?template=feature_request.yml"),
+            action: () => openUrl("http://github.com/grappeggia/slopcode/issues/new?template=feature_request.yml"),
             text: t("desktop.menu.help.shareFeedback"),
           }),
           await MenuItem.new({
-            action: () => openUrl("https://github.com/anomalyco/slopcode/issues/new?template=bug_report.yml"),
+            action: () => openUrl("http://github.com/grappeggia/slopcode/issues/new?template=bug_report.yml"),
             text: t("desktop.menu.help.reportBug"),
           }),
         ],

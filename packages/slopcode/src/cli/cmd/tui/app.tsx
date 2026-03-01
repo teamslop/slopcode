@@ -560,7 +560,7 @@ function App() {
       title: "Open docs",
       value: "docs.open",
       onSelect: () => {
-        open("https://slopcode.ai/docs").catch(() => {})
+        open("https://slopcode.dev/docs").catch(() => {})
         dialog.clear()
       },
       category: "System",
@@ -667,7 +667,7 @@ function App() {
         DialogAlert.show(
           dialog,
           "Warning",
-          "While openrouter is a convenient way to access LLMs your request will often be routed to subpar providers that do not work well in our testing.\n\nFor reliable access to models check out SlopCode Zen\nhttps://slopcode.ai/zen",
+          "While openrouter is a convenient way to access LLMs your request will often be routed to subpar providers that do not work well in our testing.\n\nFor reliable access to models check out SlopCode Zen\nhttps://slopcode.dev/zen",
         ).then(() => kv.set("openrouter_warning", true))
       })
     }
@@ -784,7 +784,7 @@ function ErrorComponent(props: {
   })
   const [copied, setCopied] = createSignal(false)
 
-  const issueURL = new URL("https://github.com/anomalyco/slopcode/issues/new?template=bug-report.yml")
+  const issueURL = new URL("http://github.com/grappeggia/slopcode/issues/new?template=bug-report.yml")
 
   // Choose safe fallback colors per mode since theme context may not be available
   const isLight = props.mode === "light"

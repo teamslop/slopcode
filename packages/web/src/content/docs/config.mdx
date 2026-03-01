@@ -13,7 +13,7 @@ SlopCode supports both **JSON** and **JSONC** (JSON with Comments) formats.
 
 ```jsonc title="slopcode.jsonc"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "model": "anthropic/claude-sonnet-4-5",
   "autoupdate": true,
   "server": {
@@ -151,9 +151,9 @@ The custom directory is loaded after the global config and `.slopcode` directori
 
 ## Schema
 
-The server/runtime config schema is defined in [**`slopcode.ai/config.json`**](https://slopcode.ai/config.json).
+The server/runtime config schema is defined in [**`slopcode.dev/config.json`**](https://slopcode.dev/config.json).
 
-TUI config uses [**`slopcode.ai/tui.json`**](https://slopcode.ai/tui.json).
+TUI config uses [**`slopcode.dev/tui.json`**](https://slopcode.dev/tui.json).
 
 Your editor should be able to validate and autocomplete based on the schema.
 
@@ -165,7 +165,7 @@ Use a dedicated `tui.json` (or `tui.jsonc`) file for TUI-specific settings.
 
 ```json title="tui.json"
 {
-  "$schema": "https://slopcode.ai/tui.json",
+  "$schema": "https://slopcode.dev/tui.json",
   "scroll_speed": 3,
   "scroll_acceleration": {
     "enabled": true
@@ -188,7 +188,7 @@ You can configure server settings for the `slopcode serve` and `slopcode web` co
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "server": {
     "port": 4096,
     "hostname": "0.0.0.0",
@@ -217,7 +217,7 @@ You can manage the tools an LLM can use through the `tools` option.
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "tools": {
     "write": false,
     "bash": false
@@ -235,7 +235,7 @@ You can configure the providers and models you want to use in your SlopCode conf
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {},
   "model": "anthropic/claude-sonnet-4-5",
   "small_model": "anthropic/claude-haiku-4-5"
@@ -248,7 +248,7 @@ Provider options can include `timeout` and `setCacheKey`:
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -277,7 +277,7 @@ Amazon Bedrock supports AWS-specific configuration:
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "amazon-bedrock": {
       "options": {
@@ -308,7 +308,7 @@ Set your UI theme in `tui.json`.
 
 ```json title="tui.json"
 {
-  "$schema": "https://slopcode.ai/tui.json",
+  "$schema": "https://slopcode.dev/tui.json",
   "theme": "tokyonight"
 }
 ```
@@ -323,7 +323,7 @@ You can configure specialized agents for specific tasks through the `agent` opti
 
 ```jsonc title="slopcode.jsonc"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "agent": {
     "code-reviewer": {
       "description": "Reviews code for best practices and potential issues",
@@ -349,7 +349,7 @@ You can set the default agent using the `default_agent` option. This determines 
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "default_agent": "plan"
 }
 ```
@@ -366,7 +366,7 @@ You can configure the [share](/docs/share) feature through the `share` option.
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "share": "manual"
 }
 ```
@@ -387,7 +387,7 @@ You can configure custom commands for repetitive tasks through the `command` opt
 
 ```jsonc title="slopcode.jsonc"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "command": {
     "test": {
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
@@ -413,7 +413,7 @@ Customize keybinds in `tui.json`.
 
 ```json title="tui.json"
 {
-  "$schema": "https://slopcode.ai/tui.json",
+  "$schema": "https://slopcode.dev/tui.json",
   "keybinds": {}
 }
 ```
@@ -428,7 +428,7 @@ SlopCode will automatically download any new updates when it starts up. You can 
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "autoupdate": false
 }
 ```
@@ -444,7 +444,7 @@ You can configure code formatters through the `formatter` option.
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "formatter": {
     "prettier": {
       "disabled": true
@@ -472,7 +472,7 @@ For example, to ensure that the `edit` and `bash` tools require user approval:
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "permission": {
     "edit": "ask",
     "bash": "ask"
@@ -490,7 +490,7 @@ You can control context compaction behavior through the `compaction` option.
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "compaction": {
     "auto": true,
     "prune": true,
@@ -511,7 +511,7 @@ You can configure file watcher ignore patterns through the `watcher` option.
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "watcher": {
     "ignore": ["node_modules/**", "dist/**", ".git/**"]
   }
@@ -528,7 +528,7 @@ You can configure MCP servers you want to use through the `mcp` option.
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "mcp": {}
 }
 ```
@@ -545,7 +545,7 @@ Place plugin files in `.slopcode/plugins/` or `~/.config/slopcode/plugins/`. You
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "plugin": ["slopcode-helicone-session", "@my-org/custom-plugin"]
 }
 ```
@@ -560,7 +560,7 @@ You can configure the instructions for the model you're using through the `instr
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "instructions": ["CONTRIBUTING.md", "docs/guidelines.md", ".cursor/rules/*.md"]
 }
 ```
@@ -576,7 +576,7 @@ You can disable providers that are loaded automatically through the `disabled_pr
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "disabled_providers": ["openai", "gemini"]
 }
 ```
@@ -599,7 +599,7 @@ You can specify an allowlist of providers through the `enabled_providers` option
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "enabled_providers": ["anthropic", "openai"]
 }
 ```
@@ -620,7 +620,7 @@ The `experimental` key contains options that are under active development.
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "experimental": {}
 }
 ```
@@ -643,7 +643,7 @@ Use `{env:VARIABLE_NAME}` to substitute environment variables:
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "model": "{env:SLOPCODE_MODEL}",
   "provider": {
     "anthropic": {
@@ -666,7 +666,7 @@ Use `{file:path/to/file}` to substitute the contents of a file:
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "instructions": ["./custom-instructions.md"],
   "provider": {
     "openai": {

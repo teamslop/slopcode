@@ -86,7 +86,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/anomalyco/slopcode"
+    "url": "http://github.com/grappeggia/slopcode"
   },
   "license": "MIT",
   "prettier": {

@@ -3,11 +3,11 @@
  */
 export const config = {
   // Base URL
-  baseUrl: "https://slopcode.ai",
+  baseUrl: "https://slopcode.dev",
 
   // GitHub
   github: {
-    repoUrl: "https://github.com/anomalyco/slopcode",
+    repoUrl: "http://github.com/grappeggia/slopcode",
     starsFormatted: {
       compact: "100K",
       full: "100,000",

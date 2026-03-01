@@ -28,7 +28,7 @@ jobs:
           slopcode-app-secret: ${{ secrets.SLOPCODE_APP_SECRET }}
 
       - name: Install SlopCode
-        run: bun i -g slopcode-ai
+        run: bun i -g slopcode
 
       - name: Sync beta branch
         env:

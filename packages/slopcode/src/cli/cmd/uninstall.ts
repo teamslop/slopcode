@@ -129,10 +129,10 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
 
   if (method !== "curl" && method !== "unknown") {
     const cmds: Record<string, string> = {
-      npm: "npm uninstall -g slopcode-ai",
-      pnpm: "pnpm uninstall -g slopcode-ai",
-      bun: "bun remove -g slopcode-ai",
-      yarn: "yarn global remove slopcode-ai",
+      npm: "npm uninstall -g slopcode",
+      pnpm: "pnpm uninstall -g slopcode",
+      bun: "bun remove -g slopcode",
+      yarn: "yarn global remove slopcode",
       brew: "brew uninstall slopcode",
       choco: "choco uninstall slopcode",
       scoop: "scoop uninstall slopcode",
@@ -180,10 +180,10 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
 
   if (method !== "curl" && method !== "unknown") {
     const cmds: Record<string, string[]> = {
-      npm: ["npm", "uninstall", "-g", "slopcode-ai"],
-      pnpm: ["pnpm", "uninstall", "-g", "slopcode-ai"],
-      bun: ["bun", "remove", "-g", "slopcode-ai"],
-      yarn: ["yarn", "global", "remove", "slopcode-ai"],
+      npm: ["npm", "uninstall", "-g", "slopcode"],
+      pnpm: ["pnpm", "uninstall", "-g", "slopcode"],
+      bun: ["bun", "remove", "-g", "slopcode"],
+      yarn: ["yarn", "global", "remove", "slopcode"],
       brew: ["brew", "uninstall", "slopcode"],
       choco: ["choco", "uninstall", "slopcode"],
       scoop: ["scoop", "uninstall", "slopcode"],

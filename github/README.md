@@ -1,6 +1,6 @@
 # slopcode GitHub Action
 
-A GitHub Action that integrates [slopcode](https://slopcode.ai) directly into your GitHub workflow.
+A GitHub Action that integrates [slopcode](https://slopcode.dev) directly into your GitHub workflow.
 
 Mention `/slopcode` in your comment, and slopcode will execute tasks within your GitHub Actions runner.
 
@@ -88,7 +88,7 @@ This will walk you through installing the GitHub app, creating the workflow, and
               persist-credentials: false
 
           - name: Run slopcode
-           uses: anomalyco/slopcode/github@latest
+           uses: grappeggia/slopcode/github@latest
            env:
              ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -101,7 +101,7 @@ This will walk you through installing the GitHub app, creating the workflow, and
 
 ## Support
 
-This is an early release. If you encounter issues or have feedback, please create an issue at https://github.com/anomalyco/slopcode/issues.
+This is an early release. If you encounter issues or have feedback, please create an issue at http://github.com/grappeggia/slopcode/issues.
 
 ## Development
 

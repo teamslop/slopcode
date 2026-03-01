@@ -89,7 +89,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   meta = {
     description = "The open source coding agent";
-    homepage = "https://slopcode.ai/";
+    homepage = "https://slopcode.dev/";
     license = lib.licenses.mit;
     mainProgram = "slopcode";
     inherit (node_modules.meta) platforms;

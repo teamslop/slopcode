@@ -92,7 +92,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   meta = {
     description = "SlopCode Desktop App";
-    homepage = "https://slopcode.ai";
+    homepage = "https://slopcode.dev";
     license = lib.licenses.mit;
     mainProgram = "slopcode-desktop";
     inherit (slopcode.meta) platforms;

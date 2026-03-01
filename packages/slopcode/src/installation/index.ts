@@ -103,8 +103,7 @@ export namespace Installation {
 
     for (const check of checks) {
       const output = await check.command()
-      const installedName =
-        check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "slopcode" : "slopcode-ai"
+      const installedName = "slopcode"
       if (output.includes(installedName)) {
         return check.name
       }
@@ -132,19 +131,19 @@ export namespace Installation {
     let cmd
     switch (method) {
       case "curl":
-        cmd = $`curl -fsSL https://slopcode.ai/install | bash`.env({
+        cmd = $`curl -fsSL https://slopcode.dev/install | bash`.env({
           ...process.env,
           VERSION: target,
         })
         break
       case "npm":
-        cmd = $`npm install -g slopcode-ai@${target}`
+        cmd = $`npm install -g slopcode@${target}`
         break
       case "pnpm":
-        cmd = $`pnpm install -g slopcode-ai@${target}`
+        cmd = $`pnpm install -g slopcode@${target}`
         break
       case "bun":
-        cmd = $`bun install -g slopcode-ai@${target}`
+        cmd = $`bun install -g slopcode@${target}`
         break
       case "brew": {
         const formula = await getBrewFormula()
@@ -220,7 +219,7 @@ export namespace Installation {
         return reg.endsWith("/") ? reg.slice(0, -1) : reg
       })
       const channel = CHANNEL
-      return fetch(`${registry}/slopcode-ai/${channel}`)
+      return fetch(`${registry}/slopcode/${channel}`)
         .then((res) => {
           if (!res.ok) throw new Error(res.statusText)
           return res.json()
@@ -251,7 +250,7 @@ export namespace Installation {
         .then((data: any) => data.version)
     }
 
-    return fetch("https://api.github.com/repos/anomalyco/slopcode/releases/latest")
+    return fetch("https://api.github.com/repos/grappeggia/slopcode/releases/latest")
       .then((res) => {
         if (!res.ok) throw new Error(res.statusText)
         return res.json()

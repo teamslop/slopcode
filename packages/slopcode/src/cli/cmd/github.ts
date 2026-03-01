@@ -241,7 +241,7 @@ export const GithubInstallCommand = cmd({
                 "",
                 "    3. Go to a GitHub issue and comment `/oc summarize` to see the agent in action",
                 "",
-                "   Learn more about the GitHub agent - https://slopcode.ai/docs/github/#usage-examples",
+                "   Learn more about the GitHub agent - https://slopcode.dev/docs/github/#usage-examples",
               ].join("\n"),
             )
           }
@@ -403,7 +403,7 @@ jobs:
           persist-credentials: false
 
       - name: Run slopcode
-        uses: anomalyco/slopcode/github@latest${envStr}
+        uses: grappeggia/slopcode/github@latest${envStr}
         with:
           model: ${provider}/${model}`,
             )
@@ -473,7 +473,7 @@ export const GithubRunCommand = cmd({
           ? (payload as IssueCommentEvent | IssuesEvent).issue.number
           : (payload as PullRequestEvent | PullRequestReviewCommentEvent).pull_request.number
       const runUrl = `/${owner}/${repo}/actions/runs/${runId}`
-      const shareBaseUrl = isMock ? "https://dev.slopcode.ai" : "https://slopcode.ai"
+      const shareBaseUrl = isMock ? "https://dev.slopcode.ai" : "https://slopcode.dev"
 
       let appToken: string
       let octoRest: Octokit

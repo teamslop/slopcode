@@ -35,7 +35,7 @@ You can customize the base URL for any provider by setting the `baseURL` option.
 
 ```json title="slopcode.json" {6}
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -57,7 +57,7 @@ tested and verified to work well with SlopCode. [Learn more](/docs/zen).
 If you are new, we recommend starting with SlopCode Zen.
 :::
 
-1. Run the `/connect` command in the TUI, select `SlopCode Zen`, and head to [slopcode.ai/auth](https://slopcode.ai/zen).
+1. Run the `/connect` command in the TUI, select `SlopCode Zen`, and head to [slopcode.dev/auth](https://slopcode.dev/zen).
 
    ```txt
    /connect
@@ -89,7 +89,7 @@ It works like any other provider in SlopCode and is completely optional to use.
 SlopCode Go is a low cost subscription plan that provides reliable access to popular open coding models provided by the SlopCode team that have been
 tested and verified to work well with SlopCode.
 
-1. Run the `/connect` command in the TUI, select `SlopCode Go`, and head to [slopcode.ai/auth](https://slopcode.ai/zen).
+1. Run the `/connect` command in the TUI, select `SlopCode Go`, and head to [slopcode.dev/auth](https://slopcode.dev/zen).
 
    ```txt
    /connect
@@ -199,7 +199,7 @@ To use Amazon Bedrock with SlopCode:
 
    ```json title="slopcode.json"
    {
-     "$schema": "https://slopcode.ai/config.json",
+     "$schema": "https://slopcode.dev/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -228,7 +228,7 @@ To use Amazon Bedrock with SlopCode:
 
    ```json title="slopcode.json"
    {
-     "$schema": "https://slopcode.ai/config.json",
+     "$schema": "https://slopcode.dev/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -277,7 +277,7 @@ For custom inference profiles, use the model and provider name in the key and se
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "amazon-bedrock": {
       // ...
@@ -527,7 +527,7 @@ Cloudflare AI Gateway lets you access models from OpenAI, Anthropic, Workers AI,
 
    ```json title="slopcode.json"
    {
-     "$schema": "https://slopcode.ai/config.json",
+     "$schema": "https://slopcode.dev/config.json",
      "provider": {
        "cloudflare-ai-gateway": {
          "models": {
@@ -733,7 +733,7 @@ to only use your own GitLab-hosted instance, add the following to your
 
 ```json
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "small_model": "gitlab/duo-chat-haiku-4-5",
   "share": "disabled"
 }
@@ -795,7 +795,7 @@ Customize through `slopcode.json`:
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "gitlab": {
       "options": {
@@ -816,7 +816,7 @@ To access GitLab tools (merge requests, issues, pipelines, CI/CD, etc.):
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "plugin": ["@gitlab/slopcode-gitlab-plugin"]
 }
 ```
@@ -997,7 +997,7 @@ Here's [Helicone's Model Directory](https://helicone.ai/models), you'll need thi
 
 ```jsonc title="~/.config/slopcode/slopcode.jsonc"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1025,7 +1025,7 @@ Helicone supports custom headers for features like caching, user tracking, and s
 
 ```jsonc title="~/.config/slopcode/slopcode.jsonc"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1079,7 +1079,7 @@ You can configure slopcode to use local models through [llama.cpp's](https://git
 
 ```json title="slopcode.json" "llama.cpp" {5, 6, 8, 10-15}
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "llama.cpp": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1146,7 +1146,7 @@ You can configure slopcode to use local models through LM Studio.
 
 ```json title="slopcode.json" "lmstudio" {5, 6, 8, 10-14}
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1267,7 +1267,7 @@ Ollama can automatically configure itself for SlopCode. See the [Ollama integrat
 
 ```json title="slopcode.json" "ollama" {5, 6, 8, 10-14}
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1429,7 +1429,7 @@ SlopCode Zen is a list of tested and verified models provided by the SlopCode te
 
    ```json title="slopcode.json" {6}
    {
-     "$schema": "https://slopcode.ai/config.json",
+     "$schema": "https://slopcode.dev/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1444,7 +1444,7 @@ SlopCode Zen is a list of tested and verified models provided by the SlopCode te
 
    ```json title="slopcode.json"
    {
-     "$schema": "https://slopcode.ai/config.json",
+     "$schema": "https://slopcode.dev/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1693,7 +1693,7 @@ You can also customize models through your slopcode config. Here's an example of
 
 ```json title="slopcode.json"
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "vercel": {
       "models": {
@@ -1803,7 +1803,7 @@ Some useful routing options:
 
    ```json title="slopcode.json" {6}
    {
-     "$schema": "https://slopcode.ai/config.json",
+     "$schema": "https://slopcode.dev/config.json",
      "provider": {
        "zenmux": {
          "models": {
@@ -1871,7 +1871,7 @@ You can use any OpenAI-compatible provider with slopcode. Most modern AI provide
 
    ```json title="slopcode.json" ""myprovider"" {5-15}
    {
-     "$schema": "https://slopcode.ai/config.json",
+     "$schema": "https://slopcode.dev/config.json",
      "provider": {
        "myprovider": {
          "npm": "@ai-sdk/openai-compatible",
@@ -1909,7 +1909,7 @@ Here's an example setting the `apiKey`, `headers`, and model `limit` options.
 
 ```json title="slopcode.json" {9,11,17-20}
 {
-  "$schema": "https://slopcode.ai/config.json",
+  "$schema": "https://slopcode.dev/config.json",
   "provider": {
     "myprovider": {
       "npm": "@ai-sdk/openai-compatible",
