@@ -1,5 +1,5 @@
 <svg width="640" height="115" viewBox="0 0 640 115" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="16" width="66" height="82" fill="#656363"/>
   <rect x="16" y="33" width="33" height="33" fill="#CFCECD"/>
-  <text x="95" y="76" fill="#211E1E" font-family="'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif" font-size="62" font-weight="700" letter-spacing="1">SlopCode</text>
+  <text x="95" y="76" fill="#656363" font-family="'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif" font-size="62" font-weight="700" letter-spacing="1">SlopCode</text>
 </svg>

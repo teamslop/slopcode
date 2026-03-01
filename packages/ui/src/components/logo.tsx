@@ -45,7 +45,7 @@ export const Logo = (props: { class?: string }) => {
         <text
           x="34"
           y="27"
-          fill="var(--icon-strong-base)"
+          fill="var(--icon-base)"
           font-family="'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif"
           font-size="22"
           font-weight="700"
