@@ -13,10 +13,7 @@ if (!Script.preview) {
     await $`gh release create ${tag} -d --title ${tag} --notes "Release ${tag}" --repo ${repo}`
   }
 
-  const release = (await $`gh release view ${tag} --json tagName,databaseId --repo ${repo}`.json()) as {
-    tagName: string
-    databaseId: number
-  }
+  const release = await $`gh release view ${tag} --json tagName,databaseId --repo ${repo}`.json()
   output[1] = `release=${release.databaseId}`
   output[2] = `tag=${release.tagName}`
 }
