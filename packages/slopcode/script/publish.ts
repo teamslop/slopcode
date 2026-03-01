@@ -115,9 +115,10 @@ const main = (async () => {
 
 await Promise.all([...tasks, main])
 
-if (Script.channel === "latest") {
-  await import("./publish-homebrew.ts")
-}
+// Non-npm publishing channels are intentionally disabled for npm-only rollout.
+// if (Script.channel === "latest") {
+//   await import("./publish-homebrew.ts")
+// }
 
 // Supplemental channels sourced from npm artifacts.
 //
