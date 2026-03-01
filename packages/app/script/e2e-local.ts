@@ -145,6 +145,9 @@ try {
     Object.assign(process.env, serverEnv)
     process.env.AGENT = "1"
     process.env.SLOPCODE = "1"
+    process.env.OPENCODE = "1"
+    process.env.SLOPCODE_PID = String(process.pid)
+    process.env.OPENCODE_PID = String(process.pid)
 
     const log = await import("../../slopcode/src/util/log")
     const install = await import("../../slopcode/src/installation")

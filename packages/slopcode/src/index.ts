@@ -77,6 +77,9 @@ let cli = yargs(hideBin(process.argv))
 
     process.env.AGENT = "1"
     process.env.SLOPCODE = "1"
+    process.env.OPENCODE = "1"
+    process.env.SLOPCODE_PID = String(process.pid)
+    process.env.OPENCODE_PID = String(process.pid)
 
     Log.Default.info(product.id, {
       version: Installation.VERSION,
