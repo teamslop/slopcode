@@ -15,7 +15,9 @@ const legacyGlobalConfigDir = path.join(path.dirname(Global.Path.config), "openc
 
 afterEach(async () => {
   await fs.rm(managedConfigDir, { force: true, recursive: true }).catch(() => {})
-  await fs.rm(legacyGlobalConfigDir, { force: true, recursive: true }).catch(() => {})
+  for (const file of ["opencode.json", "opencode.jsonc", "slopcode.json", "slopcode.jsonc", "config.json", "config"]) {
+    await fs.rm(path.join(legacyGlobalConfigDir, file), { force: true }).catch(() => {})
+  }
 })
 
 async function writeManagedSettings(settings: object, filename = "slopcode.json") {
