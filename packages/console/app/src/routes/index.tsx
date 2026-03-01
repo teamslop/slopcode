@@ -107,6 +107,9 @@ export default function Home() {
                   <Tabs.Trigger value="nix" data-slot="tab">
                     nix
                   </Tabs.Trigger>
+                  <Tabs.Trigger value="apt" data-slot="tab">
+                    apt
+                  </Tabs.Trigger>
                   <Tabs.Trigger value="brew" data-slot="tab">
                     brew
                   </Tabs.Trigger>
@@ -150,6 +153,16 @@ export default function Home() {
                       <span>
                         <span data-slot="protocol">nix profile install </span>
                         <span data-slot="highlight">github:teamslop/slopcode#slopcode</span>
+                      </span>
+                      <CopyStatus />
+                    </button>
+                  </Tabs.Content>
+                  <Tabs.Content as="pre" data-slot="panel" value="apt">
+                    <button data-copy data-slot="command" onClick={handleCopyClick}>
+                      <span>
+                        <span data-slot="protocol">curl -fsSL </span>
+                        <span data-slot="highlight">teamslop.github.io/apt-slopcode/install.sh</span>
+                        <span> | sudo bash</span>
                       </span>
                       <CopyStatus />
                     </button>

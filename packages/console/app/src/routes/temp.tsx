@@ -128,6 +128,15 @@ export default function Home() {
             </button>
           </div>
           <div data-component="method">
+            <h3 data-component="title">apt</h3>
+            <button data-copy data-slot="button">
+              <span>
+                curl -fsSL https://<strong>teamslop.github.io/apt-slopcode/install.sh</strong> | sudo bash
+              </span>
+              <CopyStatus />
+            </button>
+          </div>
+          <div data-component="method">
             <h3 data-component="title">homebrew</h3>
             <button data-copy data-slot="button">
               <span>

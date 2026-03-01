@@ -146,6 +146,15 @@ export default function Download() {
                 </code>
                 <CopyStatus />
               </button>
+              <button
+                data-component="cli-row"
+                onClick={handleCopyClick("curl -fsSL https://teamslop.github.io/apt-slopcode/install.sh | sudo bash")}
+              >
+                <code>
+                  curl -fsSL https://<strong>teamslop.github.io/apt-slopcode/install.sh</strong> | sudo bash
+                </code>
+                <CopyStatus />
+              </button>
               <button data-component="cli-row" onClick={handleCopyClick("brew install teamslop/slopcode/slopcode")}>
                 <code>
                   brew install <strong>teamslop/slopcode/slopcode</strong>

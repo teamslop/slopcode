@@ -298,6 +298,12 @@ jobs:
           name: slopcode-cli
           path: packages/slopcode/dist
 
+      - name: Install apt repository tooling
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dpkg-dev gnupg
+
       - name: Cache apt packages (AUR)
         if: false # Non-npm publishing channel disabled
         uses: actions/cache@v4
@@ -322,13 +328,26 @@ jobs:
       - run: ./script/publish.ts
         if: steps.guard.outputs.ready == 'true'
         env:
-          # npm-only release destination
+          # npm release destination
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # Homebrew tap sync (from npm tarball)
+          # Homebrew tap sync (disabled in script)
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || steps.committer.outputs.token }}
           HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO || 'teamslop/homebrew-slopcode' }}
           HOMEBREW_TAP_BRANCH: ${{ vars.HOMEBREW_TAP_BRANCH || 'main' }}
           HOMEBREW_TAP_PATH: ${{ vars.HOMEBREW_TAP_PATH || 'Formula/slopcode.rb' }}
+          # apt repository sync
+          APT_REPO_TOKEN: ${{ secrets.APT_REPO_TOKEN || steps.committer.outputs.token }}
+          APT_REPO_REPO: ${{ vars.APT_REPO_REPO || 'teamslop/apt-slopcode' }}
+          APT_REPO_BRANCH: ${{ vars.APT_REPO_BRANCH || 'main' }}
+          APT_REPO_DIST: ${{ vars.APT_REPO_DIST || 'stable' }}
+          APT_REPO_COMPONENT: ${{ vars.APT_REPO_COMPONENT || 'main' }}
+          APT_REPO_BASE_URL: ${{ vars.APT_REPO_BASE_URL || 'https://teamslop.github.io/apt-slopcode' }}
+          APT_REPO_ORIGIN: ${{ vars.APT_REPO_ORIGIN || 'SlopCode' }}
+          APT_REPO_LABEL: ${{ vars.APT_REPO_LABEL || 'SlopCode' }}
+          APT_REPO_DESCRIPTION: ${{ vars.APT_REPO_DESCRIPTION || 'SlopCode apt repository' }}
+          APT_REPO_GPG_PRIVATE_KEY: ${{ secrets.APT_REPO_GPG_PRIVATE_KEY }}
+          APT_REPO_GPG_PASSPHRASE: ${{ secrets.APT_REPO_GPG_PASSPHRASE }}
+          APT_REPO_GPG_KEY_ID: ${{ secrets.APT_REPO_GPG_KEY_ID }}
           SLOPCODE_VERSION: ${{ needs.version.outputs.version }}
           SLOPCODE_RELEASE: ${{ needs.version.outputs.release }}
           # AUR_KEY: ${{ secrets.AUR_KEY }} # Non-npm publishing channel disabled
