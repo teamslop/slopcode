@@ -119,6 +119,7 @@ const context = createContext<{
   showTimestamps: () => boolean
   showDetails: () => boolean
   showGenericToolOutput: () => boolean
+  isHistoryPartSelected: (id: string) => boolean
   diffWrapMode: () => "word" | "none"
   isToolExpanded: (id: string) => boolean
   toggleToolExpanded: (id: string) => void
@@ -273,6 +274,8 @@ export function Session() {
       [id]: !prev[id],
     }))
   }
+
+  const isHistoryPartSelected = (id: string) => history() && historyPart() === id
 
   function setHistoryMode(value: boolean) {
     if (history() === value) return
@@ -1359,6 +1362,7 @@ export function Session() {
         showTimestamps,
         showDetails,
         showGenericToolOutput,
+        isHistoryPartSelected,
         diffWrapMode,
         isToolExpanded,
         toggleToolExpanded,
@@ -1979,11 +1983,16 @@ function InlineTool(props: {
       error()?.includes("user dismissed"),
   )
 
+  const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
+
   return (
     <box
       id={"tool-" + props.part.id}
       marginTop={margin()}
-      paddingLeft={3}
+      border={["left"]}
+      borderColor={selected() ? theme.textMuted : theme.background}
+      customBorderChars={SplitBorder.customBorderChars}
+      paddingLeft={2}
       renderBefore={function () {
         const el = this as BoxRenderable
         const parent = el.parent
@@ -2027,9 +2036,11 @@ function BlockTool(props: {
   spinner?: boolean
 }) {
   const { theme } = useTheme()
+  const ctx = use()
   const renderer = useRenderer()
   const [hover, setHover] = createSignal(false)
   const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
+  const selected = createMemo(() => !!props.part && ctx.isHistoryPartSelected(props.part.id))
   return (
     <box
       id={props.part ? "tool-" + props.part.id : undefined}
@@ -2041,7 +2052,7 @@ function BlockTool(props: {
       gap={1}
       backgroundColor={hover() ? theme.backgroundMenu : theme.backgroundPanel}
       customBorderChars={SplitBorder.customBorderChars}
-      borderColor={theme.background}
+      borderColor={selected() ? theme.textMuted : theme.background}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
