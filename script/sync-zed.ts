@@ -13,10 +13,11 @@ async function main() {
   if (!version) throw new Error("Version argument required, ex: bun script/sync-zed.ts v1.0.52")
 
   const token = process.env.ZED_EXTENSIONS_PAT
-  if (!token) throw new Error("ZED_EXTENSIONS_PAT environment variable required")
-
   const prToken = process.env.ZED_PR_PAT
-  if (!prToken) throw new Error("ZED_PR_PAT environment variable required")
+  if (!token || !prToken) {
+    console.log("sync-zed: skip missing ZED_EXTENSIONS_PAT or ZED_PR_PAT")
+    return
+  }
 
   const cleanVersion = version.replace(/^v/, "")
   console.log(`📦 Syncing Zed extension for version ${cleanVersion}`)

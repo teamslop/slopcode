@@ -41,39 +41,24 @@ jobs:
 
       - uses: ./.github/actions/setup-bun
 
-      - name: Check required credentials
-        id: guard
-        env:
-          HAVE_API_KEY: ${{ secrets.SLOPCODE_API_KEY != '' && 'true' || 'false' }}
-        run: |
-          if [ "$HAVE_API_KEY" != "true" ]; then
-            echo "Skipping publish version step: missing SLOPCODE_API_KEY"
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "ready=true" >> "$GITHUB_OUTPUT"
-
       - name: Setup git committer
         id: committer
-        if: steps.guard.outputs.ready == 'true'
         uses: ./.github/actions/setup-git-committer
         with:
           slopcode-app-id: ${{ vars.SLOPCODE_APP_ID }}
           slopcode-app-secret: ${{ secrets.SLOPCODE_APP_SECRET }}
 
       - name: Install SlopCode
-        if: steps.guard.outputs.ready == 'true' && (inputs.bump || inputs.version)
+        if: inputs.bump || inputs.version
         run: bun i -g slopcode
 
       - id: version
-        if: steps.guard.outputs.ready == 'true'
         run: |
           ./script/version.ts
         env:
           GH_TOKEN: ${{ steps.committer.outputs.token }}
           SLOPCODE_BUMP: ${{ inputs.bump }}
           SLOPCODE_VERSION: ${{ inputs.version }}
-          SLOPCODE_API_KEY: ${{ secrets.SLOPCODE_API_KEY }}
           GH_REPO: ${{ (github.ref_name == 'beta' && 'teamslop/slopcode-beta') || github.repository }}
     outputs:
       version: ${{ steps.version.outputs.version }}

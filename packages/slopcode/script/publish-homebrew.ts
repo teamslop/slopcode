@@ -14,7 +14,8 @@ if (Script.channel !== "latest") {
 }
 
 if (!token) {
-  throw new Error("Missing Homebrew tap token: set HOMEBREW_TAP_TOKEN, GITHUB_TOKEN, or GH_TOKEN")
+  console.log("homebrew tap: skip missing HOMEBREW_TAP_TOKEN/GITHUB_TOKEN/GH_TOKEN")
+  process.exit(0)
 }
 
 const headers = {
