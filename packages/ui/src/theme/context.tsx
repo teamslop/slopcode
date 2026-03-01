@@ -3,6 +3,7 @@ import { createStore } from "solid-js/store"
 import type { DesktopTheme } from "./types"
 import { resolveThemeVariant, themeToCss } from "./resolve"
 import { DEFAULT_THEMES } from "./default-themes"
+import { DEFAULT_THEME_ID, isDefaultTheme, resolveThemeId } from "./ids"
 import { createSimpleContext } from "../context/helper"
 
 export type ColorScheme = "light" | "dark" | "system"
@@ -14,7 +15,7 @@ const STORAGE_KEYS = {
   THEME_CSS_DARK: "slopcode-theme-css-dark",
 } as const
 
-const THEME_STYLE_ID = "oc-theme"
+const THEME_STYLE_ID = "sc-theme"
 
 function ensureThemeStyleElement(): HTMLStyleElement {
   const existing = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null
@@ -35,7 +36,7 @@ function applyThemeCss(theme: DesktopTheme, themeId: string, mode: "light" | "da
   const tokens = resolveThemeVariant(variant, isDark)
   const css = themeToCss(tokens)
 
-  if (themeId !== "oc-1") {
+  if (!isDefaultTheme(themeId)) {
     try {
       localStorage.setItem(isDark ? STORAGE_KEYS.THEME_CSS_DARK : STORAGE_KEYS.THEME_CSS_LIGHT, css)
     } catch {}
@@ -47,14 +48,14 @@ function applyThemeCss(theme: DesktopTheme, themeId: string, mode: "light" | "da
   ${css}
 }`
 
-  document.getElementById("oc-theme-preload")?.remove()
+  document.getElementById("sc-theme-preload")?.remove()
   ensureThemeStyleElement().textContent = fullCss
   document.documentElement.dataset.theme = themeId
   document.documentElement.dataset.colorScheme = mode
 }
 
 function cacheThemeVariants(theme: DesktopTheme, themeId: string) {
-  if (themeId === "oc-1") return
+  if (isDefaultTheme(themeId)) return
   for (const mode of ["light", "dark"] as const) {
     const isDark = mode === "dark"
     const variant = isDark ? theme.dark : theme.light
@@ -71,7 +72,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   init: (props: { defaultTheme?: string }) => {
     const [store, setStore] = createStore({
       themes: DEFAULT_THEMES as Record<string, DesktopTheme>,
-      themeId: props.defaultTheme ?? "oc-1",
+      themeId: resolveThemeId(props.defaultTheme ?? DEFAULT_THEME_ID),
       colorScheme: "system" as ColorScheme,
       mode: getSystemMode(),
       previewThemeId: null as string | null,
@@ -90,8 +91,12 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
 
       const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME_ID)
       const savedScheme = localStorage.getItem(STORAGE_KEYS.COLOR_SCHEME) as ColorScheme | null
-      if (savedTheme && store.themes[savedTheme]) {
-        setStore("themeId", savedTheme)
+      const resolvedSavedTheme = savedTheme ? resolveThemeId(savedTheme) : undefined
+      if (resolvedSavedTheme && store.themes[resolvedSavedTheme]) {
+        setStore("themeId", resolvedSavedTheme)
+        if (savedTheme !== resolvedSavedTheme) {
+          localStorage.setItem(STORAGE_KEYS.THEME_ID, resolvedSavedTheme)
+        }
       }
       if (savedScheme) {
         setStore("colorScheme", savedScheme)
@@ -113,14 +118,15 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     })
 
     const setTheme = (id: string) => {
-      const theme = store.themes[id]
+      const resolved = resolveThemeId(id)
+      const theme = store.themes[resolved]
       if (!theme) {
         console.warn(`Theme "${id}" not found`)
         return
       }
-      setStore("themeId", id)
-      localStorage.setItem(STORAGE_KEYS.THEME_ID, id)
-      cacheThemeVariants(theme, id)
+      setStore("themeId", resolved)
+      localStorage.setItem(STORAGE_KEYS.THEME_ID, resolved)
+      cacheThemeVariants(theme, resolved)
     }
 
     const setColorScheme = (scheme: ColorScheme) => {
@@ -138,15 +144,16 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       setColorScheme,
       registerTheme: (theme: DesktopTheme) => setStore("themes", theme.id, theme),
       previewTheme: (id: string) => {
-        const theme = store.themes[id]
+        const resolved = resolveThemeId(id)
+        const theme = store.themes[resolved]
         if (!theme) return
-        setStore("previewThemeId", id)
+        setStore("previewThemeId", resolved)
         const previewMode = store.previewScheme
           ? store.previewScheme === "system"
             ? getSystemMode()
             : store.previewScheme
           : store.mode
-        applyThemeCss(theme, id, previewMode)
+        applyThemeCss(theme, resolved, previewMode)
       },
       previewColorScheme: (scheme: ColorScheme) => {
         setStore("previewScheme", scheme)

@@ -427,7 +427,7 @@ slopcode.server.close()
 /mnt/c/
 /mnt/d/
 /models
-/oc
+/sc
 /slopcode
 /path
 /project

@@ -3,7 +3,7 @@ title: GitHub
 description: Bruk slopcode i GitHub-problemer og pull-forespørsler.
 ---
 
-SlopCode integreres med GitHub-arbeidsflyten din. Nevn `/slopcode` eller `/oc` i kommentaren din, og SlopCode vil utføre oppgaver i din GitHub Actions-løper.
+SlopCode integreres med GitHub-arbeidsflyten din. Nevn `/slopcode` eller `/sc` i kommentaren din, og SlopCode vil utføre oppgaver i din GitHub Actions-løper.
 
 ---
 
@@ -51,7 +51,7 @@ Eller du kan sette den opp manuelt.
    jobs:
      slopcode:
        if: |
-         contains(github.event.comment.body, '/oc') ||
+         contains(github.event.comment.body, '/sc') ||
          contains(github.event.comment.body, '/slopcode')
        runs-on: ubuntu-latest
        permissions:
@@ -107,8 +107,8 @@ SlopCode kan utløses av følgende GitHub-hendelser:
 
 | Hendelsestype                 | Utløst av                               | Detaljer                                                                                                                |
 | ----------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `issue_comment`               | Kommentar på sak eller PR               | Nevn `/slopcode` eller `/oc` i kommentaren din. SlopCode leser kontekst og kan opprette grener, åpne PR-er eller svare. |
-| `pull_request_review_comment` | Kommenter spesifikke kodelinjer i en PR | Nevn `/slopcode` eller `/oc` mens du ser gjennom koden. SlopCode mottar filbane, linjenummer og diff-kontekst.          |
+| `issue_comment`               | Kommentar på sak eller PR               | Nevn `/slopcode` eller `/sc` i kommentaren din. SlopCode leser kontekst og kan opprette grener, åpne PR-er eller svare. |
+| `pull_request_review_comment` | Kommenter spesifikke kodelinjer i en PR | Nevn `/slopcode` eller `/sc` mens du ser gjennom koden. SlopCode mottar filbane, linjenummer og diff-kontekst.          |
 | `issues`                      | Sak åpnet eller redigert                | Utløs SlopCode automatisk når saker opprettes eller endres. Krever `prompt` inngang.                                    |
 | `pull_request`                | PR åpnet eller oppdatert                | Utløs SlopCode automatisk når PR-er åpnes, synkroniseres eller gjenåpnes. Nyttig for automatiserte anmeldelser.         |
 | `schedule`                    | Cron-basert tidsplan                    | Kjør SlopCode etter en tidsplan. Krever `prompt` inngang. Utdata går til logger og PR (ingen sak å kommentere).         |
@@ -302,7 +302,7 @@ Du kan konfigurere til å bruke en annen triggerfrase enn `@slopcode`.
   Legg igjen følgende kommentar på en GitHub PR.
 
   ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /sc
   ```
 
   SlopCode vil implementere den forespurte endringen og committe den til samme PR.
@@ -313,7 +313,7 @@ Du kan konfigurere til å bruke en annen triggerfrase enn `@slopcode`.
 
   ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /sc add error handling here
   ```
 
   Når du kommenterer spesifikke linjer, mottar SlopCode:

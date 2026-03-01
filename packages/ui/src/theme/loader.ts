@@ -1,5 +1,6 @@
 import type { DesktopTheme, ResolvedTheme } from "./types"
 import { resolveThemeVariant, themeToCss } from "./resolve"
+import { isDefaultTheme, resolveThemeId } from "./ids"
 
 let activeTheme: DesktopTheme | null = null
 const THEME_STYLE_ID = "slopcode-theme"
@@ -19,7 +20,7 @@ export function applyTheme(theme: DesktopTheme, themeId?: string): void {
   activeTheme = theme
   const lightTokens = resolveThemeVariant(theme.light, false)
   const darkTokens = resolveThemeVariant(theme.dark, true)
-  const targetThemeId = themeId ?? theme.id
+  const targetThemeId = resolveThemeId(themeId ?? theme.id)
   const css = buildThemeCss(lightTokens, darkTokens, targetThemeId)
   const themeStyleElement = ensureLoaderStyleElement()
   themeStyleElement.textContent = css
@@ -27,11 +28,11 @@ export function applyTheme(theme: DesktopTheme, themeId?: string): void {
 }
 
 function buildThemeCss(light: ResolvedTheme, dark: ResolvedTheme, themeId: string): string {
-  const isDefaultTheme = themeId === "oc-1"
+  const isDefault = isDefaultTheme(themeId)
   const lightCss = themeToCss(light)
   const darkCss = themeToCss(dark)
 
-  if (isDefaultTheme) {
+  if (isDefault) {
     return `
 :root {
   color-scheme: light;

@@ -1,6 +1,6 @@
 import type { DesktopTheme } from "./types"
-import oc1ThemeJson from "./themes/oc-1.json"
-import oc2ThemeJson from "./themes/oc-2.json"
+import sc1ThemeJson from "./themes/sc-1.json"
+import sc2ThemeJson from "./themes/sc-2.json"
 import tokyoThemeJson from "./themes/tokyonight.json"
 import draculaThemeJson from "./themes/dracula.json"
 import monokaiThemeJson from "./themes/monokai.json"
@@ -16,8 +16,8 @@ import carbonfoxThemeJson from "./themes/carbonfox.json"
 import gruvboxThemeJson from "./themes/gruvbox.json"
 import auraThemeJson from "./themes/aura.json"
 
-export const oc1Theme = oc1ThemeJson as DesktopTheme
-export const oc2Theme = oc2ThemeJson as DesktopTheme
+export const sc1Theme = sc1ThemeJson as DesktopTheme
+export const sc2Theme = sc2ThemeJson as DesktopTheme
 export const tokyonightTheme = tokyoThemeJson as DesktopTheme
 export const draculaTheme = draculaThemeJson as DesktopTheme
 export const monokaiTheme = monokaiThemeJson as DesktopTheme
@@ -34,8 +34,8 @@ export const gruvboxTheme = gruvboxThemeJson as DesktopTheme
 export const auraTheme = auraThemeJson as DesktopTheme
 
 export const DEFAULT_THEMES: Record<string, DesktopTheme> = {
-  "oc-1": oc1Theme,
-  "oc-2": oc2Theme,
+  "sc-1": sc1Theme,
+  "sc-2": sc2Theme,
   aura: auraTheme,
   ayu: ayuTheme,
   carbonfox: carbonfoxTheme,

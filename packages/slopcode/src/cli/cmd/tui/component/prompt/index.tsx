@@ -1136,6 +1136,12 @@ export function Prompt(props: PromptProps) {
                     {keybind.print("history_previous")}/{keybind.print("history_next")}{" "}
                     <span style={{ fg: theme.textMuted }}>navigate prompt</span>
                   </text>
+                  <text fg={theme.text}>
+                    left/right <span style={{ fg: theme.textMuted }}>navigate trace</span>
+                  </text>
+                  <text fg={theme.text}>
+                    Space <span style={{ fg: theme.textMuted }}>expand</span>
+                  </text>
                 </Match>
                 <Match when={store.mode === "normal"}>
                   <Show when={local.model.variant.list().length > 0}>

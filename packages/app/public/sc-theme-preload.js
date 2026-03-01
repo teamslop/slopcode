@@ -1,5 +1,5 @@
 ;(function () {
-  var themeId = localStorage.getItem("slopcode-theme-id")
+  var themeId = localStorage.getItem("slopcode-theme-id") || ""
   if (!themeId) return
 
   var scheme = localStorage.getItem("slopcode-color-scheme") || "system"
@@ -9,12 +9,14 @@
   document.documentElement.dataset.theme = themeId
   document.documentElement.dataset.colorScheme = mode
 
-  if (themeId === "oc-1") return
+  if (themeId === "sc-1") return
 
-  var css = localStorage.getItem("slopcode-theme-css-" + themeId + "-" + mode)
+  var css =
+    localStorage.getItem("slopcode-theme-css-" + mode) ||
+    localStorage.getItem("slopcode-theme-css-" + themeId + "-" + mode)
   if (css) {
     var style = document.createElement("style")
-    style.id = "oc-theme-preload"
+    style.id = "sc-theme-preload"
     style.textContent =
       ":root{color-scheme:" +
       mode +

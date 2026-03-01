@@ -9,8 +9,8 @@ on:
 jobs:
   slopcode:
     if: |
-      contains(github.event.comment.body, ' /oc') ||
-      startsWith(github.event.comment.body, '/oc') ||
+      contains(github.event.comment.body, ' /sc') ||
+      startsWith(github.event.comment.body, '/sc') ||
       contains(github.event.comment.body, ' /slopcode') ||
       startsWith(github.event.comment.body, '/slopcode')
     runs-on: blacksmith-4vcpu-ubuntu-2404

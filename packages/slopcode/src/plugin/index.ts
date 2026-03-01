@@ -11,7 +11,7 @@ import { CodexAuthPlugin } from "./codex"
 import { Session } from "../session"
 import { NamedError } from "@slopcode-ai/util/error"
 import { CopilotAuthPlugin } from "./copilot"
-import { gitlabAuthPlugin as GitlabAuthPlugin } from "@gitlab/opencode-gitlab-auth"
+import { GitlabAuthPlugin } from "./gitlab"
 
 export namespace Plugin {
   const log = Log.create({ service: "plugin" })

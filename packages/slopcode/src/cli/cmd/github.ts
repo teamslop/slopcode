@@ -239,7 +239,7 @@ export const GithubInstallCommand = cmd({
                 `    1. Commit the \`${WORKFLOW_FILE}\` file and push`,
                 step2,
                 "",
-                "    3. Go to a GitHub issue and comment `/oc summarize` to see the agent in action",
+                "    3. Go to a GitHub issue and comment `/sc summarize` to see the agent in action",
                 "",
                 "   Learn more about the GitHub agent - https://slopcode.dev/docs/github/#usage-examples",
               ].join("\n"),
@@ -386,8 +386,8 @@ on:
 jobs:
   slopcode:
     if: |
-      contains(github.event.comment.body, ' /oc') ||
-      startsWith(github.event.comment.body, '/oc') ||
+      contains(github.event.comment.body, ' /sc') ||
+      startsWith(github.event.comment.body, '/sc') ||
       contains(github.event.comment.body, ' /slopcode') ||
       startsWith(github.event.comment.body, '/slopcode')
     runs-on: ubuntu-latest
@@ -761,7 +761,7 @@ export const GithubRunCommand = cmd({
         }
 
         const reviewContext = getReviewCommentContext()
-        const mentions = (process.env["MENTIONS"] || "/slopcode,/oc")
+        const mentions = (process.env["MENTIONS"] || "/slopcode,/sc")
           .split(",")
           .map((m) => m.trim().toLowerCase())
           .filter(Boolean)

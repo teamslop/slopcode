@@ -27,7 +27,7 @@ Leave the following comment on a GitHub issue. slopcode will create a new branch
 Leave the following comment on a GitHub PR. slopcode will implement the requested change and commit it to the same PR.
 
 ```
-Delete the attachment from S3 when the note is removed /oc
+Delete the attachment from S3 when the note is removed /sc
 ```
 
 #### Review specific code lines
@@ -36,7 +36,7 @@ Leave a comment directly on code lines in the PR's "Files" tab. slopcode will au
 
 ```
 [Comment on specific lines in Files tab]
-/oc add error handling here
+/sc add error handling here
 ```
 
 When commenting on specific lines, slopcode receives:
@@ -75,7 +75,7 @@ This will walk you through installing the GitHub app, creating the workflow, and
    jobs:
      slopcode:
        if: |
-         contains(github.event.comment.body, '/oc') ||
+         contains(github.event.comment.body, '/sc') ||
          contains(github.event.comment.body, '/slopcode')
        runs-on: ubuntu-latest
        permissions:

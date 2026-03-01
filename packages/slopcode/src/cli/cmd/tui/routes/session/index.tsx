@@ -83,6 +83,24 @@ import { useTuiConfig } from "../../context/tui-config"
 
 addDefaultParsers(parsers.parsers)
 
+const CUSTOM_TOOL_PARTS = new Set([
+  "bash",
+  "glob",
+  "read",
+  "grep",
+  "list",
+  "webfetch",
+  "codesearch",
+  "websearch",
+  "write",
+  "edit",
+  "task",
+  "apply_patch",
+  "todowrite",
+  "question",
+  "skill",
+])
+
 class CustomSpeedScroll implements ScrollAcceleration {
   constructor(private speed: number) {}
 
@@ -102,6 +120,8 @@ const context = createContext<{
   showDetails: () => boolean
   showGenericToolOutput: () => boolean
   diffWrapMode: () => "word" | "none"
+  isToolExpanded: (id: string) => boolean
+  toggleToolExpanded: (id: string) => void
   sync: ReturnType<typeof useSync>
   tui: ReturnType<typeof useTuiConfig>
 }>()
@@ -159,6 +179,17 @@ export function Session() {
   const [animationsEnabled, setAnimationsEnabled] = kv.signal("animations_enabled", true)
   const [showGenericToolOutput, setShowGenericToolOutput] = kv.signal("generic_tool_output_visibility", false)
   const [history, setHistory] = createSignal(false)
+  const [historyPart, setHistoryPart] = createSignal<string>()
+  const [expandedToolParts, setExpandedToolParts] = createSignal<Record<string, boolean>>({})
+
+  type HistoryTrace = {
+    partID: string
+    anchorID: string
+    kind: "tool" | "reasoning"
+    childSessionID?: string
+    expandable: boolean
+    y: number
+  }
 
   const wide = createMemo(() => dimensions().width > 120)
   const sidebarVisible = createMemo(() => {
@@ -234,9 +265,19 @@ export function Session() {
   // Allow exit when in child session (prompt is hidden)
   const exit = useExit()
 
+  const isToolExpanded = (id: string) => expandedToolParts()[id] === true
+
+  const toggleToolExpanded = (id: string) => {
+    setExpandedToolParts((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }))
+  }
+
   function setHistoryMode(value: boolean) {
     if (history() === value) return
     setHistory(value)
+    setHistoryPart(undefined)
 
     const current = promptRef.current
     if (!current) return
@@ -260,6 +301,8 @@ export function Session() {
       () => route.sessionID,
       () => {
         setHistoryMode(false)
+        setHistoryPart(undefined)
+        setExpandedToolParts({})
       },
       { defer: true },
     ),
@@ -317,6 +360,24 @@ export function Session() {
         evt.preventDefault()
         return
       }
+
+      if (evt.name === "left") {
+        moveHistoryTrace("prev")
+        evt.preventDefault()
+        return
+      }
+
+      if (evt.name === "right") {
+        moveHistoryTrace("next")
+        evt.preventDefault()
+        return
+      }
+
+      if (evt.name === "space") {
+        historyAction()
+        evt.preventDefault()
+        return
+      }
     }
 
     if (!session()?.parentID) return
@@ -324,16 +385,13 @@ export function Session() {
     exit()
   })
 
-  // Helper: Find next user prompt boundary in direction
-  const findNextVisiblePrompt = (direction: "next" | "prev"): string | null => {
-    const children = scroll.getChildren()
-    const messagesList = messages()
-    const scrollTop = scroll.y
-
-    const visiblePrompts = children
-      .filter((c) => {
-        if (!c.id) return false
-        const message = messagesList.find((m) => m.id === c.id)
+  const visiblePrompts = () => {
+    const list = messages()
+    return scroll
+      .getChildren()
+      .filter((child) => {
+        if (!child.id) return false
+        const message = list.find((item) => item.id === child.id)
         if (!message || message.role !== "user") return false
 
         const parts = sync.data.part[message.id]
@@ -342,23 +400,190 @@ export function Session() {
         return parts.some((part) => part && part.type === "text" && !part.synthetic && !part.ignored)
       })
       .sort((a, b) => a.y - b.y)
+  }
 
-    if (visiblePrompts.length === 0) return null
+  const findCurrentVisiblePrompt = () => {
+    const prompts = visiblePrompts()
+    if (prompts.length === 0) return null
+    const top = scroll.y + 1
+    return [...prompts].reverse().find((item) => item.y <= top)?.id ?? prompts[0]?.id ?? null
+  }
+
+  const findNextVisiblePrompt = (direction: "next" | "prev") => {
+    const prompts = visiblePrompts()
+    if (prompts.length === 0) return null
+    const top = scroll.y
 
     if (direction === "next") {
-      return visiblePrompts.find((c) => c.y > scrollTop + 1)?.id ?? null
+      return prompts.find((item) => item.y > top + 1)?.id ?? null
     }
 
-    return [...visiblePrompts].reverse().find((c) => c.y < scrollTop - 1)?.id ?? null
+    return [...prompts].reverse().find((item) => item.y < top - 1)?.id ?? null
   }
 
   const scrollToPrompt = (direction: "next" | "prev") => {
     const targetID = findNextVisiblePrompt(direction)
     if (!targetID) return
 
-    const child = scroll.getChildren().find((c) => c.id === targetID)
+    const child = scroll.getChildren().find((item) => item.id === targetID)
+    if (!child) return
+    setHistoryPart(undefined)
+    scroll.scrollBy(child.y - scroll.y - 1)
+  }
+
+  const historyTraces = (promptID: string): HistoryTrace[] => {
+    const list = messages()
+    const index = list.findIndex((item) => item.id === promptID && item.role === "user")
+    if (index < 0) return []
+
+    const turns = [] as AssistantMessage[]
+    for (let i = index + 1; i < list.length; i++) {
+      const item = list[i]
+      if (!item) continue
+      if (item.role === "user") break
+      if (item.role === "assistant" && item.parentID === promptID) {
+        turns.push(item as AssistantMessage)
+      }
+    }
+
+    const anchors = new Map(
+      scroll
+        .getChildren()
+        .filter((item) => !!item.id)
+        .map((item) => [item.id!, item]),
+    )
+
+    const result: HistoryTrace[] = []
+
+    for (const message of turns) {
+      const parts = sync.data.part[message.id] ?? []
+      for (const part of parts) {
+        if (part.type === "reasoning") {
+          const text = part.text.replace("[REDACTED]", "").trim()
+          if (!showThinking() || !text) continue
+
+          const anchorID = "text-" + part.id
+          const anchor = anchors.get(anchorID)
+          if (!anchor) continue
+
+          result.push({
+            partID: part.id,
+            anchorID,
+            kind: "reasoning",
+            expandable: false,
+            y: anchor.y,
+          })
+          continue
+        }
+
+        if (part.type !== "tool") continue
+        if (!showDetails() && part.state.status === "completed") continue
+
+        const anchorID = "tool-" + part.id
+        const anchor = anchors.get(anchorID)
+        if (!anchor) continue
+
+        const metadata = part.state.status === "pending" ? {} : (part.state.metadata ?? {})
+        const childSessionID = part.tool === "task" && typeof metadata.sessionId === "string" ? metadata.sessionId : undefined
+
+        const expandable = (() => {
+          if (part.tool === "bash") {
+            const output = typeof metadata.output === "string" ? stripAnsi(metadata.output.trim()) : ""
+            if (!output) return false
+            return output.split("\n").length > 10
+          }
+
+          if (CUSTOM_TOOL_PARTS.has(part.tool)) return false
+          if (!showGenericToolOutput()) return false
+          if (part.state.status !== "completed") return false
+
+          const output = part.state.output.trim()
+          if (!output) return false
+          return output.split("\n").length > 3
+        })()
+
+        result.push({
+          partID: part.id,
+          anchorID,
+          kind: "tool",
+          childSessionID,
+          expandable,
+          y: anchor.y,
+        })
+      }
+    }
+
+    return result.sort((a, b) => a.y - b.y)
+  }
+
+  const focusHistoryTrace = (trace: HistoryTrace) => {
+    setHistoryPart(trace.partID)
+    const child = scroll.getChildren().find((item) => item.id === trace.anchorID)
     if (!child) return
     scroll.scrollBy(child.y - scroll.y - 1)
+  }
+
+  const moveHistoryTrace = (direction: "next" | "prev") => {
+    const promptID = findCurrentVisiblePrompt()
+    if (!promptID) return
+
+    const traces = historyTraces(promptID)
+    if (traces.length === 0) return
+
+    const selectedID = historyPart()
+    const selected = selectedID ? traces.findIndex((item) => item.partID === selectedID) : -1
+    if (selected >= 0) {
+      const index = direction === "next" ? selected + 1 : selected - 1
+      const target = traces[index]
+      if (!target) return
+      focusHistoryTrace(target)
+      return
+    }
+
+    const top = scroll.y + 1
+    if (direction === "next") {
+      const next = traces.find((item) => item.y > top)
+      if (!next) return
+      focusHistoryTrace(next)
+      return
+    }
+
+    const prev = [...traces].reverse().find((item) => item.y < top)
+    if (!prev) return
+    focusHistoryTrace(prev)
+  }
+
+  const historyAction = () => {
+    const promptID = findCurrentVisiblePrompt()
+    if (!promptID) return
+
+    const traces = historyTraces(promptID)
+    if (traces.length === 0) return
+
+    const current = (() => {
+      const selectedID = historyPart()
+      if (selectedID) {
+        const selected = traces.find((item) => item.partID === selectedID)
+        if (selected) return selected
+      }
+
+      const top = scroll.y + 1
+      return traces.find((item) => item.y >= top) ?? traces.at(-1)
+    })()
+
+    if (!current) return
+    setHistoryPart(current.partID)
+
+    if (current.childSessionID) {
+      navigate({
+        type: "session",
+        sessionID: current.childSessionID,
+      })
+      return
+    }
+
+    if (!current.expandable) return
+    toggleToolExpanded(current.partID)
   }
 
   // Helper: Find next visible message boundary in direction
@@ -1135,6 +1360,8 @@ export function Session() {
         showDetails,
         showGenericToolOutput,
         diffWrapMode,
+        isToolExpanded,
+        toggleToolExpanded,
         sync,
         tui: tuiConfig,
       }}
@@ -1673,7 +1900,7 @@ function GenericTool(props: ToolProps<any>) {
   const { theme } = useTheme()
   const ctx = use()
   const output = createMemo(() => props.output?.trim() ?? "")
-  const [expanded, setExpanded] = createSignal(false)
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
   const lines = createMemo(() => output().split("\n"))
   const maxLines = 3
   const overflow = createMemo(() => lines().length > maxLines)
@@ -1694,7 +1921,7 @@ function GenericTool(props: ToolProps<any>) {
       <BlockTool
         title={`# ${props.tool} ${input(props.input)}`}
         part={props.part}
-        onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
+        onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
       >
         <box gap={1}>
           <text fg={theme.text}>{limited()}</text>
@@ -1754,6 +1981,7 @@ function InlineTool(props: {
 
   return (
     <box
+      id={"tool-" + props.part.id}
       marginTop={margin()}
       paddingLeft={3}
       renderBefore={function () {
@@ -1804,6 +2032,7 @@ function BlockTool(props: {
   const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
   return (
     <box
+      id={props.part ? "tool-" + props.part.id : undefined}
       border={["left"]}
       paddingTop={1}
       paddingBottom={1}
@@ -1840,10 +2069,11 @@ function BlockTool(props: {
 
 function Bash(props: ToolProps<typeof BashTool>) {
   const { theme } = useTheme()
+  const ctx = use()
   const sync = useSync()
   const isRunning = createMemo(() => props.part.state.status === "running")
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
-  const [expanded, setExpanded] = createSignal(false)
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
   const lines = createMemo(() => output().split("\n"))
   const overflow = createMemo(() => lines().length > 10)
   const limited = createMemo(() => {
@@ -1883,7 +2113,7 @@ function Bash(props: ToolProps<typeof BashTool>) {
           title={title()}
           part={props.part}
           spinner={isRunning()}
-          onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
         >
           <box gap={1}>
             <text fg={theme.text}>$ {props.input.command}</text>

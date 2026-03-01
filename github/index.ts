@@ -243,8 +243,8 @@ function createSlopcode() {
 function assertPayloadKeyword() {
   const payload = useContext().payload as IssueCommentEvent | PullRequestReviewCommentEvent
   const body = payload.comment.body.trim()
-  if (!body.match(/(?:^|\s)(?:\/slopcode|\/oc)(?=$|\s)/)) {
-    throw new Error("Comments must mention `/slopcode` or `/oc`")
+  if (!body.match(/(?:^|\s)(?:\/slopcode|\/sc)(?=$|\s)/)) {
+    throw new Error("Comments must mention `/slopcode` or `/sc`")
   }
 }
 
@@ -417,19 +417,19 @@ async function getUserPrompt() {
 
   let prompt = (() => {
     const body = payload.comment.body.trim()
-    if (body === "/slopcode" || body === "/oc") {
+    if (body === "/slopcode" || body === "/sc") {
       if (reviewContext) {
         return `Review this code change and suggest improvements for the commented lines:\n\nFile: ${reviewContext.file}\nLines: ${reviewContext.line}\n\n${reviewContext.diffHunk}`
       }
       return "Summarize this thread"
     }
-    if (body.includes("/slopcode") || body.includes("/oc")) {
+    if (body.includes("/slopcode") || body.includes("/sc")) {
       if (reviewContext) {
         return `${body}\n\nContext: You are reviewing a comment on file "${reviewContext.file}" at line ${reviewContext.line}.\n\nDiff context:\n${reviewContext.diffHunk}`
       }
       return body
     }
-    throw new Error("Comments must mention `/slopcode` or `/oc`")
+    throw new Error("Comments must mention `/slopcode` or `/sc`")
   })()
 
   // Handle images
