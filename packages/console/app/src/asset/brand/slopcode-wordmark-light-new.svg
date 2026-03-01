@@ -1,8 +1,0 @@
-<svg width="640" height="115" viewBox="0 0 640 115" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path
-    d="M66 16H0V30H66V16ZM17 30H0V47H17V30ZM66 47H0V60H66V47ZM66 60H49V77H66V60ZM66 77H0V98H66V77Z"
-    fill="#656363"
-  />
-  <path d="M49 60H17V77H49V60Z" fill="#CFCECD" />
-  <text x="95" y="76" fill="#656363" font-family="'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif" font-size="62" font-weight="700" letter-spacing="1">SlopCode</text>
-</svg>

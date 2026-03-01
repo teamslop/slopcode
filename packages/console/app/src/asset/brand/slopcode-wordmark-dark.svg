@@ -1,5 +1,8 @@
 <svg width="641" height="115" viewBox="0 0 641 115" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="0" y="16" width="66" height="82" fill="#B7B1B1"/>
-  <rect x="16" y="33" width="33" height="33" fill="#4B4646"/>
+  <path
+    d="M66 16H0V30H66V16ZM17 30H0V47H17V30ZM66 47H0V60H66V47ZM66 60H49V77H66V60ZM66 77H0V98H66V77Z"
+    fill="#B7B1B1"
+  />
+  <path d="M49 60H17V77H49V60Z" fill="#4B4646" />
   <text x="95" y="76" fill="#F1ECEC" font-family="'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif" font-size="62" font-weight="700" letter-spacing="1">SlopCode</text>
 </svg>
