@@ -158,6 +158,7 @@ export function Session() {
   const [diffWrapMode] = kv.signal<"word" | "none">("diff_wrap_mode", "word")
   const [animationsEnabled, setAnimationsEnabled] = kv.signal("animations_enabled", true)
   const [showGenericToolOutput, setShowGenericToolOutput] = kv.signal("generic_tool_output_visibility", false)
+  const [history, setHistory] = createSignal(false)
 
   const wide = createMemo(() => dimensions().width > 120)
   const sidebarVisible = createMemo(() => {
@@ -233,6 +234,37 @@ export function Session() {
   // Allow exit when in child session (prompt is hidden)
   const exit = useExit()
 
+  function setHistoryMode(value: boolean) {
+    if (history() === value) return
+    setHistory(value)
+
+    const current = promptRef.current
+    if (!current) return
+
+    if (value) {
+      current.blur()
+      return
+    }
+
+    if (session()?.parentID) return
+    if (permissions().length > 0 || questions().length > 0) return
+    current.focus()
+  }
+
+  function toggleHistoryMode() {
+    setHistoryMode(!history())
+  }
+
+  createEffect(
+    on(
+      () => route.sessionID,
+      () => {
+        setHistoryMode(false)
+      },
+      { defer: true },
+    ),
+  )
+
   createEffect(() => {
     const title = Locale.truncate(session()?.title ?? "", 50)
     const pad = (text: string) => text.padEnd(10, " ")
@@ -254,11 +286,80 @@ export function Session() {
   })
 
   useKeyboard((evt) => {
-    if (!session()?.parentID) return
-    if (keybind.match("app_exit", evt)) {
-      exit()
+    if (dialog.stack.length > 0) return
+
+    if (keybind.match("history_mode_toggle", evt)) {
+      const current = promptRef.current
+
+      if (
+        !history() &&
+        current?.focused &&
+        current.current.input.length > 0 &&
+        keybind.match("input_newline", evt)
+      ) {
+        return
+      }
+
+      toggleHistoryMode()
+      evt.preventDefault()
+      return
     }
+
+    if (history()) {
+      if (keybind.match("history_previous", evt)) {
+        scrollToPrompt("prev")
+        evt.preventDefault()
+        return
+      }
+
+      if (keybind.match("history_next", evt)) {
+        scrollToPrompt("next")
+        evt.preventDefault()
+        return
+      }
+    }
+
+    if (!session()?.parentID) return
+    if (!keybind.match("app_exit", evt)) return
+    exit()
   })
+
+  // Helper: Find next user prompt boundary in direction
+  const findNextVisiblePrompt = (direction: "next" | "prev"): string | null => {
+    const children = scroll.getChildren()
+    const messagesList = messages()
+    const scrollTop = scroll.y
+
+    const visiblePrompts = children
+      .filter((c) => {
+        if (!c.id) return false
+        const message = messagesList.find((m) => m.id === c.id)
+        if (!message || message.role !== "user") return false
+
+        const parts = sync.data.part[message.id]
+        if (!parts || !Array.isArray(parts)) return false
+
+        return parts.some((part) => part && part.type === "text" && !part.synthetic && !part.ignored)
+      })
+      .sort((a, b) => a.y - b.y)
+
+    if (visiblePrompts.length === 0) return null
+
+    if (direction === "next") {
+      return visiblePrompts.find((c) => c.y > scrollTop + 1)?.id ?? null
+    }
+
+    return [...visiblePrompts].reverse().find((c) => c.y < scrollTop - 1)?.id ?? null
+  }
+
+  const scrollToPrompt = (direction: "next" | "prev") => {
+    const targetID = findNextVisiblePrompt(direction)
+    if (!targetID) return
+
+    const child = scroll.getChildren().find((c) => c.id === targetID)
+    if (!child) return
+    scroll.scrollBy(child.y - scroll.y - 1)
+  }
 
   // Helper: Find next visible message boundary in direction
   const findNextVisibleMessage = (direction: "next" | "prev"): string | null => {
@@ -436,6 +537,18 @@ export function Session() {
             sessionID={route.sessionID}
           />
         ))
+      },
+    },
+    {
+      title: history() ? "Exit history mode" : "Enter history mode",
+      value: "session.history.toggle",
+      category: "Session",
+      slash: {
+        name: "history",
+      },
+      onSelect: (dialog) => {
+        toggleHistoryMode()
+        dialog.clear()
       },
     },
     {
