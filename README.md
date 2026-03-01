@@ -54,6 +54,8 @@ scoop install slopcode             # Windows
 choco install slopcode             # Windows
 brew install teamslop/slopcode/slopcode # macOS and Linux (recommended, always up to date)
 brew install slopcode              # macOS and Linux (official brew formula, updated less)
+curl -LO https://github.com/teamslop/slopcode/releases/latest/download/slopcode-linux-amd64.deb && sudo apt install ./slopcode-linux-amd64.deb # Debian/Ubuntu (amd64)
+curl -LO https://github.com/teamslop/slopcode/releases/latest/download/slopcode-linux-arm64.deb && sudo apt install ./slopcode-linux-arm64.deb # Debian/Ubuntu (arm64)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
 mise use -g slopcode               # Any OS

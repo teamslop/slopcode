@@ -136,6 +136,7 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
       yarn: "yarn global remove slopcode",
       nix: nix ? `nix profile remove ${nix}` : "nix profile remove github:teamslop/slopcode#slopcode",
       brew: "brew uninstall slopcode",
+      apt: "sudo apt-get remove -y slopcode",
       choco: "choco uninstall slopcode",
       scoop: "scoop uninstall slopcode",
     }
@@ -189,6 +190,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
       yarn: ["yarn", "global", "remove", "slopcode"],
       nix: nix ? ["nix", "profile", "remove", nix] : ["nix", "profile", "remove", "github:teamslop/slopcode#slopcode"],
       brew: ["brew", "uninstall", "slopcode"],
+      apt: ["apt-get", "remove", "-y", "slopcode"],
       choco: ["choco", "uninstall", "slopcode"],
       scoop: ["scoop", "uninstall", "slopcode"],
     }
@@ -196,19 +198,44 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
     const cmd = cmds[method]
     if (cmd) {
       spinner.start(`Running ${cmd.join(" ")}...`)
+      const apt = () => {
+        const env = {
+          DEBIAN_FRONTEND: "noninteractive",
+          ...process.env,
+        }
+        if (typeof process.getuid === "function" && process.getuid() === 0) {
+          return $`apt-get remove -y slopcode`.env(env)
+        }
+        return $`sudo -n apt-get remove -y slopcode`.env(env)
+      }
       const result =
         method === "choco"
           ? await $`echo Y | choco uninstall slopcode -y -r`.quiet().nothrow()
-          : await $`${cmd}`.quiet().nothrow()
+          : method === "apt"
+            ? await apt().quiet().nothrow()
+            : await $`${cmd}`.quiet().nothrow()
       if (result.exitCode !== 0) {
         spinner.stop(`Package manager uninstall failed: exit code ${result.exitCode}`, 1)
+        const manual = method === "apt" ? "sudo apt-get remove -y slopcode" : cmd.join(" ")
+        const stderr = result.stderr.toString("utf8").toLowerCase()
         if (
           method === "choco" &&
           result.stdout.toString("utf8").includes("not running from an elevated command shell")
         ) {
           prompts.log.warn(`You may need to run '${cmd.join(" ")}' from an elevated command shell`)
+        } else if (
+          method === "apt" &&
+          [
+            "a password is required",
+            "not in the sudoers",
+            "permission denied",
+            "no tty present",
+            "command not found",
+          ].some((item) => stderr.includes(item))
+        ) {
+          prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)
         } else {
-          prompts.log.warn(`You may need to run manually: ${cmd.join(" ")}`)
+          prompts.log.warn(`You may need to run manually: ${manual}`)
         }
       } else {
         spinner.stop("Package removed")

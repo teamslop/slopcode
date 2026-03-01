@@ -19,6 +19,10 @@ export async function upgrade() {
   }
 
   if (method === "unknown") return
+  if (method === "apt") {
+    await Bus.publish(Installation.Event.UpdateAvailable, { version: latest })
+    return
+  }
   await Installation.upgrade(method, latest)
     .then(() => Bus.publish(Installation.Event.Updated, { version: latest }))
     .catch(() => {})

@@ -210,6 +210,58 @@ for (const item of targets) {
   binaries[name] = Script.version
 }
 
+const debVersion = (() => {
+  const version = Script.version.replace(/^v/, "")
+  if (!version) {
+    return "0.0.0-1"
+  }
+  if (version.includes(":")) {
+    return version
+  }
+  if (/-\d+$/.test(version)) {
+    return version
+  }
+  return `${version.replace(/-/g, "~")}-1`
+})()
+
+const debBuild = async (src: string, arch: "amd64" | "arm64") => {
+  const binary = path.join(dir, "dist", src, "bin", "slopcode")
+  if (!fs.existsSync(binary)) {
+    throw new Error(`Missing Debian source binary at ${binary}`)
+  }
+
+  const root = path.join(dir, "dist", `deb-${arch}`)
+  const binDir = path.join(root, "usr", "bin")
+  const controlDir = path.join(root, "DEBIAN")
+  const deb = path.join(dir, "dist", `slopcode-linux-${arch}.deb`)
+
+  await fs.promises.rm(root, { recursive: true, force: true })
+  await fs.promises.mkdir(binDir, { recursive: true })
+  await fs.promises.mkdir(controlDir, { recursive: true })
+
+  await $`cp ${binary} ${path.join(binDir, "slopcode")}`
+  await $`chmod 755 ${path.join(binDir, "slopcode")}`
+
+  await Bun.write(
+    path.join(controlDir, "control"),
+    [
+      "Package: slopcode",
+      `Version: ${debVersion}`,
+      "Section: utils",
+      "Priority: optional",
+      `Architecture: ${arch}`,
+      "Maintainer: SlopCode Team <support@slopcode.dev>",
+      "Depends: libc6, libstdc++6",
+      "Description: The open source AI coding agent",
+      " SlopCode is an open source AI coding agent focused on terminal workflows.",
+      "",
+    ].join("\n"),
+  )
+
+  await $`dpkg-deb --build --root-owner-group ${root} ${deb}`
+  await fs.promises.rm(root, { recursive: true, force: true })
+}
+
 if (Script.release) {
   const winget = `${pkg.name}-windows-x64-baseline`
   const exe = path.join(dir, "dist", winget, "bin", "slopcode.exe")
@@ -230,7 +282,18 @@ if (Script.release) {
 
     await $`zip -r ../../${key}.zip *`.cwd(`dist/${key}/bin`)
   }
-  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber --repo ${process.env.GH_REPO}`
+
+  if (process.platform === "linux") {
+    const dpkgDeb = (await $`bash -lc "command -v dpkg-deb"`.quiet().nothrow().text()).trim()
+    if (!dpkgDeb) {
+      throw new Error("dpkg-deb is required to build Debian packages")
+    }
+    await debBuild(`${pkg.name}-linux-x64-baseline`, "amd64")
+    await debBuild(`${pkg.name}-linux-arm64`, "arm64")
+    await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz ./dist/*.deb --clobber --repo ${process.env.GH_REPO}`
+  } else {
+    await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber --repo ${process.env.GH_REPO}`
+  }
 }
 
 export { binaries }

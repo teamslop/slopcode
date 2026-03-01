@@ -16,6 +16,58 @@ export namespace Installation {
   const log = Log.create({ service: "installation" })
   const nixMatch = /(^|[^a-z0-9])slopcode([^a-z0-9]|$)/i
 
+  const aptNormalizedVersion = (value: string) => {
+    const plain = value.trim().replace(/^v/, "")
+    if (!plain) return plain
+    const noEpoch = plain.includes(":") ? plain.split(":").slice(-1)[0] : plain
+    const upstream = noEpoch.replace(/-[^-]+$/, "")
+    return upstream.replace(/~/g, "-")
+  }
+
+  const aptPackageVersion = (value: string) => {
+    const plain = value.trim().replace(/^v/, "")
+    if (!plain) return plain
+    if (plain.includes(":")) return plain
+    if (/-\d+$/.test(plain)) return plain
+    return `${plain.replace(/-/g, "~")}-1`
+  }
+
+  const aptCandidate = (policy: string) => {
+    const match = policy.match(/^\s*Candidate:\s*(\S+)/m)
+    if (!match) {
+      return
+    }
+    const value = match[1]
+    if (value === "(none)") {
+      return
+    }
+    return value
+  }
+
+  const aptPolicy = () => $`apt-cache policy slopcode`.throws(false).quiet().text()
+
+  const aptNeedsPrivilege = (stderr: string) => {
+    const text = stderr.toLowerCase()
+    return (
+      text.includes("a password is required") ||
+      text.includes("not in the sudoers") ||
+      text.includes("permission denied") ||
+      text.includes("no tty present") ||
+      text.includes("command not found")
+    )
+  }
+
+  const aptUpgradeCommand = (pkg: string) => {
+    const env = {
+      DEBIAN_FRONTEND: "noninteractive",
+      ...process.env,
+    }
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      return $`apt-get install -y --only-upgrade ${pkg}`.env(env)
+    }
+    return $`sudo -n apt-get install -y --only-upgrade ${pkg}`.env(env)
+  }
+
   const nixVersionInstallable = (source: string) => {
     const normalized = source.startsWith("flake:") ? source.replace(/^flake:/, "") : source
     const arch = process.arch === "x64" ? "x86_64" : process.arch === "arm64" ? "aarch64" : process.arch
@@ -157,6 +209,10 @@ export namespace Installation {
         command: () => $`brew list --formula slopcode`.throws(false).quiet().text(),
       },
       {
+        name: "apt" as const,
+        command: () => $`dpkg-query -W -f='\${Package}' slopcode`.throws(false).quiet().text(),
+      },
+      {
         name: "scoop" as const,
         command: () => $`scoop list slopcode`.throws(false).quiet().text(),
       },
@@ -247,6 +303,13 @@ export namespace Installation {
         })
         break
       }
+      case "apt": {
+        const candidate = aptCandidate(await aptPolicy())
+        const version = candidate && aptNormalizedVersion(candidate) === target ? undefined : aptPackageVersion(target)
+        const pkg = version ? `slopcode=${version}` : "slopcode"
+        cmd = aptUpgradeCommand(pkg)
+        break
+      }
       case "choco":
         cmd = $`echo Y | choco upgrade slopcode --version=${target}`
         break
@@ -258,7 +321,13 @@ export namespace Installation {
     }
     const result = await cmd.quiet().throws(false)
     if (result.exitCode !== 0) {
-      const stderr = method === "choco" ? "not running from an elevated command shell" : result.stderr.toString("utf8")
+      const stderrText = result.stderr.toString("utf8")
+      const stderr =
+        method === "choco"
+          ? "not running from an elevated command shell"
+          : method === "apt" && aptNeedsPrivilege(stderrText)
+            ? "not running from a privileged shell"
+            : stderrText
       throw new UpgradeFailedError({
         stderr: stderr,
       })
@@ -294,6 +363,18 @@ export namespace Installation {
           return res.json()
         })
         .then((data: any) => data.versions.stable)
+    }
+
+    if (detectedMethod === "apt") {
+      const candidate = aptCandidate(await aptPolicy())
+      if (!candidate) {
+        return VERSION
+      }
+      const latest = aptNormalizedVersion(candidate)
+      if (!latest) {
+        return VERSION
+      }
+      return latest
     }
 
     if (detectedMethod === "nix") {
