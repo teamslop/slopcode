@@ -49,7 +49,7 @@
 curl -fsSL https://slopcode.dev/install | bash
 
 # Package managers
-npm i -g slopcode@latest        # or bun/pnpm/yarn
+npm i -g slopcode@latest        # or: bun install -g / pnpm add -g / yarn global add
 scoop install slopcode             # Windows
 choco install slopcode             # Windows
 brew install grappeggia/slopcode/slopcode # macOS and Linux (recommended, always up to date)

@@ -131,9 +131,9 @@ export default function Download() {
                 </code>
                 <CopyStatus />
               </button>
-              <button data-component="cli-row" onClick={handleCopyClick("bun add -g slopcode")}>
+              <button data-component="cli-row" onClick={handleCopyClick("bun install -g slopcode")}>
                 <code>
-                  bun add -g <strong>slopcode</strong>
+                  bun install -g <strong>slopcode</strong>
                 </code>
                 <CopyStatus />
               </button>

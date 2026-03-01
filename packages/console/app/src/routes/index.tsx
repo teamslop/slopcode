@@ -136,7 +136,7 @@ export default function Home() {
                   <Tabs.Content as="pre" data-slot="panel" value="bun">
                     <button data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
-                        <span data-slot="protocol">bun add -g </span>
+                        <span data-slot="protocol">bun install -g </span>
                         <span data-slot="highlight">slopcode</span>
                       </span>
                       <CopyStatus />
