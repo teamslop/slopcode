@@ -39,6 +39,7 @@ export type PromptProps = {
   sessionID?: string
   visible?: boolean
   disabled?: boolean
+  historyMode?: boolean
   onSubmit?: () => void
   ref?: (ref: PromptRef) => void
   hint?: JSX.Element
@@ -1127,6 +1128,15 @@ export function Prompt(props: PromptProps) {
           <Show when={status().type !== "retry"}>
             <box gap={2} flexDirection="row">
               <Switch>
+                <Match when={props.historyMode}>
+                  <text fg={theme.text}>
+                    {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>edit mode</span>
+                  </text>
+                  <text fg={theme.text}>
+                    {keybind.print("history_previous")}/{keybind.print("history_next")}{" "}
+                    <span style={{ fg: theme.textMuted }}>navigate prompt</span>
+                  </text>
+                </Match>
                 <Match when={store.mode === "normal"}>
                   <Show when={local.model.variant.list().length > 0}>
                     <text fg={theme.text}>

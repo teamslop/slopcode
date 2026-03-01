@@ -50,7 +50,6 @@ let arch = archMap[os.arch()]
 if (!arch) {
   arch = os.arch()
 }
-const base = "slopcode-" + platform + "-" + arch
 const binary = platform === "windows" ? "slopcode.exe" : "slopcode"
 
 function supportsAvx2() {
@@ -103,7 +102,8 @@ function supportsAvx2() {
   return false
 }
 
-const names = (() => {
+function names(prefix) {
+  const base = `${prefix}-${platform}-${arch}`
   const avx2 = supportsAvx2()
   const baseline = arch === "x64" && !avx2
 
@@ -146,14 +146,16 @@ const names = (() => {
     return [base, `${base}-baseline`]
   }
   return [base]
-})()
+}
+
+const resolvedNames = Array.from(new Set([...names("slopcode-bin"), ...names("slopcode")]))
 
 function findBinary(startDir) {
   let current = startDir
   for (;;) {
     const modules = path.join(current, "node_modules")
     if (fs.existsSync(modules)) {
-      for (const name of names) {
+      for (const name of resolvedNames) {
         const candidate = path.join(modules, name, "bin", binary)
         if (fs.existsSync(candidate)) return candidate
       }
@@ -170,7 +172,7 @@ const resolved = findBinary(scriptDir)
 if (!resolved) {
   console.error(
     "It seems that your package manager failed to install the right version of the slopcode CLI for your platform. You can try manually installing " +
-      names.map((n) => `\"${n}\"`).join(" or ") +
+      resolvedNames.map((n) => `\"${n}\"`).join(" or ") +
       " package",
   )
   process.exit(1)

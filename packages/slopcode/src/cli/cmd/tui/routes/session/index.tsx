@@ -1268,6 +1268,7 @@ export function Session() {
               </Show>
               <Prompt
                 visible={!session()?.parentID && permissions().length === 0 && questions().length === 0}
+                historyMode={history()}
                 ref={(r) => {
                   prompt = r
                   promptRef.set(r)

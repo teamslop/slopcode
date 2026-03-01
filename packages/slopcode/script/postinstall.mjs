@@ -49,23 +49,23 @@ function detectPlatformAndArch() {
 
 function findBinary() {
   const { platform, arch } = detectPlatformAndArch()
-  const packageName = `slopcode-${platform}-${arch}`
   const binaryName = platform === "windows" ? "slopcode.exe" : "slopcode"
+  const names = [`slopcode-bin-${platform}-${arch}`, `slopcode-${platform}-${arch}`]
 
-  try {
-    // Use require.resolve to find the package
-    const packageJsonPath = require.resolve(`${packageName}/package.json`)
-    const packageDir = path.dirname(packageJsonPath)
-    const binaryPath = path.join(packageDir, "bin", binaryName)
-
-    if (!fs.existsSync(binaryPath)) {
-      throw new Error(`Binary not found at ${binaryPath}`)
+  for (const name of names) {
+    try {
+      const packageJsonPath = require.resolve(`${name}/package.json`)
+      const packageDir = path.dirname(packageJsonPath)
+      const binaryPath = path.join(packageDir, "bin", binaryName)
+      if (fs.existsSync(binaryPath)) {
+        return { binaryPath, binaryName }
+      }
+    } catch {
+      continue
     }
-
-    return { binaryPath, binaryName }
-  } catch (error) {
-    throw new Error(`Could not find package ${packageName}: ${error.message}`)
   }
+
+  return
 }
 
 function prepareBinDirectory(binaryName) {
@@ -108,7 +108,12 @@ async function main() {
 
     // On non-Windows platforms, just verify the binary package exists
     // Don't replace the wrapper script - it handles binary execution
-    const { binaryPath } = findBinary()
+    const found = findBinary()
+    if (!found) {
+      console.log("No platform binary package detected during postinstall; runtime resolver will handle it")
+      return
+    }
+    const binaryPath = found.binaryPath
     const target = path.join(__dirname, "bin", ".slopcode")
     if (fs.existsSync(target)) fs.unlinkSync(target)
     try {
@@ -118,8 +123,8 @@ async function main() {
     }
     fs.chmodSync(target, 0o755)
   } catch (error) {
-    console.error("Failed to setup slopcode binary:", error.message)
-    process.exit(1)
+    console.error("Failed to setup slopcode binary cache:", error.message)
+    process.exit(0)
   }
 }
 
