@@ -178,8 +178,8 @@ if (!keyID) {
   throw new Error("Could not resolve apt signing key fingerprint")
 }
 
-await $`gpg --batch --yes --armor --export ${keyID} --output ${path.join(root, "slopcode.asc")}`.env(signEnv)
-await $`gpg --batch --yes --export ${keyID} --output ${path.join(root, "slopcode.gpg")}`.env(signEnv)
+await $`gpg --batch --yes --armor --output ${path.join(root, "slopcode.asc")} --export ${keyID}`.env(signEnv)
+await $`gpg --batch --yes --output ${path.join(root, "slopcode.gpg")} --export ${keyID}`.env(signEnv)
 
 const releaseGpg = path.join(root, "dists", dist, "Release.gpg")
 const inRelease = path.join(root, "dists", dist, "InRelease")
