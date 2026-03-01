@@ -334,12 +334,7 @@ export function Session() {
     if (keybind.match("history_mode_toggle", evt)) {
       const current = promptRef.current
 
-      if (
-        !history() &&
-        current?.focused &&
-        current.current.input.length > 0 &&
-        keybind.match("input_newline", evt)
-      ) {
+      if (!history() && current?.focused && current.current.input.length > 0 && keybind.match("input_newline", evt)) {
         return
       }
 
@@ -484,7 +479,8 @@ export function Session() {
         if (!anchor) continue
 
         const metadata = part.state.status === "pending" ? {} : (part.state.metadata ?? {})
-        const childSessionID = part.tool === "task" && typeof metadata.sessionId === "string" ? metadata.sessionId : undefined
+        const childSessionID =
+          part.tool === "task" && typeof metadata.sessionId === "string" ? metadata.sessionId : undefined
 
         const expandable = (() => {
           if (part.tool === "bash") {
