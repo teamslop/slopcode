@@ -18,6 +18,7 @@ ts-dist
 refs
 Session.vim
 slopcode.json
+!packages/slopcode/src/cli/cmd/tui/context/theme/slopcode.json
 a.out
 target
 .scripts
