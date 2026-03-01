@@ -7,7 +7,7 @@ import config from "./config.mjs"
 import { rehypeHeadingIds } from "@astrojs/markdown-remark"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import { spawnSync } from "child_process"
-import { writeFileSync } from "node:fs"
+import { copyFileSync, writeFileSync } from "node:fs"
 
 export default defineConfig({
   site: config.url,
@@ -91,15 +91,55 @@ function configSchema() {
     hooks: {
       "astro:build:done": async () => {
         console.log("generating config schema")
-        spawnSync("../slopcode/script/schema.ts", ["./dist/config.json", "./dist/tui.json"])
+        const bun =
+          process.execPath.includes("bun") || !process.env.HOME
+            ? process.execPath
+            : process.env.BUN_EXECUTABLE || `${process.env.HOME}/.bun/bin/bun`
+        const schema = spawnSync(bun, ["../slopcode/script/schema.ts", "./dist/config.json", "./dist/tui.json"], {
+          stdio: "inherit",
+        })
+        if (schema.status !== 0) {
+          throw new Error("failed to generate config schema")
+        }
+
+        copyFileSync("./dist/config.json", "./dist/docs/config.json")
+        copyFileSync("./dist/tui.json", "./dist/docs/tui.json")
+
         writeFileSync(
           "./dist/docs/vercel.json",
           JSON.stringify(
             {
+              redirects: [
+                {
+                  source: "/docs/:path+/",
+                  destination: "/docs/:path+",
+                  permanent: false,
+                },
+                {
+                  source: "/auth",
+                  destination: "https://opencode.ai/auth",
+                  permanent: false,
+                },
+                {
+                  source: "/auth/:path*",
+                  destination: "https://opencode.ai/auth/:path*",
+                  permanent: false,
+                },
+                {
+                  source: "/discord",
+                  destination: "https://discord.gg/slopcode",
+                  permanent: false,
+                },
+                {
+                  source: "/discord/",
+                  destination: "https://discord.gg/slopcode",
+                  permanent: false,
+                },
+              ],
               rewrites: [
                 { source: "/docs", destination: "/" },
                 { source: "/docs/", destination: "/" },
-                { source: "/docs/:path*", destination: "/:path*" },
+                { source: "/docs/:path+", destination: "/:path*" },
               ],
             },
             null,
