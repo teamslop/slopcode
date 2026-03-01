@@ -91,8 +91,8 @@ Kurulum betiği (install script), kurulum yolu (installation path) için aşağ�
 
 ```bash
 # Örnekler
-SLOPCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://slopcode.dev/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.dev/install | bash
+curl -fsSL https://slopcode.dev/install | SLOPCODE_INSTALL_DIR=/usr/local/bin bash
+curl -fsSL https://slopcode.dev/install | XDG_BIN_DIR=$HOME/.local/bin bash
 ```
 
 ### Ajanlar

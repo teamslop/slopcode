@@ -91,8 +91,8 @@ scoop bucket add extras; scoop install extras/slopcode-desktop
 
 ```bash
 # ตัวอย่าง
-SLOPCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://slopcode.dev/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://slopcode.dev/install | bash
+curl -fsSL https://slopcode.dev/install | SLOPCODE_INSTALL_DIR=/usr/local/bin bash
+curl -fsSL https://slopcode.dev/install | XDG_BIN_DIR=$HOME/.local/bin bash
 ```
 
 ### เอเจนต์
