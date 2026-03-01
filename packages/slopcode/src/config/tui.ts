@@ -1,4 +1,5 @@
 import { existsSync } from "fs"
+import path from "path"
 import z from "zod"
 import { mergeDeep, unique } from "remeda"
 import { Config } from "./config"
@@ -30,6 +31,7 @@ export namespace TuiConfig {
       ? []
       : await ConfigPaths.projectFiles("tui", Instance.directory, Instance.worktree)
     const directories = await ConfigPaths.directories(Instance.directory, Instance.worktree)
+    const legacyGlobalDir = path.join(path.dirname(Global.Path.config), "opencode")
     const custom = customPath()
     const managed = Config.managedConfigDir()
     await migrateTuiConfig({ directories, custom, managed })
@@ -39,6 +41,10 @@ export namespace TuiConfig {
       : await ConfigPaths.projectFiles("tui", Instance.directory, Instance.worktree)
 
     let result: Info = {}
+
+    for (const file of ConfigPaths.fileInDirectory(legacyGlobalDir, "tui")) {
+      result = mergeInfo(result, await loadFile(file))
+    }
 
     for (const file of ConfigPaths.fileInDirectory(Global.Path.config, "tui")) {
       result = mergeInfo(result, await loadFile(file))
@@ -54,7 +60,7 @@ export namespace TuiConfig {
     }
 
     for (const dir of unique(directories)) {
-      if (!dir.endsWith(".slopcode") && dir !== Flag.SLOPCODE_CONFIG_DIR) continue
+      if (!ConfigPaths.isConfigDirectory(dir) && dir !== Flag.SLOPCODE_CONFIG_DIR) continue
       for (const file of ConfigPaths.fileInDirectory(dir, "tui")) {
         result = mergeInfo(result, await loadFile(file))
       }

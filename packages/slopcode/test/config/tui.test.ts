@@ -80,6 +80,42 @@ test("migrates tui-specific keys from slopcode.json when tui.json does not exist
   })
 })
 
+test("migrates tui-specific keys from legacy opencode.json", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "opencode.json"),
+        JSON.stringify(
+          {
+            theme: "legacy-theme",
+            tui: { scroll_speed: 3 },
+            keybinds: { app_exit: "ctrl+x" },
+          },
+          null,
+          2,
+        ),
+      )
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await TuiConfig.get()
+      expect(config.theme).toBe("legacy-theme")
+      expect(config.scroll_speed).toBe(3)
+      expect(config.keybinds?.app_exit).toBe("ctrl+x")
+      expect(await Filesystem.exists(path.join(tmp.path, "opencode.json.tui-migration.bak"))).toBe(true)
+      expect(await Filesystem.exists(path.join(tmp.path, "tui.json"))).toBe(true)
+
+      const server = JSON.parse(await Filesystem.readText(path.join(tmp.path, "opencode.json")))
+      expect(server.theme).toBeUndefined()
+      expect(server.keybinds).toBeUndefined()
+      expect(server.tui).toBeUndefined()
+    },
+  })
+})
+
 test("migrates project legacy tui keys even when global tui.json already exists", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

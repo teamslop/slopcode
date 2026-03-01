@@ -1250,6 +1250,7 @@ export function Session() {
       value: "session.child.first",
       keybind: "session_child_first",
       category: "Session",
+      enabled: children().some((x) => !!x.parentID),
       hidden: true,
       onSelect: (dialog) => {
         moveFirstChild()
@@ -1261,6 +1262,7 @@ export function Session() {
       value: "session.parent",
       keybind: "session_parent",
       category: "Session",
+      enabled: !!session()?.parentID,
       hidden: true,
       onSelect: childSessionHandler((dialog) => {
         const parentID = session()?.parentID
@@ -1278,6 +1280,7 @@ export function Session() {
       value: "session.child.next",
       keybind: "session_child_cycle",
       category: "Session",
+      enabled: !!session()?.parentID,
       hidden: true,
       onSelect: childSessionHandler((dialog) => {
         moveChild(1)
@@ -1289,6 +1292,7 @@ export function Session() {
       value: "session.child.previous",
       keybind: "session_child_cycle_reverse",
       category: "Session",
+      enabled: !!session()?.parentID,
       hidden: true,
       onSelect: childSessionHandler((dialog) => {
         moveChild(-1)

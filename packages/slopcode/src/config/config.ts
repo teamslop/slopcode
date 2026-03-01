@@ -5,7 +5,7 @@ import { createRequire } from "module"
 import os from "os"
 import z from "zod"
 import { ModelsDev } from "../provider/models"
-import { mergeDeep, pipe, unique } from "remeda"
+import { mergeDeep, unique } from "remeda"
 import { Global } from "../global"
 import fs from "fs/promises"
 import { lazy } from "../util/lazy"
@@ -77,10 +77,10 @@ export namespace Config {
 
     // Config loading order (low -> high precedence): https://slopcode.dev/docs/config#precedence-order
     // 1) Remote .well-known/slopcode (org defaults)
-    // 2) Global config (~/.config/slopcode/slopcode.json{,c})
+    // 2) Global config (~/.config/slopcode/slopcode.json{,c} + legacy ~/.config/opencode/opencode.json{,c})
     // 3) Custom config (SLOPCODE_CONFIG)
-    // 4) Project config (slopcode.json{,c})
-    // 5) .slopcode directories (.slopcode/agents/, .slopcode/commands/, .slopcode/plugins/, .slopcode/slopcode.json{,c})
+    // 4) Project config (slopcode.json{,c} + legacy opencode.json{,c})
+    // 5) .slopcode/.opencode directories
     // 6) Inline config (SLOPCODE_CONFIG_CONTENT)
     // Managed config directory is enterprise-only and always overrides everything above.
     let result: Info = {}
@@ -133,7 +133,7 @@ export namespace Config {
 
     const directories = await ConfigPaths.directories(Instance.directory, Instance.worktree)
 
-    // .slopcode directory config overrides (project and global) config sources.
+    // .slopcode/.opencode directory config overrides project and global config sources.
     if (Flag.SLOPCODE_CONFIG_DIR) {
       log.debug("loading config from SLOPCODE_CONFIG_DIR", { path: Flag.SLOPCODE_CONFIG_DIR })
     }
@@ -141,10 +141,10 @@ export namespace Config {
     const deps = []
 
     for (const dir of unique(directories)) {
-      if (dir.endsWith(".slopcode") || dir === Flag.SLOPCODE_CONFIG_DIR) {
-        for (const file of ["slopcode.jsonc", "slopcode.json"]) {
-          log.debug(`loading config from ${path.join(dir, file)}`)
-          result = mergeConfigConcatArrays(result, await loadFile(path.join(dir, file)))
+      if (ConfigPaths.isConfigDirectory(dir) || dir === Flag.SLOPCODE_CONFIG_DIR) {
+        for (const file of ConfigPaths.fileInDirectory(dir, "slopcode")) {
+          log.debug(`loading config from ${file}`)
+          result = mergeConfigConcatArrays(result, await loadFile(file))
           // to satisfy the type checker
           result.agent ??= {}
           result.mode ??= {}
@@ -182,8 +182,8 @@ export namespace Config {
     // which would fail on system directories requiring elevated permissions
     // This way it only loads config file and not skills/plugins/commands
     if (existsSync(managedDir)) {
-      for (const file of ["slopcode.jsonc", "slopcode.json"]) {
-        result = mergeConfigConcatArrays(result, await loadFile(path.join(managedDir, file)))
+      for (const file of ConfigPaths.fileInDirectory(managedDir, "slopcode")) {
+        result = mergeConfigConcatArrays(result, await loadFile(file))
       }
     }
 
@@ -1186,16 +1186,21 @@ export namespace Config {
   export type Info = z.output<typeof Info>
 
   export const global = lazy(async () => {
-    let result: Info = pipe(
-      {},
-      mergeDeep(await loadFile(path.join(Global.Path.config, "config.json"))),
-      mergeDeep(await loadFile(path.join(Global.Path.config, "slopcode.json"))),
-      mergeDeep(await loadFile(path.join(Global.Path.config, "slopcode.jsonc"))),
-    )
+    const legacyDir = path.join(path.dirname(Global.Path.config), "opencode")
+    let result: Info = {}
 
-    const legacy = path.join(Global.Path.config, "config")
-    if (existsSync(legacy)) {
-      await import(pathToFileURL(legacy).href, {
+    for (const file of [
+      path.join(legacyDir, "config.json"),
+      ...ConfigPaths.fileInDirectory(legacyDir, "slopcode"),
+      path.join(Global.Path.config, "config.json"),
+      ...ConfigPaths.fileInDirectory(Global.Path.config, "slopcode"),
+    ]) {
+      result = mergeDeep(result, await loadFile(file))
+    }
+
+    for (const toml of [path.join(legacyDir, "config"), path.join(Global.Path.config, "config")]) {
+      if (!existsSync(toml)) continue
+      await import(pathToFileURL(toml).href, {
         with: {
           type: "toml",
         },
@@ -1206,7 +1211,7 @@ export namespace Config {
           result["$schema"] = "https://slopcode.dev/config.json"
           result = mergeDeep(result, rest)
           await Filesystem.writeJson(path.join(Global.Path.config, "config.json"), result)
-          await fs.unlink(legacy)
+          await fs.unlink(toml)
         })
         .catch(() => {})
     }
@@ -1304,9 +1309,19 @@ export namespace Config {
   }
 
   function globalConfigFile() {
-    const candidates = ["slopcode.jsonc", "slopcode.json", "config.json"].map((file) =>
-      path.join(Global.Path.config, file),
-    )
+    const legacyDir = path.join(path.dirname(Global.Path.config), "opencode")
+    const candidates = [
+      path.join(Global.Path.config, "slopcode.jsonc"),
+      path.join(Global.Path.config, "slopcode.json"),
+      path.join(Global.Path.config, "config.json"),
+      path.join(Global.Path.config, "opencode.jsonc"),
+      path.join(Global.Path.config, "opencode.json"),
+      path.join(legacyDir, "slopcode.jsonc"),
+      path.join(legacyDir, "slopcode.json"),
+      path.join(legacyDir, "opencode.jsonc"),
+      path.join(legacyDir, "opencode.json"),
+      path.join(legacyDir, "config.json"),
+    ]
     for (const file of candidates) {
       if (existsSync(file)) return file
     }

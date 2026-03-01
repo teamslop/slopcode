@@ -11,9 +11,11 @@ import { Filesystem } from "../../src/util/filesystem"
 
 // Get managed config directory from environment (set in preload.ts)
 const managedConfigDir = process.env.SLOPCODE_TEST_MANAGED_CONFIG_DIR!
+const legacyGlobalConfigDir = path.join(path.dirname(Global.Path.config), "opencode")
 
 afterEach(async () => {
   await fs.rm(managedConfigDir, { force: true, recursive: true }).catch(() => {})
+  await fs.rm(legacyGlobalConfigDir, { force: true, recursive: true }).catch(() => {})
 })
 
 async function writeManagedSettings(settings: object, filename = "slopcode.json") {
@@ -52,6 +54,117 @@ test("loads JSON config file", async () => {
       const config = await Config.get()
       expect(config.model).toBe("test/model")
       expect(config.username).toBe("testuser")
+    },
+  })
+})
+
+test("loads legacy opencode.json config file", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(
+        dir,
+        {
+          $schema: "https://opencode.ai/config.json",
+          model: "legacy/model",
+          username: "legacy-user",
+        },
+        "opencode.json",
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.model).toBe("legacy/model")
+      expect(config.username).toBe("legacy-user")
+    },
+  })
+})
+
+test("prefers slopcode.json over legacy opencode.json", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(
+        dir,
+        {
+          $schema: "https://opencode.ai/config.json",
+          model: "legacy/model",
+        },
+        "opencode.json",
+      )
+      await writeConfig(
+        dir,
+        {
+          $schema: "https://slopcode.dev/config.json",
+          model: "modern/model",
+        },
+        "slopcode.json",
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.model).toBe("modern/model")
+    },
+  })
+})
+
+test("loads config from .opencode directory", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      const opencodeDir = path.join(dir, ".opencode")
+      await fs.mkdir(opencodeDir, { recursive: true })
+      const agentDir = path.join(opencodeDir, "agent")
+      await fs.mkdir(agentDir, { recursive: true })
+
+      await Filesystem.write(
+        path.join(agentDir, "legacy.md"),
+        `---
+model: test/model
+---
+Legacy agent prompt`,
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.agent?.["legacy"]).toEqual(
+        expect.objectContaining({
+          name: "legacy",
+          model: "test/model",
+          prompt: "Legacy agent prompt",
+        }),
+      )
+    },
+  })
+})
+
+test("loads legacy global opencode config directory", async () => {
+  await using tmp = await tmpdir({
+    init: async () => {
+      await fs.mkdir(legacyGlobalConfigDir, { recursive: true })
+      await Filesystem.write(
+        path.join(legacyGlobalConfigDir, "opencode.json"),
+        JSON.stringify({
+          $schema: "https://opencode.ai/config.json",
+          model: "global/legacy",
+          username: "global-legacy-user",
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      Config.global.reset()
+      const config = await Config.get()
+      expect(config.model).toBe("global/legacy")
+      expect(config.username).toBe("global-legacy-user")
     },
   })
 })

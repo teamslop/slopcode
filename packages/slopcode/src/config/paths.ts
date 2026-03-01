@@ -8,12 +8,21 @@ import { Flag } from "@/flag/flag"
 import { Global } from "@/global"
 
 export namespace ConfigPaths {
+  const configDirs = [".opencode", ".slopcode"]
+
+  function names(name: string) {
+    if (name === "slopcode") return ["opencode", "slopcode"]
+    return [name]
+  }
+
   export async function projectFiles(name: string, directory: string, worktree: string) {
     const files: string[] = []
-    for (const file of [`${name}.jsonc`, `${name}.json`]) {
-      const found = await Filesystem.findUp(file, directory, worktree)
-      for (const resolved of found.toReversed()) {
-        files.push(resolved)
+    for (const base of names(name)) {
+      for (const file of [`${base}.jsonc`, `${base}.json`]) {
+        const found = await Filesystem.findUp(file, directory, worktree)
+        for (const resolved of found.toReversed()) {
+          files.push(resolved)
+        }
       }
     }
     return files
@@ -25,7 +34,7 @@ export namespace ConfigPaths {
       ...(!Flag.SLOPCODE_DISABLE_PROJECT_CONFIG
         ? await Array.fromAsync(
             Filesystem.up({
-              targets: [".slopcode"],
+              targets: configDirs,
               start: directory,
               stop: worktree,
             }),
@@ -33,7 +42,7 @@ export namespace ConfigPaths {
         : []),
       ...(await Array.fromAsync(
         Filesystem.up({
-          targets: [".slopcode"],
+          targets: configDirs,
           start: Global.Path.home,
           stop: Global.Path.home,
         }),
@@ -42,8 +51,12 @@ export namespace ConfigPaths {
     ]
   }
 
+  export function isConfigDirectory(dir: string) {
+    return configDirs.some((item) => dir.endsWith(item))
+  }
+
   export function fileInDirectory(dir: string, name: string) {
-    return [path.join(dir, `${name}.jsonc`), path.join(dir, `${name}.json`)]
+    return names(name).flatMap((item) => [path.join(dir, `${item}.jsonc`), path.join(dir, `${item}.json`)])
   }
 
   export const JsonError = NamedError.create(

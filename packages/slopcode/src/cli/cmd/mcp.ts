@@ -381,11 +381,35 @@ export const McpLogoutCommand = cmd({
 })
 
 async function resolveConfigPath(baseDir: string, global = false) {
-  // Check for existing config files (prefer .jsonc over .json, check .slopcode/ subdirectory too)
-  const candidates = [path.join(baseDir, "slopcode.json"), path.join(baseDir, "slopcode.jsonc")]
+  // Check for existing config files in both slopcode and legacy opencode locations.
+  const candidates = [
+    path.join(baseDir, "slopcode.json"),
+    path.join(baseDir, "slopcode.jsonc"),
+    path.join(baseDir, "opencode.json"),
+    path.join(baseDir, "opencode.jsonc"),
+  ]
+
+  if (global) {
+    const legacyDir = path.join(path.dirname(baseDir), "opencode")
+    candidates.push(
+      path.join(legacyDir, "opencode.json"),
+      path.join(legacyDir, "opencode.jsonc"),
+      path.join(legacyDir, "slopcode.json"),
+      path.join(legacyDir, "slopcode.jsonc"),
+    )
+  }
 
   if (!global) {
-    candidates.push(path.join(baseDir, ".slopcode", "slopcode.json"), path.join(baseDir, ".slopcode", "slopcode.jsonc"))
+    candidates.push(
+      path.join(baseDir, ".slopcode", "slopcode.json"),
+      path.join(baseDir, ".slopcode", "slopcode.jsonc"),
+      path.join(baseDir, ".slopcode", "opencode.json"),
+      path.join(baseDir, ".slopcode", "opencode.jsonc"),
+      path.join(baseDir, ".opencode", "opencode.json"),
+      path.join(baseDir, ".opencode", "opencode.jsonc"),
+      path.join(baseDir, ".opencode", "slopcode.json"),
+      path.join(baseDir, ".opencode", "slopcode.jsonc"),
+    )
   }
 
   for (const candidate of candidates) {

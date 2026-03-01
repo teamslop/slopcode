@@ -7,6 +7,7 @@ import config from "./config.mjs"
 import { rehypeHeadingIds } from "@astrojs/markdown-remark"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import { spawnSync } from "child_process"
+import { writeFileSync } from "node:fs"
 
 export default defineConfig({
   site: config.url,
@@ -91,6 +92,20 @@ function configSchema() {
       "astro:build:done": async () => {
         console.log("generating config schema")
         spawnSync("../slopcode/script/schema.ts", ["./dist/config.json", "./dist/tui.json"])
+        writeFileSync(
+          "./dist/docs/vercel.json",
+          JSON.stringify(
+            {
+              rewrites: [
+                { source: "/docs", destination: "/" },
+                { source: "/docs/", destination: "/" },
+                { source: "/docs/:path*", destination: "/:path*" },
+              ],
+            },
+            null,
+            2,
+          ),
+        )
       },
     },
   }

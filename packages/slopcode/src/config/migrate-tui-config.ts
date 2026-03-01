@@ -135,10 +135,15 @@ async function backupAndStripLegacy(file: string, source: string) {
 }
 
 async function slopcodeFiles(input: { directories: string[]; managed: string }) {
+  const legacyGlobalDir = path.join(path.dirname(Global.Path.config), "opencode")
   const project = Flag.SLOPCODE_DISABLE_PROJECT_CONFIG
     ? []
     : await ConfigPaths.projectFiles("slopcode", Instance.directory, Instance.worktree)
-  const files = [...project, ...ConfigPaths.fileInDirectory(Global.Path.config, "slopcode")]
+  const files = [
+    ...project,
+    ...ConfigPaths.fileInDirectory(legacyGlobalDir, "slopcode"),
+    ...ConfigPaths.fileInDirectory(Global.Path.config, "slopcode"),
+  ]
   for (const dir of unique(input.directories)) {
     files.push(...ConfigPaths.fileInDirectory(dir, "slopcode"))
   }
