@@ -10,7 +10,7 @@ jobs:
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/review') &&
       contains(fromJson('["OWNER","MEMBER"]'), github.event.comment.author_association)
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
@@ -31,7 +31,20 @@ jobs:
 
       - uses: ./.github/actions/setup-bun
 
+      - name: Check required credentials
+        id: guard
+        env:
+          HAVE_ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' && 'true' || 'false' }}
+        run: |
+          if [ "$HAVE_ANTHROPIC_KEY" != "true" ]; then
+            echo "Skipping review bot: missing ANTHROPIC_API_KEY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Install slopcode
+        if: steps.guard.outputs.ready == 'true'
         run: curl -fsSL https://slopcode.dev/install | bash
 
       - name: Get PR details
@@ -44,6 +57,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check PR guidelines compliance
+        if: steps.guard.outputs.ready == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

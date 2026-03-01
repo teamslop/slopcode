@@ -2,7 +2,7 @@ const stage = process.env.SST_STAGE || "dev"
 
 export default {
   url: stage === "production" ? "https://slopcode.dev" : `https://${stage}.slopcode.ai`,
-  console: stage === "production" ? "https://opencode.ai/auth" : `https://${stage}.slopcode.ai/auth`,
+  console: stage === "production" ? "https://slopcode.dev/auth" : `https://${stage}.slopcode.ai/auth`,
   email: "contact@slopcode.dev",
   socialCard: "https://social-cards.sst.dev",
   github: "http://github.com/grappeggia/slopcode",

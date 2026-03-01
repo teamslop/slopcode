@@ -26,11 +26,9 @@ jobs:
       matrix:
         include:
           - system: x86_64-linux
-            runner: blacksmith-4vcpu-ubuntu-2404
-          - system: aarch64-linux
-            runner: blacksmith-4vcpu-ubuntu-2404-arm
+            runner: ubuntu-latest
           - system: x86_64-darwin
-            runner: macos-15-intel
+            runner: macos-13
           - system: aarch64-darwin
             runner: macos-latest
     runs-on: ${{ matrix.runner }}
@@ -77,7 +75,7 @@ jobs:
   update-hashes:
     needs: compute-hash
     if: github.event_name != 'pull_request'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -111,16 +109,14 @@ jobs:
 
           [ -f "$HASH_FILE" ] || echo '{"nodeModules":{}}' > "$HASH_FILE"
 
-          for SYSTEM in x86_64-linux aarch64-linux x86_64-darwin aarch64-darwin; do
-            FILE="hashes/hash-${SYSTEM}/hash.txt"
-            if [ -f "$FILE" ]; then
-              HASH="$(tr -d '[:space:]' < "$FILE")"
-              echo "${SYSTEM}: ${HASH}"
-              jq --arg sys "$SYSTEM" --arg h "$HASH" '.nodeModules[$sys] = $h' "$HASH_FILE" > tmp.json
-              mv tmp.json "$HASH_FILE"
-            else
-              echo "::warning::Missing hash for ${SYSTEM}"
-            fi
+          for FILE in hashes/hash-*/hash.txt; do
+            [ -f "$FILE" ] || continue
+            SYSTEM="${FILE#hashes/hash-}"
+            SYSTEM="${SYSTEM%/hash.txt}"
+            HASH="$(tr -d '[:space:]' < "$FILE")"
+            echo "${SYSTEM}: ${HASH}"
+            jq --arg sys "$SYSTEM" --arg h "$HASH" '.nodeModules[$sys] = $h' "$HASH_FILE" > tmp.json
+            mv tmp.json "$HASH_FILE"
           done
 
           cat "$HASH_FILE"

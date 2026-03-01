@@ -11,7 +11,7 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   deploy:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -20,6 +20,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+
+      - name: Check required secrets
+        id: guard
+        env:
+          HAVE_CLOUDFLARE: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && 'true' || 'false' }}
+          HAVE_PLANETSCALE_NAME: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_NAME != '' && 'true' || 'false' }}
+          HAVE_PLANETSCALE_TOKEN: ${{ secrets.PLANETSCALE_SERVICE_TOKEN != '' && 'true' || 'false' }}
+          HAVE_STRIPE_DEV: ${{ secrets.STRIPE_SECRET_KEY_DEV != '' && 'true' || 'false' }}
+          HAVE_STRIPE_PROD: ${{ secrets.STRIPE_SECRET_KEY_PROD != '' && 'true' || 'false' }}
+        run: |
+          if [ "$HAVE_CLOUDFLARE" != "true" ] || [ "$HAVE_PLANETSCALE_NAME" != "true" ] || [ "$HAVE_PLANETSCALE_TOKEN" != "true" ] || [ "$HAVE_STRIPE_DEV" != "true" ] || [ "$HAVE_STRIPE_PROD" != "true" ]; then
+            echo "Skipping deploy: required deploy secrets are not configured"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
 
       # Workaround for Pulumi version conflict:
       # GitHub runners have Pulumi 3.212.0+ pre-installed, which removed the -root flag
@@ -31,6 +47,7 @@ jobs:
         run: sudo rm -f /usr/local/bin/pulumi-language-nodejs
 
       - run: bun sst deploy --stage=${{ github.ref_name }}
+        if: steps.guard.outputs.ready == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PLANETSCALE_SERVICE_TOKEN_NAME: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_NAME }}

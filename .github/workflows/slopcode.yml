@@ -13,7 +13,7 @@ jobs:
       startsWith(github.event.comment.body, '/sc') ||
       contains(github.event.comment.body, ' /slopcode') ||
       startsWith(github.event.comment.body, '/slopcode')
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
@@ -25,7 +25,20 @@ jobs:
 
       - uses: ./.github/actions/setup-bun
 
+      - name: Check required credentials
+        id: guard
+        env:
+          HAVE_API_KEY: ${{ secrets.SLOPCODE_API_KEY != '' && 'true' || 'false' }}
+        run: |
+          if [ "$HAVE_API_KEY" != "true" ]; then
+            echo "Skipping /sc workflow: missing SLOPCODE_API_KEY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Run slopcode
+        if: steps.guard.outputs.ready == 'true'
         uses: grappeggia/slopcode/github@latest
         env:
           SLOPCODE_API_KEY: ${{ secrets.SLOPCODE_API_KEY }}

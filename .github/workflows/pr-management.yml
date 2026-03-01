@@ -6,7 +6,7 @@ on:
 
 jobs:
   check-duplicates:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
@@ -31,16 +31,29 @@ jobs:
         if: steps.team-check.outputs.is_team != 'true'
         uses: ./.github/actions/setup-bun
 
-      - name: Install dependencies
+      - name: Check required credentials
+        id: guard
         if: steps.team-check.outputs.is_team != 'true'
+        env:
+          HAVE_API_KEY: ${{ secrets.SLOPCODE_API_KEY != '' && 'true' || 'false' }}
+        run: |
+          if [ "$HAVE_API_KEY" != "true" ]; then
+            echo "Skipping duplicate PR check: missing SLOPCODE_API_KEY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        if: steps.team-check.outputs.is_team != 'true' && steps.guard.outputs.ready == 'true'
         run: bun install
 
       - name: Install slopcode
-        if: steps.team-check.outputs.is_team != 'true'
+        if: steps.team-check.outputs.is_team != 'true' && steps.guard.outputs.ready == 'true'
         run: curl -fsSL https://slopcode.dev/install | bash
 
       - name: Build prompt
-        if: steps.team-check.outputs.is_team != 'true'
+        if: steps.team-check.outputs.is_team != 'true' && steps.guard.outputs.ready == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -57,7 +70,7 @@ jobs:
           } > pr_info.txt
 
       - name: Check for duplicate PRs
-        if: steps.team-check.outputs.is_team != 'true'
+        if: steps.team-check.outputs.is_team != 'true' && steps.guard.outputs.ready == 'true'
         env:
           SLOPCODE_API_KEY: ${{ secrets.SLOPCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

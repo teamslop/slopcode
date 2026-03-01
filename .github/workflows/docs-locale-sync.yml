@@ -10,7 +10,7 @@ on:
 jobs:
   sync-locales:
     if: github.actor != 'slopcode-agent[bot]'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
@@ -24,8 +24,21 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
+      - name: Check required credentials
+        id: guard
+        env:
+          HAVE_API_KEY: ${{ secrets.SLOPCODE_API_KEY != '' && 'true' || 'false' }}
+        run: |
+          if [ "$HAVE_API_KEY" != "true" ]; then
+            echo "Skipping locale sync: missing SLOPCODE_API_KEY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Setup git committer
         id: committer
+        if: steps.guard.outputs.ready == 'true'
         uses: ./.github/actions/setup-git-committer
         with:
           slopcode-app-id: ${{ vars.SLOPCODE_APP_ID }}
@@ -33,6 +46,7 @@ jobs:
 
       - name: Compute changed English docs
         id: changes
+        if: steps.guard.outputs.ready == 'true'
         run: |
           FILES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'packages/web/src/content/docs/*.mdx' || true)
           if [ -z "$FILES" ]; then

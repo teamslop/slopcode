@@ -7,7 +7,7 @@ on:
 
 jobs:
   sync:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
@@ -20,17 +20,34 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
+      - name: Check required credentials
+        id: guard
+        env:
+          HAVE_API_KEY: ${{ secrets.SLOPCODE_API_KEY != '' && 'true' || 'false' }}
+          HAVE_APP_ID: ${{ vars.SLOPCODE_APP_ID != '' && 'true' || 'false' }}
+          HAVE_APP_SECRET: ${{ secrets.SLOPCODE_APP_SECRET != '' && 'true' || 'false' }}
+        run: |
+          if [ "$HAVE_API_KEY" != "true" ] || [ "$HAVE_APP_ID" != "true" ] || [ "$HAVE_APP_SECRET" != "true" ]; then
+            echo "Skipping beta sync: missing SLOPCODE_API_KEY or app credentials"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Setup Git Committer
         id: setup-git-committer
+        if: steps.guard.outputs.ready == 'true'
         uses: ./.github/actions/setup-git-committer
         with:
           slopcode-app-id: ${{ vars.SLOPCODE_APP_ID }}
           slopcode-app-secret: ${{ secrets.SLOPCODE_APP_SECRET }}
 
       - name: Install SlopCode
+        if: steps.guard.outputs.ready == 'true'
         run: bun i -g slopcode
 
       - name: Sync beta branch
+        if: steps.guard.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ steps.setup-git-committer.outputs.token }}
           SLOPCODE_API_KEY: ${{ secrets.SLOPCODE_API_KEY }}

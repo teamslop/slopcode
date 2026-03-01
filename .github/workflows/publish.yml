@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   version:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     if: github.repository == 'grappeggia/slopcode'
     steps:
       - uses: actions/checkout@v3
@@ -41,18 +41,32 @@ jobs:
 
       - uses: ./.github/actions/setup-bun
 
+      - name: Check required credentials
+        id: guard
+        env:
+          HAVE_API_KEY: ${{ secrets.SLOPCODE_API_KEY != '' && 'true' || 'false' }}
+        run: |
+          if [ "$HAVE_API_KEY" != "true" ]; then
+            echo "Skipping publish version step: missing SLOPCODE_API_KEY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Setup git committer
         id: committer
+        if: steps.guard.outputs.ready == 'true'
         uses: ./.github/actions/setup-git-committer
         with:
           slopcode-app-id: ${{ vars.SLOPCODE_APP_ID }}
           slopcode-app-secret: ${{ secrets.SLOPCODE_APP_SECRET }}
 
       - name: Install SlopCode
-        if: inputs.bump || inputs.version
+        if: steps.guard.outputs.ready == 'true' && (inputs.bump || inputs.version)
         run: bun i -g slopcode
 
       - id: version
+        if: steps.guard.outputs.ready == 'true'
         run: |
           ./script/version.ts
         env:
@@ -69,8 +83,8 @@ jobs:
 
   build-cli:
     needs: version
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    if: github.repository == 'grappeggia/slopcode'
+    runs-on: ubuntu-latest
+    if: github.repository == 'grappeggia/slopcode' && needs.version.outputs.version != ''
     steps:
       - uses: actions/checkout@v3
         with:
@@ -117,11 +131,11 @@ jobs:
             target: x86_64-apple-darwin
           - host: macos-latest
             target: aarch64-apple-darwin
-          - host: blacksmith-4vcpu-windows-2025
+          - host: windows-latest
             target: x86_64-pc-windows-msvc
-          - host: blacksmith-4vcpu-ubuntu-2404
+          - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - host: blacksmith-8vcpu-ubuntu-2404-arm
+          - host: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -245,7 +259,8 @@ jobs:
     needs:
       - version
       - build-cli
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
+    if: needs.version.outputs.version != ''
     steps:
       - uses: actions/checkout@v3
 
@@ -272,14 +287,28 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
+      - name: Check required credentials
+        id: guard
+        env:
+          HAVE_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' && 'true' || 'false' }}
+        run: |
+          if [ "$HAVE_NPM_TOKEN" != "true" ]; then
+            echo "Skipping publish: missing NPM_TOKEN"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Setup git committer
         id: committer
+        if: steps.guard.outputs.ready == 'true'
         uses: ./.github/actions/setup-git-committer
         with:
           slopcode-app-id: ${{ vars.SLOPCODE_APP_ID }}
           slopcode-app-secret: ${{ secrets.SLOPCODE_APP_SECRET }}
 
       - uses: actions/download-artifact@v4
+        if: steps.guard.outputs.ready == 'true'
         with:
           name: slopcode-cli
           path: packages/slopcode/dist
@@ -306,6 +335,7 @@ jobs:
           ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts || true
 
       - run: ./script/publish.ts
+        if: steps.guard.outputs.ready == 'true'
         env:
           # npm-only release destination
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
