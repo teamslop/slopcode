@@ -11,10 +11,18 @@ import { spawnSync } from "child_process"
 import { copyFileSync, mkdirSync, writeFileSync } from "node:fs"
 
 const onVercel = process.env.VERCEL === "1"
+const base = onVercel ? "/" : "/docs"
+const redirects = onVercel
+  ? {
+      "/docs": "/",
+      "/docs/[...slug]": "/[...slug]",
+    }
+  : undefined
 
 export default defineConfig({
   site: config.url,
-  base: "/docs",
+  base,
+  redirects,
   output: "server",
   adapter: onVercel
     ? vercel({})

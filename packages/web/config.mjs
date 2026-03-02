@@ -1,4 +1,4 @@
-const stage = process.env.SST_STAGE || "dev"
+const stage = process.env.SST_STAGE || (process.env.VERCEL_ENV === "production" ? "production" : "dev")
 
 export default {
   url: stage === "production" ? "https://slopcode.dev" : `https://${stage}.slopcode.ai`,
