@@ -2,7 +2,7 @@
   "name": "slopcode",
   "displayName": "slopcode",
   "description": "slopcode for VS Code",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "publisher": "sst-dev",
   "repository": {
     "type": "git",
