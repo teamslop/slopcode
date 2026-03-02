@@ -8,7 +8,7 @@ import config from "./config.mjs"
 import { rehypeHeadingIds } from "@astrojs/markdown-remark"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import { spawnSync } from "child_process"
-import { copyFileSync, mkdirSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdirSync } from "node:fs"
 
 const onVercel = process.env.VERCEL === "1"
 
@@ -113,48 +113,6 @@ function configSchema() {
         mkdirSync("./dist/docs", { recursive: true })
         copyFileSync("./dist/config.json", "./dist/docs/config.json")
         copyFileSync("./dist/tui.json", "./dist/docs/tui.json")
-
-        writeFileSync(
-          "./dist/docs/vercel.json",
-          JSON.stringify(
-            {
-              redirects: [
-                {
-                  source: "/docs/:path+/",
-                  destination: "/docs/:path+",
-                  permanent: false,
-                },
-                {
-                  source: "/auth",
-                  destination: "https://opencode.ai/auth",
-                  permanent: false,
-                },
-                {
-                  source: "/auth/:path*",
-                  destination: "https://opencode.ai/auth/:path*",
-                  permanent: false,
-                },
-                {
-                  source: "/discord",
-                  destination: "https://discord.gg/slopcode",
-                  permanent: false,
-                },
-                {
-                  source: "/discord/",
-                  destination: "https://discord.gg/slopcode",
-                  permanent: false,
-                },
-              ],
-              rewrites: [
-                { source: "/docs", destination: "/" },
-                { source: "/docs/", destination: "/" },
-                { source: "/docs/:path+", destination: "/:path*" },
-              ],
-            },
-            null,
-            2,
-          ),
-        )
       },
     },
   }
