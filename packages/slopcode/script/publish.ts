@@ -54,19 +54,58 @@ const skipPack = process.env.SLOPCODE_SKIP_PACK === "true"
 const registry = (process.env.npm_config_registry ?? "https://registry.npmjs.org").replace(/\/$/, "")
 const exists = (name: string, version: string) => fetch(`${registry}/${name}/${version}`).then((x) => x.ok)
 
+const readme = (await Bun.file("./README.npm.md").text()).trim()
+if (!readme) {
+  throw new Error("README.npm.md is missing or empty")
+}
+
+const metadata = {
+  description: "The open source AI coding agent.",
+  homepage: "https://slopcode.dev",
+  repository: {
+    type: "git",
+    url: "git+https://github.com/teamslop/slopcode.git",
+  },
+  bugs: {
+    url: "https://github.com/teamslop/slopcode/issues",
+  },
+  keywords: ["ai", "agent", "coding", "cli", "terminal", "tui", "developer-tools", "llm"],
+  funding: {
+    url: "https://github.com/sponsors/teamslop",
+  },
+}
+
+for (const key of ["description", "homepage", "repository", "bugs", "keywords"] as const) {
+  if (!metadata[key]) {
+    throw new Error(`Missing npm metadata field: ${key}`)
+  }
+}
+
+if (metadata.keywords.length === 0) {
+  throw new Error("Missing npm metadata field: keywords")
+}
+
 await $`rm -rf ./dist/${pkg.name}`
 await $`mkdir -p ./dist/${pkg.name}`
 await $`cp -r ./bin ./dist/${pkg.name}/bin`
 await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`
 await Bun.file(`./dist/${pkg.name}/LICENSE`).write(await Bun.file("../../LICENSE").text())
+await Bun.file(`./dist/${pkg.name}/README.md`).write(readme + "\n")
 
 await Bun.file(`./dist/${pkg.name}/package.json`).write(
   JSON.stringify(
     {
       name: pkg.name,
+      description: metadata.description,
+      homepage: metadata.homepage,
+      repository: metadata.repository,
+      bugs: metadata.bugs,
+      keywords: metadata.keywords,
+      funding: metadata.funding,
       bin: {
         [pkg.name]: `./bin/${pkg.name}`,
       },
+      files: ["bin", "postinstall.mjs", "README.md", "LICENSE"],
       scripts: {
         postinstall: "bun ./postinstall.mjs || node ./postinstall.mjs",
       },
@@ -116,7 +155,12 @@ const main = (async () => {
 await Promise.all([...tasks, main])
 
 if (Script.channel === "latest") {
-  await Promise.all([import("./publish-apt.ts"), import("./publish-homebrew.ts"), import("./publish-aur.ts")])
+  await Promise.all([
+    import("./publish-apt.ts"),
+    import("./publish-homebrew.ts"),
+    import("./publish-aur.ts"),
+    import("./publish-snap.ts"),
+  ])
 }
 
 // Supplemental channels sourced from npm artifacts.
