@@ -31,6 +31,11 @@ const run = async () => {
     return
   }
 
+  if (process.env.SLOPCODE_DISABLE_APT === "true") {
+    console.log("apt repo: disabled")
+    return
+  }
+
   if (!token || !key) {
     console.log("apt repo: skip missing APT_REPO_TOKEN/APT_REPO_GPG_PRIVATE_KEY")
     return

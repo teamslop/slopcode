@@ -155,7 +155,12 @@ const main = (async () => {
 await Promise.all([...tasks, main])
 
 if (Script.channel === "latest") {
-  const jobs = [import("./publish-apt.ts"), import("./publish-aur.ts"), import("./publish-snap.ts")]
+  const jobs = [import("./publish-aur.ts"), import("./publish-snap.ts")]
+  if (process.env.SLOPCODE_DISABLE_APT !== "true") {
+    jobs.push(import("./publish-apt.ts"))
+  } else {
+    console.log("apt repo: disabled")
+  }
   if (process.env.SLOPCODE_DISABLE_HOMEBREW !== "true") {
     jobs.push(import("./publish-homebrew.ts"))
   } else {
