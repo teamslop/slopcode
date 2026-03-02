@@ -96,13 +96,16 @@ function configSchema() {
     hooks: {
       "astro:build:done": async () => {
         console.log("generating config schema")
-        const bun =
-          process.execPath.includes("bun") || !process.env.HOME
-            ? process.execPath
-            : process.env.BUN_EXECUTABLE || `${process.env.HOME}/.bun/bin/bun`
-        const schema = spawnSync(bun, ["../slopcode/script/schema.ts", "./dist/config.json", "./dist/tui.json"], {
-          stdio: "inherit",
-        })
+        const schema = spawnSync(
+          process.env.BUN_EXECUTABLE || "bun",
+          ["../slopcode/script/schema.ts", "./dist/config.json", "./dist/tui.json"],
+          {
+            stdio: "inherit",
+          },
+        )
+        if (schema.error) {
+          throw schema.error
+        }
         if (schema.status !== 0) {
           throw new Error("failed to generate config schema")
         }
