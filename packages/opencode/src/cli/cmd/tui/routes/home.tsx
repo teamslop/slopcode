@@ -108,6 +108,7 @@ export function Home() {
               promptRef.set(r)
             }}
             hint={Hint}
+            showHistoryHint={false}
           />
         </box>
         <box height={4} minHeight={0} width="100%" maxWidth={75} alignItems="center" paddingTop={3} flexShrink={1}>

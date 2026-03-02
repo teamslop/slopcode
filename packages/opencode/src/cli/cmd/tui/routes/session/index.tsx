@@ -83,6 +83,24 @@ import { useTuiConfig } from "../../context/tui-config"
 
 addDefaultParsers(parsers.parsers)
 
+const CUSTOM_TOOL_PARTS = new Set([
+  "bash",
+  "glob",
+  "read",
+  "grep",
+  "list",
+  "webfetch",
+  "codesearch",
+  "websearch",
+  "write",
+  "edit",
+  "task",
+  "apply_patch",
+  "todowrite",
+  "question",
+  "skill",
+])
+
 class CustomSpeedScroll implements ScrollAcceleration {
   constructor(private speed: number) {}
 
@@ -101,7 +119,10 @@ const context = createContext<{
   showTimestamps: () => boolean
   showDetails: () => boolean
   showGenericToolOutput: () => boolean
+  isHistoryPartSelected: (id: string) => boolean
   diffWrapMode: () => "word" | "none"
+  isToolExpanded: (id: string) => boolean
+  toggleToolExpanded: (id: string) => void
   sync: ReturnType<typeof useSync>
   tui: ReturnType<typeof useTuiConfig>
 }>()
@@ -153,11 +174,23 @@ export function Session() {
   const [timestamps, setTimestamps] = kv.signal<"hide" | "show">("timestamps", "hide")
   const [showDetails, setShowDetails] = kv.signal("tool_details_visibility", true)
   const [showAssistantMetadata, setShowAssistantMetadata] = kv.signal("assistant_metadata_visibility", true)
-  const [showScrollbar, setShowScrollbar] = kv.signal("scrollbar_visible", true)
+  const [showScrollbar, setShowScrollbar] = kv.signal("scrollbar_visible", false)
   const [showHeader, setShowHeader] = kv.signal("header_visible", true)
   const [diffWrapMode] = kv.signal<"word" | "none">("diff_wrap_mode", "word")
   const [animationsEnabled, setAnimationsEnabled] = kv.signal("animations_enabled", true)
   const [showGenericToolOutput, setShowGenericToolOutput] = kv.signal("generic_tool_output_visibility", false)
+  const [history, setHistory] = createSignal(false)
+  const [historyPart, setHistoryPart] = createSignal<string>()
+  const [expandedToolParts, setExpandedToolParts] = createSignal<Record<string, boolean>>({})
+
+  type HistoryTrace = {
+    partID: string
+    anchorID: string
+    kind: "tool" | "reasoning"
+    childSessionID?: string
+    expandable: boolean
+    y: number
+  }
 
   const wide = createMemo(() => dimensions().width > 120)
   const sidebarVisible = createMemo(() => {
@@ -233,6 +266,51 @@ export function Session() {
   // Allow exit when in child session (prompt is hidden)
   const exit = useExit()
 
+  const isToolExpanded = (id: string) => expandedToolParts()[id] === true
+
+  const toggleToolExpanded = (id: string) => {
+    setExpandedToolParts((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }))
+  }
+
+  const isHistoryPartSelected = (id: string) => history() && historyPart() === id
+
+  function setHistoryMode(value: boolean) {
+    if (history() === value) return
+    setHistory(value)
+    setHistoryPart(undefined)
+
+    const current = promptRef.current
+    if (!current) return
+
+    if (value) {
+      current.blur()
+      return
+    }
+
+    if (session()?.parentID) return
+    if (permissions().length > 0 || questions().length > 0) return
+    current.focus()
+  }
+
+  function toggleHistoryMode() {
+    setHistoryMode(!history())
+  }
+
+  createEffect(
+    on(
+      () => route.sessionID,
+      () => {
+        setHistoryMode(false)
+        setHistoryPart(undefined)
+        setExpandedToolParts({})
+      },
+      { defer: true },
+    ),
+  )
+
   createEffect(() => {
     const title = Locale.truncate(session()?.title ?? "", 50)
     const pad = (text: string) => text.padEnd(10, " ")
@@ -254,11 +332,253 @@ export function Session() {
   })
 
   useKeyboard((evt) => {
-    if (!session()?.parentID) return
-    if (keybind.match("app_exit", evt)) {
-      exit()
+    if (dialog.stack.length > 0) return
+
+    if (keybind.match("history_mode_toggle", evt)) {
+      const current = promptRef.current
+
+      if (!history() && current?.focused && current.current.input.length > 0 && keybind.match("input_newline", evt)) {
+        return
+      }
+
+      toggleHistoryMode()
+      evt.preventDefault()
+      return
     }
+
+    if (history()) {
+      if (keybind.match("history_previous", evt)) {
+        scrollToPrompt("prev")
+        evt.preventDefault()
+        return
+      }
+
+      if (keybind.match("history_next", evt)) {
+        scrollToPrompt("next")
+        evt.preventDefault()
+        return
+      }
+
+      if (evt.name === "left") {
+        moveHistoryTrace("prev")
+        evt.preventDefault()
+        return
+      }
+
+      if (evt.name === "right") {
+        moveHistoryTrace("next")
+        evt.preventDefault()
+        return
+      }
+
+      if (evt.name === "space") {
+        historyAction()
+        evt.preventDefault()
+        return
+      }
+    }
+
+    if (!session()?.parentID) return
+    if (!keybind.match("app_exit", evt)) return
+    exit()
   })
+
+  const visiblePrompts = () => {
+    const list = messages()
+    return scroll
+      .getChildren()
+      .filter((child) => {
+        if (!child.id) return false
+        const message = list.find((item) => item.id === child.id)
+        if (!message || message.role !== "user") return false
+
+        const parts = sync.data.part[message.id]
+        if (!parts || !Array.isArray(parts)) return false
+
+        return parts.some((part) => part && part.type === "text" && !part.synthetic && !part.ignored)
+      })
+      .sort((a, b) => a.y - b.y)
+  }
+
+  const findNextVisiblePrompt = (direction: "next" | "prev") => {
+    const prompts = visiblePrompts()
+    if (prompts.length === 0) return null
+    const top = scroll.y
+
+    if (direction === "next") {
+      return prompts.find((item) => item.y > top + 1)?.id ?? null
+    }
+
+    return [...prompts].reverse().find((item) => item.y < top - 1)?.id ?? null
+  }
+
+  const scrollToPrompt = (direction: "next" | "prev") => {
+    const targetID = findNextVisiblePrompt(direction)
+    if (!targetID) return
+
+    const child = scroll.getChildren().find((item) => item.id === targetID)
+    if (!child) return
+    setHistoryPart(undefined)
+    scroll.scrollBy(child.y - scroll.y - 1)
+  }
+
+  const historyTraces = (promptID: string): HistoryTrace[] => {
+    const list = messages()
+    const index = list.findIndex((item) => item.id === promptID && item.role === "user")
+    if (index < 0) return []
+
+    const turns = [] as AssistantMessage[]
+    for (let i = index + 1; i < list.length; i++) {
+      const item = list[i]
+      if (!item) continue
+      if (item.role === "user") break
+      if (item.role === "assistant" && item.parentID === promptID) {
+        turns.push(item as AssistantMessage)
+      }
+    }
+
+    const anchors = new Map(
+      scroll
+        .getChildren()
+        .filter((item) => !!item.id)
+        .map((item) => [item.id!, item]),
+    )
+
+    const result: HistoryTrace[] = []
+
+    for (const message of turns) {
+      const parts = sync.data.part[message.id] ?? []
+      for (const part of parts) {
+        if (part.type === "reasoning") {
+          const text = part.text.replace("[REDACTED]", "").trim()
+          if (!showThinking() || !text) continue
+
+          const anchorID = "text-" + part.id
+          const anchor = anchors.get(anchorID)
+          if (!anchor) continue
+
+          result.push({
+            partID: part.id,
+            anchorID,
+            kind: "reasoning",
+            expandable: false,
+            y: anchor.y,
+          })
+          continue
+        }
+
+        if (part.type !== "tool") continue
+        if (!showDetails() && part.state.status === "completed") continue
+
+        const anchorID = "tool-" + part.id
+        const anchor = anchors.get(anchorID)
+        if (!anchor) continue
+
+        const metadata = part.state.status === "pending" ? {} : (part.state.metadata ?? {})
+        const childSessionID =
+          part.tool === "task" && typeof metadata.sessionId === "string" ? metadata.sessionId : undefined
+
+        const expandable = (() => {
+          if (part.tool === "bash") {
+            const output = typeof metadata.output === "string" ? stripAnsi(metadata.output.trim()) : ""
+            if (!output) return false
+            return output.split("\n").length > 10
+          }
+
+          if (CUSTOM_TOOL_PARTS.has(part.tool)) return false
+          if (!showGenericToolOutput()) return false
+          if (part.state.status !== "completed") return false
+
+          const output = part.state.output.trim()
+          if (!output) return false
+          return output.split("\n").length > 3
+        })()
+
+        result.push({
+          partID: part.id,
+          anchorID,
+          kind: "tool",
+          childSessionID,
+          expandable,
+          y: anchor.y,
+        })
+      }
+    }
+
+    return result.sort((a, b) => a.y - b.y)
+  }
+
+  const historyTraceList = () => {
+    const prompts = messages().flatMap((message) => {
+      if (message.role !== "user") return []
+      return [message.id]
+    })
+    return prompts.flatMap((id) => historyTraces(id)).sort((a, b) => a.y - b.y)
+  }
+
+  const focusHistoryTrace = (trace: HistoryTrace) => {
+    setHistoryPart(trace.partID)
+    const child = scroll.getChildren().find((item) => item.id === trace.anchorID)
+    if (!child) return
+    scroll.scrollBy(child.y - scroll.y - 1)
+  }
+
+  const moveHistoryTrace = (direction: "next" | "prev") => {
+    const traces = historyTraceList()
+    if (traces.length === 0) return
+
+    const selectedID = historyPart()
+    const selected = selectedID ? traces.findIndex((item) => item.partID === selectedID) : -1
+    if (selected >= 0) {
+      const index = direction === "next" ? selected + 1 : selected - 1
+      const target = traces[index]
+      if (!target) return
+      focusHistoryTrace(target)
+      return
+    }
+
+    const top = scroll.y + 1
+    if (direction === "next") {
+      const next = traces.find((item) => item.y > top)
+      if (!next) return
+      focusHistoryTrace(next)
+      return
+    }
+
+    const prev = [...traces].reverse().find((item) => item.y < top)
+    if (!prev) return
+    focusHistoryTrace(prev)
+  }
+
+  const historyAction = () => {
+    const traces = historyTraceList()
+    if (traces.length === 0) return
+
+    const current = (() => {
+      const selectedID = historyPart()
+      if (selectedID) {
+        const selected = traces.find((item) => item.partID === selectedID)
+        if (selected) return selected
+      }
+
+      const top = scroll.y + 1
+      return traces.find((item) => item.y >= top) ?? traces.at(-1)
+    })()
+
+    if (!current) return
+    setHistoryPart(current.partID)
+
+    if (current.childSessionID) {
+      navigate({
+        type: "session",
+        sessionID: current.childSessionID,
+      })
+      return
+    }
+
+    if (!current.expandable) return
+    toggleToolExpanded(current.partID)
+  }
 
   // Helper: Find next visible message boundary in direction
   const findNextVisibleMessage = (direction: "next" | "prev"): string | null => {
@@ -439,6 +759,18 @@ export function Session() {
       },
     },
     {
+      title: history() ? "Exit history mode" : "Enter history mode",
+      value: "session.history.toggle",
+      category: "Session",
+      slash: {
+        name: "history",
+      },
+      onSelect: (dialog) => {
+        toggleHistoryMode()
+        dialog.clear()
+      },
+    },
+    {
       title: "Compact session",
       value: "session.compact",
       keybind: "session_compact",
@@ -552,7 +884,6 @@ export function Session() {
     {
       title: sidebarVisible() ? "Hide sidebar" : "Show sidebar",
       value: "session.sidebar.toggle",
-      search: "toggle sidebar",
       keybind: "sidebar_toggle",
       category: "Session",
       onSelect: (dialog) => {
@@ -567,7 +898,6 @@ export function Session() {
     {
       title: conceal() ? "Disable code concealment" : "Enable code concealment",
       value: "session.toggle.conceal",
-      search: "toggle code concealment",
       keybind: "messages_toggle_conceal" as any,
       category: "Session",
       onSelect: (dialog) => {
@@ -578,7 +908,6 @@ export function Session() {
     {
       title: showTimestamps() ? "Hide timestamps" : "Show timestamps",
       value: "session.toggle.timestamps",
-      search: "toggle timestamps",
       category: "Session",
       slash: {
         name: "timestamps",
@@ -592,7 +921,6 @@ export function Session() {
     {
       title: showThinking() ? "Hide thinking" : "Show thinking",
       value: "session.toggle.thinking",
-      search: "toggle thinking",
       keybind: "display_thinking",
       category: "Session",
       slash: {
@@ -607,7 +935,6 @@ export function Session() {
     {
       title: showDetails() ? "Hide tool details" : "Show tool details",
       value: "session.toggle.actions",
-      search: "toggle tool details",
       keybind: "tool_details",
       category: "Session",
       onSelect: (dialog) => {
@@ -616,9 +943,8 @@ export function Session() {
       },
     },
     {
-      title: showScrollbar() ? "Hide session scrollbar" : "Show session scrollbar",
+      title: "Toggle session scrollbar",
       value: "session.toggle.scrollbar",
-      search: "toggle session scrollbar",
       keybind: "scrollbar_toggle",
       category: "Session",
       onSelect: (dialog) => {
@@ -918,6 +1244,7 @@ export function Session() {
       value: "session.child.first",
       keybind: "session_child_first",
       category: "Session",
+      enabled: children().some((x) => !!x.parentID),
       hidden: true,
       onSelect: (dialog) => {
         moveFirstChild()
@@ -929,6 +1256,7 @@ export function Session() {
       value: "session.parent",
       keybind: "session_parent",
       category: "Session",
+      enabled: !!session()?.parentID,
       hidden: true,
       onSelect: childSessionHandler((dialog) => {
         const parentID = session()?.parentID
@@ -946,6 +1274,7 @@ export function Session() {
       value: "session.child.next",
       keybind: "session_child_cycle",
       category: "Session",
+      enabled: !!session()?.parentID,
       hidden: true,
       onSelect: childSessionHandler((dialog) => {
         moveChild(1)
@@ -957,6 +1286,7 @@ export function Session() {
       value: "session.child.previous",
       keybind: "session_child_cycle_reverse",
       category: "Session",
+      enabled: !!session()?.parentID,
       hidden: true,
       onSelect: childSessionHandler((dialog) => {
         moveChild(-1)
@@ -1027,7 +1357,10 @@ export function Session() {
         showTimestamps,
         showDetails,
         showGenericToolOutput,
+        isHistoryPartSelected,
         diffWrapMode,
+        isToolExpanded,
+        toggleToolExpanded,
         sync,
         tui: tuiConfig,
       }}
@@ -1161,6 +1494,7 @@ export function Session() {
               </Show>
               <Prompt
                 visible={!session()?.parentID && permissions().length === 0 && questions().length === 0}
+                historyMode={history()}
                 ref={(r) => {
                   prompt = r
                   promptRef.set(r)
@@ -1399,6 +1733,7 @@ const PART_MAPPING = {
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
   const { theme, subtleSyntax } = useTheme()
   const ctx = use()
+  const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
   const content = createMemo(() => {
     // Filter out redacted reasoning chunks from OpenRouter
     // OpenRouter sends encrypted reasoning data that appears as [REDACTED]
@@ -1413,7 +1748,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         flexDirection="column"
         border={["left"]}
         customBorderChars={SplitBorder.customBorderChars}
-        borderColor={theme.backgroundElement}
+        borderColor={selected() ? theme.textMuted : theme.backgroundElement}
       >
         <code
           filetype="markdown"
@@ -1442,10 +1777,6 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
               streaming={true}
               content={props.part.text.trim()}
               conceal={ctx.conceal()}
-              tableOptions={{
-                widthMode: "full",
-                columnFitter: "balanced",
-              }}
             />
           </Match>
           <Match when={!Flag.OPENCODE_EXPERIMENTAL_MARKDOWN}>
@@ -1569,7 +1900,7 @@ function GenericTool(props: ToolProps<any>) {
   const { theme } = useTheme()
   const ctx = use()
   const output = createMemo(() => props.output?.trim() ?? "")
-  const [expanded, setExpanded] = createSignal(false)
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
   const lines = createMemo(() => output().split("\n"))
   const maxLines = 3
   const overflow = createMemo(() => lines().length > maxLines)
@@ -1590,7 +1921,7 @@ function GenericTool(props: ToolProps<any>) {
       <BlockTool
         title={`# ${props.tool} ${input(props.input)}`}
         part={props.part}
-        onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
+        onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
       >
         <box gap={1}>
           <text fg={theme.text}>{limited()}</text>
@@ -1648,10 +1979,16 @@ function InlineTool(props: {
       error()?.includes("user dismissed"),
   )
 
+  const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
+
   return (
     <box
+      id={"tool-" + props.part.id}
       marginTop={margin()}
-      paddingLeft={3}
+      border={["left"]}
+      borderColor={selected() ? theme.textMuted : theme.background}
+      customBorderChars={SplitBorder.customBorderChars}
+      paddingLeft={2}
       renderBefore={function () {
         const el = this as BoxRenderable
         const parent = el.parent
@@ -1695,11 +2032,14 @@ function BlockTool(props: {
   spinner?: boolean
 }) {
   const { theme } = useTheme()
+  const ctx = use()
   const renderer = useRenderer()
   const [hover, setHover] = createSignal(false)
   const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
+  const selected = createMemo(() => !!props.part && ctx.isHistoryPartSelected(props.part.id))
   return (
     <box
+      id={props.part ? "tool-" + props.part.id : undefined}
       border={["left"]}
       paddingTop={1}
       paddingBottom={1}
@@ -1708,7 +2048,7 @@ function BlockTool(props: {
       gap={1}
       backgroundColor={hover() ? theme.backgroundMenu : theme.backgroundPanel}
       customBorderChars={SplitBorder.customBorderChars}
-      borderColor={theme.background}
+      borderColor={selected() ? theme.textMuted : theme.background}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
@@ -1736,10 +2076,11 @@ function BlockTool(props: {
 
 function Bash(props: ToolProps<typeof BashTool>) {
   const { theme } = useTheme()
+  const ctx = use()
   const sync = useSync()
   const isRunning = createMemo(() => props.part.state.status === "running")
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
-  const [expanded, setExpanded] = createSignal(false)
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
   const lines = createMemo(() => output().split("\n"))
   const overflow = createMemo(() => lines().length > 10)
   const limited = createMemo(() => {
@@ -1779,7 +2120,7 @@ function Bash(props: ToolProps<typeof BashTool>) {
           title={title()}
           part={props.part}
           spinner={isRunning()}
-          onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
         >
           <box gap={1}>
             <text fg={theme.text}>$ {props.input.command}</text>
@@ -2035,9 +2376,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
       </Match>
       <Match when={true}>
         <InlineTool icon="←" pending="Preparing edit..." complete={props.input.filePath} part={props.part}>
-          Edit{" "}
-          {normalizePath(props.input.filePath!)}{" "}
-          {input({ replaceAll: "replaceAll" in props.input ? props.input.replaceAll : undefined })}
+          Edit {normalizePath(props.input.filePath!)} {input({ replaceAll: props.input.replaceAll })}
         </InlineTool>
       </Match>
     </Switch>

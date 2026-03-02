@@ -39,6 +39,8 @@ export type PromptProps = {
   sessionID?: string
   visible?: boolean
   disabled?: boolean
+  historyMode?: boolean
+  showHistoryHint?: boolean
   onSubmit?: () => void
   ref?: (ref: PromptRef) => void
   hint?: JSX.Element
@@ -77,7 +79,6 @@ export function Prompt(props: PromptProps) {
   const renderer = useRenderer()
   const { theme, syntax } = useTheme()
   const kv = useKV()
-  const [autoaccept, setAutoaccept] = kv.signal<"none" | "edit">("permission_auto_accept", "edit")
 
   function promptModelWarning() {
     toast.show({
@@ -171,17 +172,6 @@ export function Prompt(props: PromptProps) {
 
   command.register(() => {
     return [
-      {
-        title: autoaccept() === "none" ? "Enable autoedit" : "Disable autoedit",
-        value: "permission.auto_accept.toggle",
-        search: "toggle permissions",
-        keybind: "permission_auto_accept_toggle",
-        category: "Agent",
-        onSelect: (dialog) => {
-          setAutoaccept(() => (autoaccept() === "none" ? "edit" : "none"))
-          dialog.clear()
-        },
-      },
       {
         title: "Clear prompt",
         value: "prompt.clear",
@@ -790,6 +780,30 @@ export function Prompt(props: PromptProps) {
     }
   })
 
+  const [hover, setHover] = createSignal<string>()
+  const [flash, setFlash] = createSignal<string>()
+  let pulse: ReturnType<typeof setTimeout> | undefined
+
+  onCleanup(() => {
+    if (!pulse) return
+    clearTimeout(pulse)
+  })
+
+  const run = (id: string, fn: () => void) => {
+    setFlash(id)
+    if (pulse) clearTimeout(pulse)
+    pulse = setTimeout(() => {
+      setFlash(undefined)
+    }, 140)
+    fn()
+  }
+
+  const chip = (id: string) => {
+    if (flash() === id) return theme.backgroundMenu
+    if (hover() === id) return theme.backgroundElement
+    return undefined
+  }
+
   return (
     <>
       <Autocomplete
@@ -1008,30 +1022,23 @@ export function Prompt(props: PromptProps) {
               cursorColor={theme.text}
               syntaxStyle={syntax()}
             />
-            <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1} justifyContent="space-between">
-              <box flexDirection="row" gap={1}>
-                <text fg={highlight()}>
-                  {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
-                </text>
-                <Show when={store.mode === "normal"}>
-                  <box flexDirection="row" gap={1}>
-                    <text flexShrink={0} fg={keybind.leader ? theme.textMuted : theme.text}>
-                      {local.model.parsed().model}
+            <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1}>
+              <text fg={highlight()}>
+                {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
+              </text>
+              <Show when={store.mode === "normal"}>
+                <box flexDirection="row" gap={1}>
+                  <text flexShrink={0} fg={keybind.leader ? theme.textMuted : theme.text}>
+                    {local.model.parsed().model}
+                  </text>
+                  <text fg={theme.textMuted}>{local.model.parsed().provider}</text>
+                  <Show when={showVariant()}>
+                    <text fg={theme.textMuted}>·</text>
+                    <text>
+                      <span style={{ fg: theme.warning, bold: true }}>{local.model.variant.current()}</span>
                     </text>
-                    <text fg={theme.textMuted}>{local.model.parsed().provider}</text>
-                    <Show when={showVariant()}>
-                      <text fg={theme.textMuted}>·</text>
-                      <text>
-                        <span style={{ fg: theme.warning, bold: true }}>{local.model.variant.current()}</span>
-                      </text>
-                    </Show>
-                  </box>
-                </Show>
-              </box>
-              <Show when={autoaccept() === "edit"}>
-                <text>
-                  <span style={{ fg: theme.warning }}>autoedit</span>
-                </text>
+                  </Show>
+                </box>
               </Show>
             </box>
           </box>
@@ -1146,18 +1153,87 @@ export function Prompt(props: PromptProps) {
           <Show when={status().type !== "retry"}>
             <box gap={2} flexDirection="row">
               <Switch>
+                <Match when={props.historyMode}>
+                  <box
+                    paddingLeft={1}
+                    paddingRight={1}
+                    onMouseDown={() => input?.focus()}
+                    onMouseOver={() => setHover("history-toggle")}
+                    onMouseOut={() => setHover(undefined)}
+                    onMouseUp={() => run("history-toggle", () => command.trigger("session.history.toggle"))}
+                    backgroundColor={chip("history-toggle")}
+                  >
+                    <text fg={theme.text}>
+                      {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>edit mode</span>
+                    </text>
+                  </box>
+                  <text fg={theme.text}>
+                    ↑/↓ <span style={{ fg: theme.textMuted }}>navigate prompt</span>
+                  </text>
+                  <text fg={theme.text}>
+                    ←/→ <span style={{ fg: theme.textMuted }}>navigate trace</span>
+                  </text>
+                  <text fg={theme.text}>
+                    space <span style={{ fg: theme.textMuted }}>expand</span>
+                  </text>
+                </Match>
                 <Match when={store.mode === "normal"}>
                   <Show when={local.model.variant.list().length > 0}>
-                    <text fg={theme.text}>
-                      {keybind.print("variant_cycle")} <span style={{ fg: theme.textMuted }}>variants</span>
-                    </text>
+                    <box
+                      paddingLeft={1}
+                      paddingRight={1}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("variant")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("variant", () => command.trigger("variant.cycle"))}
+                      backgroundColor={chip("variant")}
+                    >
+                      <text fg={theme.text}>
+                        {keybind.print("variant_cycle")} <span style={{ fg: theme.textMuted }}>variants</span>
+                      </text>
+                    </box>
                   </Show>
-                  <text fg={theme.text}>
-                    {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>agents</span>
-                  </text>
-                  <text fg={theme.text}>
-                    {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>commands</span>
-                  </text>
+                  <box
+                    paddingLeft={1}
+                    paddingRight={1}
+                    onMouseDown={() => input?.focus()}
+                    onMouseOver={() => setHover("agent")}
+                    onMouseOut={() => setHover(undefined)}
+                    onMouseUp={() => run("agent", () => command.trigger("agent.cycle"))}
+                    backgroundColor={chip("agent")}
+                  >
+                    <text fg={theme.text}>
+                      {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>agents</span>
+                    </text>
+                  </box>
+                  <Show when={props.showHistoryHint !== false && history.has()}>
+                    <box
+                      paddingLeft={1}
+                      paddingRight={1}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history", () => command.trigger("session.history.toggle"))}
+                      backgroundColor={chip("history")}
+                    >
+                      <text fg={theme.text}>
+                        {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>history</span>
+                      </text>
+                    </box>
+                  </Show>
+                  <box
+                    paddingLeft={1}
+                    paddingRight={1}
+                    onMouseDown={() => input?.focus()}
+                    onMouseOver={() => setHover("command")}
+                    onMouseOut={() => setHover(undefined)}
+                    onMouseUp={() => run("command", () => command.show())}
+                    backgroundColor={chip("command")}
+                  >
+                    <text fg={theme.text}>
+                      {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>commands</span>
+                    </text>
+                  </box>
                 </Match>
                 <Match when={store.mode === "shell"}>
                   <text fg={theme.text}>
