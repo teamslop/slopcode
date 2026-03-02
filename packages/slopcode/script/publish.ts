@@ -116,17 +116,10 @@ const main = (async () => {
 await Promise.all([...tasks, main])
 
 if (Script.channel === "latest") {
-  await import("./publish-apt.ts")
+  await Promise.all([import("./publish-apt.ts"), import("./publish-homebrew.ts"), import("./publish-aur.ts")])
 }
-
-// Non-npm publishing channels are intentionally disabled for npm-only rollout.
-// if (Script.channel === "latest") {
-//   await import("./publish-homebrew.ts")
-// }
 
 // Supplemental channels sourced from npm artifacts.
 //
 // Disabled channels:
 // - GHCR container publish
-// - AUR publish
-// - Homebrew tap publish
