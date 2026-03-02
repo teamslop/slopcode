@@ -52,7 +52,7 @@ SlopCode has a list of keybinds that you can customize through `tui.json`.
     "model_cycle_favorite": "none",
     "model_cycle_favorite_reverse": "none",
     "variant_cycle": "ctrl+t",
-    "history_mode_toggle": "ctrl+h,ctrl+j",
+    "history_mode_toggle": "ctrl+y",
     "command_list": "ctrl+p",
     "agent_list": "<leader>a",
     "agent_cycle": "tab",
@@ -141,7 +141,7 @@ Use `history_previous` and `history_next` to move through history-mode prompt en
 {
   "$schema": "https://slopcode.dev/tui.json",
   "keybinds": {
-    "history_mode_toggle": "ctrl+h",
+    "history_mode_toggle": "ctrl+y",
     "history_previous": "pageup",
     "history_next": "pagedown"
   }
@@ -149,7 +149,7 @@ Use `history_previous` and `history_next` to move through history-mode prompt en
 ```
 
 :::tip
-By default, `history_mode_toggle` includes `ctrl+j`, which can conflict with `input_newline`.
+By default, `history_mode_toggle` is `ctrl+y`.
 :::
 
 ---
