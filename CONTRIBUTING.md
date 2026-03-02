@@ -53,6 +53,21 @@ To run SlopCode in the root of the slopcode repo itself:
 bun dev .
 ```
 
+### Pulling upstream updates
+
+This fork is intended to pull/rebase updates from upstream into SlopCode. Do not push to upstream.
+
+```bash
+git remote add upstream https://github.com/sst/opencode.git
+# block accidental pushes to upstream
+git remote set-url --push upstream DISABLED
+git fetch upstream
+git checkout dev
+git rebase upstream/dev
+```
+
+If `upstream` already exists, skip the `git remote add upstream ...` command and keep the fetch-only push URL.
+
 ### Building a "localcode"
 
 To compile a standalone executable:

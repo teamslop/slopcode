@@ -1,5 +1,7 @@
 export const product = {
   id: "slopcode",
+  // Legacy OpenCode identifiers are read-compat only.
+  // New writes should always use SlopCode identifiers.
   legacy_id: "opencode",
   app: "SlopCode",
   legacy_app: "OpenCode",
