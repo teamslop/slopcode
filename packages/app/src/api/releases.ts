@@ -7,6 +7,14 @@ const PER_PAGE = 30
 const CACHE_TTL = 1000 * 60 * 30
 const CACHE_KEY = "opencode.releases"
 
+const t: Parameters<typeof getRelativeTime>[1] = (key, params) => {
+  if (key === "common.time.justNow") return "just now"
+  const n = params?.count ?? 0
+  if (key === "common.time.minutesAgo.short") return `${n}m ago`
+  if (key === "common.time.hoursAgo.short") return `${n}h ago`
+  return `${n}d ago`
+}
+
 type Release = {
   tag: string
   body: string
@@ -40,7 +48,7 @@ export async function fetchReleases(platform: Platform): Promise<{ releases: Rel
     body: (r.body ?? "")
       .replace(/#(\d+)/g, (_: string, id: string) => `[#${id}](https://github.com/anomalyco/opencode/pull/${id})`)
       .replace(/@([a-zA-Z0-9_-]+)/g, (_: string, u: string) => `[@${u}](https://github.com/${u})`),
-    date: r.published_at ? getRelativeTime(r.published_at) : "",
+    date: r.published_at ? getRelativeTime(r.published_at, t) : "",
   }))
 
   saveCache({ releases, timestamp: now })
