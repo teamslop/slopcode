@@ -2,7 +2,6 @@
 
 [![npm version](https://img.shields.io/npm/v/slopcode?style=flat-square)](https://www.npmjs.com/package/slopcode)
 [![npm downloads](https://img.shields.io/npm/dm/slopcode?style=flat-square)](https://www.npmjs.com/package/slopcode)
-[![discord](https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord)](https://slopcode.dev/discord)
 
 SlopCode is the open source AI coding agent focused on terminal workflows.
 
@@ -45,4 +44,3 @@ npm i -g slopcode@beta
 - Download desktop app: https://slopcode.dev/download
 - GitHub: https://github.com/teamslop/slopcode
 - Report issues: https://github.com/teamslop/slopcode/issues
-- Discord: https://slopcode.dev/discord

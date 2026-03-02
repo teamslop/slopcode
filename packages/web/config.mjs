@@ -6,7 +6,6 @@ export default {
   email: "contact@slopcode.dev",
   socialCard: "https://social-cards.sst.dev",
   github: "http://github.com/teamslop/slopcode",
-  discord: "https://discord.gg/slopcode",
   headerLinks: [
     { name: "app.header.home", url: "/" },
     { name: "app.header.docs", url: "/docs/" },

@@ -180,16 +180,6 @@ function configSchema() {
                   destination: "https://opencode.ai/auth/:path*",
                   permanent: false,
                 },
-                {
-                  source: "/discord",
-                  destination: "https://discord.gg/slopcode",
-                  permanent: false,
-                },
-                {
-                  source: "/discord/",
-                  destination: "https://discord.gg/slopcode",
-                  permanent: false,
-                },
               ],
               rewrites: [
                 { source: "/docs", destination: "/" },
