@@ -137,6 +137,7 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
       nix: nix ? `nix profile remove ${nix}` : "nix profile remove github:teamslop/slopcode#slopcode",
       brew: "brew uninstall slopcode",
       apt: "sudo apt-get remove -y slopcode",
+      snap: "sudo snap remove slopcode",
       choco: "choco uninstall slopcode",
       scoop: "scoop uninstall slopcode",
     }
@@ -191,6 +192,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
       nix: nix ? ["nix", "profile", "remove", nix] : ["nix", "profile", "remove", "github:teamslop/slopcode#slopcode"],
       brew: ["brew", "uninstall", "slopcode"],
       apt: ["apt-get", "remove", "-y", "slopcode"],
+      snap: ["snap", "remove", "slopcode"],
       choco: ["choco", "uninstall", "slopcode"],
       scoop: ["scoop", "uninstall", "slopcode"],
     }
@@ -208,15 +210,28 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
         }
         return $`sudo -n apt-get remove -y slopcode`.env(env)
       }
+      const snap = () => {
+        if (typeof process.getuid === "function" && process.getuid() === 0) {
+          return $`snap remove slopcode`
+        }
+        return $`sudo -n snap remove slopcode`
+      }
       const result =
         method === "choco"
           ? await $`echo Y | choco uninstall slopcode -y -r`.quiet().nothrow()
           : method === "apt"
             ? await apt().quiet().nothrow()
-            : await $`${cmd}`.quiet().nothrow()
+            : method === "snap"
+              ? await snap().quiet().nothrow()
+              : await $`${cmd}`.quiet().nothrow()
       if (result.exitCode !== 0) {
         spinner.stop(`Package manager uninstall failed: exit code ${result.exitCode}`, 1)
-        const manual = method === "apt" ? "sudo apt-get remove -y slopcode" : cmd.join(" ")
+        const manual =
+          method === "apt"
+            ? "sudo apt-get remove -y slopcode"
+            : method === "snap"
+              ? "sudo snap remove slopcode"
+              : cmd.join(" ")
         const stderr = result.stderr.toString("utf8").toLowerCase()
         if (
           method === "choco" &&
@@ -229,6 +244,19 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
             "a password is required",
             "not in the sudoers",
             "permission denied",
+            "no tty present",
+            "command not found",
+          ].some((item) => stderr.includes(item))
+        ) {
+          prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)
+        } else if (
+          method === "snap" &&
+          [
+            "a password is required",
+            "not in the sudoers",
+            "permission denied",
+            "requires root",
+            "must be run as root",
             "no tty present",
             "command not found",
           ].some((item) => stderr.includes(item))

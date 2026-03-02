@@ -57,6 +57,19 @@ export namespace Installation {
     )
   }
 
+  const snapNeedsPrivilege = (stderr: string) => {
+    const text = stderr.toLowerCase()
+    return (
+      text.includes("a password is required") ||
+      text.includes("not in the sudoers") ||
+      text.includes("permission denied") ||
+      text.includes("requires root") ||
+      text.includes("must be run as root") ||
+      text.includes("no tty present") ||
+      text.includes("command not found")
+    )
+  }
+
   const aptUpgradeCommand = (pkg: string) => {
     const env = {
       DEBIAN_FRONTEND: "noninteractive",
@@ -66,6 +79,13 @@ export namespace Installation {
       return $`apt-get install -y --only-upgrade ${pkg}`.env(env)
     }
     return $`sudo -n apt-get install -y --only-upgrade ${pkg}`.env(env)
+  }
+
+  const snapUpgradeCommand = () => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      return $`snap refresh slopcode`
+    }
+    return $`sudo -n snap refresh slopcode`
   }
 
   const nixVersionInstallable = (source: string) => {
@@ -213,6 +233,10 @@ export namespace Installation {
         command: () => $`dpkg-query -W -f='\${Package}' slopcode`.throws(false).quiet().text(),
       },
       {
+        name: "snap" as const,
+        command: () => $`snap list slopcode`.throws(false).quiet().text(),
+      },
+      {
         name: "scoop" as const,
         command: () => $`scoop list slopcode`.throws(false).quiet().text(),
       },
@@ -310,6 +334,9 @@ export namespace Installation {
         cmd = aptUpgradeCommand(pkg)
         break
       }
+      case "snap":
+        cmd = snapUpgradeCommand()
+        break
       case "choco":
         cmd = $`echo Y | choco upgrade slopcode --version=${target}`
         break
@@ -327,7 +354,9 @@ export namespace Installation {
           ? "not running from an elevated command shell"
           : method === "apt" && aptNeedsPrivilege(stderrText)
             ? "not running from a privileged shell"
-            : stderrText
+            : method === "snap" && snapNeedsPrivilege(stderrText)
+              ? "not running from a privileged shell"
+              : stderrText
       throw new UpgradeFailedError({
         stderr: stderr,
       })
@@ -375,6 +404,12 @@ export namespace Installation {
         return VERSION
       }
       return latest
+    }
+
+    if (detectedMethod === "snap") {
+      const info = await $`snap info slopcode`.throws(false).quiet().text()
+      const stable = info.match(/^\s*(?:latest\/)?stable:\s*([^\s]+)/m)?.[1]?.replace(/^v/, "")
+      return stable || VERSION
     }
 
     if (detectedMethod === "nix") {

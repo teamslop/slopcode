@@ -16,7 +16,7 @@ export const UpgradeCommand = {
         alias: "m",
         describe: "installation method to use",
         type: "string",
-        choices: ["curl", "npm", "pnpm", "bun", "nix", "brew", "apt", "choco", "scoop"],
+        choices: ["curl", "npm", "pnpm", "bun", "nix", "brew", "apt", "snap", "choco", "scoop"],
       })
   },
   handler: async (args: { target?: string; method?: string }) => {
@@ -60,7 +60,10 @@ export const UpgradeCommand = {
         // necessary because choco only allows install/upgrade in elevated terminals
         if (method === "choco" && err.data.stderr.includes("not running from an elevated command shell")) {
           prompts.log.error("Please run the terminal as Administrator and try again")
-        } else if (method === "apt" && err.data.stderr.includes("not running from a privileged shell")) {
+        } else if (
+          (method === "apt" || method === "snap") &&
+          err.data.stderr.includes("not running from a privileged shell")
+        ) {
           prompts.log.error("Please rerun with sudo privileges and try again")
         } else {
           prompts.log.error(err.data.stderr)

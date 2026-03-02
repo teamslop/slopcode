@@ -19,7 +19,7 @@ export async function upgrade() {
   }
 
   if (method === "unknown") return
-  if (method === "apt") {
+  if (method === "apt" || method === "snap") {
     await Bus.publish(Installation.Event.UpdateAvailable, { version: latest })
     return
   }
