@@ -1173,7 +1173,7 @@ export function Prompt(props: PromptProps) {
                     ←/→ <span style={{ fg: theme.textMuted }}>navigate trace</span>
                   </text>
                   <text fg={theme.text}>
-                    space <span style={{ fg: theme.textMuted }}>expand</span>
+                    space <span style={{ fg: theme.textMuted }}>expand/collapse</span>
                   </text>
                 </Match>
                 <Match when={store.mode === "normal"}>

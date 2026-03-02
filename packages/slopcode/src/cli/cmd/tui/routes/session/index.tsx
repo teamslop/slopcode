@@ -100,6 +100,52 @@ const CUSTOM_TOOL_PARTS = new Set([
   "question",
   "skill",
 ])
+const BASH_EXPAND_LINES = 10
+const GENERIC_EXPAND_LINES = 3
+const EDIT_EXPAND_LINES = 40
+const PATCH_EXPAND_LINES = 60
+const PATCH_FILE_PREVIEW_LINES = 20
+
+function lines(text: string) {
+  if (!text.trim()) return 0
+  return text.split("\n").length
+}
+
+function clip(text: string, max: number) {
+  const all = text.split("\n")
+  if (all.length <= max) return text
+  return [...all.slice(0, max), "…"].join("\n")
+}
+
+function patchlines(metadata: Record<string, unknown>) {
+  const files = Array.isArray(metadata.files) ? metadata.files : []
+  return files.reduce((sum, file) => {
+    if (!file || typeof file !== "object" || !("diff" in file)) return sum
+    const diff = typeof file.diff === "string" ? file.diff : ""
+    return sum + lines(diff)
+  }, 0)
+}
+
+function canExpand(part: ToolPart, metadata: Record<string, unknown>, generic: boolean) {
+  if (part.tool === "bash") {
+    const output = typeof metadata.output === "string" ? stripAnsi(metadata.output.trim()) : ""
+    return lines(output) > BASH_EXPAND_LINES
+  }
+
+  if (part.tool === "edit") {
+    const diff = typeof metadata.diff === "string" ? metadata.diff : ""
+    return lines(diff) > EDIT_EXPAND_LINES
+  }
+
+  if (part.tool === "apply_patch") {
+    return patchlines(metadata) > PATCH_EXPAND_LINES
+  }
+
+  if (CUSTOM_TOOL_PARTS.has(part.tool)) return false
+  if (!generic) return false
+  if (part.state.status !== "completed") return false
+  return lines(part.state.output.trim()) > GENERIC_EXPAND_LINES
+}
 
 class CustomSpeedScroll implements ScrollAcceleration {
   constructor(private speed: number) {}
@@ -299,6 +345,16 @@ export function Session() {
     setHistoryMode(!history())
   }
 
+  function focusPrompt() {
+    if (session()?.parentID) return false
+    if (permissions().length > 0 || questions().length > 0) return false
+    const current = promptRef.current
+    if (!current) return false
+    setHistoryPart(undefined)
+    current.focus()
+    return true
+  }
+
   createEffect(
     on(
       () => route.sessionID,
@@ -364,6 +420,9 @@ export function Session() {
         return
       }
 
+      const current = promptRef.current
+      if (current?.focused) return
+
       if (keybind.match("input_submit", evt)) {
         setHistoryMode(false)
         evt.preventDefault()
@@ -377,7 +436,7 @@ export function Session() {
       }
 
       if (keybind.match("history_next", evt)) {
-        scrollToPrompt("next")
+        if (!scrollToPrompt("next")) focusPrompt()
         evt.preventDefault()
         return
       }
@@ -389,7 +448,7 @@ export function Session() {
       }
 
       if (evt.name === "right") {
-        moveHistoryTrace("next")
+        if (!moveHistoryTrace("next")) focusPrompt()
         evt.preventDefault()
         return
       }
@@ -436,12 +495,13 @@ export function Session() {
 
   const scrollToPrompt = (direction: "next" | "prev") => {
     const targetID = findNextVisiblePrompt(direction)
-    if (!targetID) return
+    if (!targetID) return false
 
     const child = scroll.getChildren().find((item) => item.id === targetID)
-    if (!child) return
+    if (!child) return false
     setHistoryPart(undefined)
     scroll.scrollBy(child.y - scroll.y - 1)
+    return true
   }
 
   const historyTraces = (promptID: string): HistoryTrace[] => {
@@ -496,25 +556,11 @@ export function Session() {
         const anchor = anchors.get(anchorID)
         if (!anchor) continue
 
-        const metadata = part.state.status === "pending" ? {} : (part.state.metadata ?? {})
+        const metadata = (part.state.status === "pending" ? {} : (part.state.metadata ?? {})) as Record<string, unknown>
         const childSessionID =
           part.tool === "task" && typeof metadata.sessionId === "string" ? metadata.sessionId : undefined
 
-        const expandable = (() => {
-          if (part.tool === "bash") {
-            const output = typeof metadata.output === "string" ? stripAnsi(metadata.output.trim()) : ""
-            if (!output) return false
-            return output.split("\n").length > 10
-          }
-
-          if (CUSTOM_TOOL_PARTS.has(part.tool)) return false
-          if (!showGenericToolOutput()) return false
-          if (part.state.status !== "completed") return false
-
-          const output = part.state.output.trim()
-          if (!output) return false
-          return output.split("\n").length > 3
-        })()
+        const expandable = canExpand(part, metadata, showGenericToolOutput())
 
         result.push({
           partID: part.id,
@@ -547,29 +593,30 @@ export function Session() {
 
   const moveHistoryTrace = (direction: "next" | "prev") => {
     const traces = historyTraceList()
-    if (traces.length === 0) return
+    if (traces.length === 0) return false
 
     const selectedID = historyPart()
     const selected = selectedID ? traces.findIndex((item) => item.partID === selectedID) : -1
     if (selected >= 0) {
       const index = direction === "next" ? selected + 1 : selected - 1
       const target = traces[index]
-      if (!target) return
+      if (!target) return false
       focusHistoryTrace(target)
-      return
+      return true
     }
 
     const top = scroll.y + 1
     if (direction === "next") {
       const next = traces.find((item) => item.y > top)
-      if (!next) return
+      if (!next) return false
       focusHistoryTrace(next)
-      return
+      return true
     }
 
     const prev = [...traces].reverse().find((item) => item.y < top)
-    if (!prev) return
+    if (!prev) return false
     focusHistoryTrace(prev)
+    return true
   }
 
   const historyAction = () => {
@@ -1923,12 +1970,11 @@ function GenericTool(props: ToolProps<any>) {
   const ctx = use()
   const output = createMemo(() => props.output?.trim() ?? "")
   const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
-  const lines = createMemo(() => output().split("\n"))
-  const maxLines = 3
-  const overflow = createMemo(() => lines().length > maxLines)
+  const list = createMemo(() => output().split("\n"))
+  const overflow = createMemo(() => list().length > GENERIC_EXPAND_LINES)
   const limited = createMemo(() => {
     if (expanded() || !overflow()) return output()
-    return [...lines().slice(0, maxLines), "…"].join("\n")
+    return [...list().slice(0, GENERIC_EXPAND_LINES), "…"].join("\n")
   })
 
   return (
@@ -2103,11 +2149,11 @@ function Bash(props: ToolProps<typeof BashTool>) {
   const isRunning = createMemo(() => props.part.state.status === "running")
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
   const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
-  const lines = createMemo(() => output().split("\n"))
-  const overflow = createMemo(() => lines().length > 10)
+  const list = createMemo(() => output().split("\n"))
+  const overflow = createMemo(() => list().length > BASH_EXPAND_LINES)
   const limited = createMemo(() => {
     if (expanded() || !overflow()) return output()
-    return [...lines().slice(0, 10), "…"].join("\n")
+    return [...list().slice(0, BASH_EXPAND_LINES), "…"].join("\n")
   })
 
   const workdirDisplay = createMemo(() => {
@@ -2360,21 +2406,29 @@ function Edit(props: ToolProps<typeof EditTool>) {
   const view = createMemo(() => {
     const diffStyle = ctx.tui.diff_style
     if (diffStyle === "stacked") return "unified"
-    // Default to "auto" behavior
     return ctx.width > 120 ? "split" : "unified"
   })
 
   const ft = createMemo(() => filetype(props.input.filePath))
-
-  const diffContent = createMemo(() => props.metadata.diff)
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const diff = createMemo(() => props.metadata.diff?.trim() ?? "")
+  const overflow = createMemo(() => lines(diff()) > EDIT_EXPAND_LINES)
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return diff()
+    return clip(diff(), EDIT_EXPAND_LINES)
+  })
 
   return (
     <Switch>
       <Match when={props.metadata.diff !== undefined}>
-        <BlockTool title={"← Edit " + normalizePath(props.input.filePath!)} part={props.part}>
+        <BlockTool
+          title={"← Edit " + normalizePath(props.input.filePath!)}
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
           <box paddingLeft={1}>
             <diff
-              diff={diffContent()}
+              diff={limited()}
               view={view()}
               filetype={ft()}
               syntaxStyle={syntax()}
@@ -2393,6 +2447,11 @@ function Edit(props: ToolProps<typeof EditTool>) {
               removedLineNumberBg={theme.diffRemovedLineNumberBg}
             />
           </box>
+          <Show when={overflow()}>
+            <text fg={theme.textMuted} paddingLeft={3}>
+              {expanded() ? "Click to collapse" : "Click to expand"}
+            </text>
+          </Show>
           <Diagnostics diagnostics={props.metadata.diagnostics} filePath={props.input.filePath ?? ""} />
         </BlockTool>
       </Match>
@@ -2410,6 +2469,12 @@ function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
   const { theme, syntax } = useTheme()
 
   const files = createMemo(() => props.metadata.files ?? [])
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const overflow = createMemo(
+    () =>
+      files().reduce((sum, file) => sum + lines(typeof file.diff === "string" ? file.diff : ""), 0) >
+      PATCH_EXPAND_LINES,
+  )
 
   const view = createMemo(() => {
     const diffStyle = ctx.tui.diff_style
@@ -2454,21 +2519,36 @@ function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
     <Switch>
       <Match when={files().length > 0}>
         <For each={files()}>
-          {(file) => (
-            <BlockTool title={title(file)} part={props.part}>
-              <Show
-                when={file.type !== "delete"}
-                fallback={
-                  <text fg={theme.diffRemoved}>
-                    -{file.deletions} line{file.deletions !== 1 ? "s" : ""}
-                  </text>
-                }
+          {(file) => {
+            const diff = typeof file.diff === "string" ? file.diff : ""
+            return (
+              <BlockTool
+                title={title(file)}
+                part={props.part}
+                onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
               >
-                <Diff diff={file.diff} filePath={file.filePath} />
-                <Diagnostics diagnostics={props.metadata.diagnostics} filePath={file.movePath ?? file.filePath} />
-              </Show>
-            </BlockTool>
-          )}
+                <Show
+                  when={file.type !== "delete"}
+                  fallback={
+                    <text fg={theme.diffRemoved}>
+                      -{file.deletions} line{file.deletions !== 1 ? "s" : ""}
+                    </text>
+                  }
+                >
+                  <Diff
+                    diff={expanded() || !overflow() ? diff : clip(diff, PATCH_FILE_PREVIEW_LINES)}
+                    filePath={file.filePath}
+                  />
+                  <Diagnostics diagnostics={props.metadata.diagnostics} filePath={file.movePath ?? file.filePath} />
+                </Show>
+                <Show when={overflow()}>
+                  <text fg={theme.textMuted} paddingLeft={3}>
+                    {expanded() ? "Click to collapse" : "Click to expand"}
+                  </text>
+                </Show>
+              </BlockTool>
+            )
+          }}
         </For>
       </Match>
       <Match when={true}>
