@@ -334,6 +334,14 @@ export function Session() {
   useKeyboard((evt) => {
     if (dialog.stack.length > 0) return
 
+    const handleAppExit = () => {
+      if (!keybind.match("app_exit", evt)) return false
+      if (renderer.getSelection()?.getSelectedText()) return false
+      exit()
+      evt.preventDefault()
+      return true
+    }
+
     if (keybind.match("history_mode_toggle", evt)) {
       const current = promptRef.current
 
@@ -347,6 +355,21 @@ export function Session() {
     }
 
     if (history()) {
+      if (handleAppExit()) return
+
+      if (keybind.match("session_interrupt", evt)) {
+        if (sync.data.session_status?.[route.sessionID]?.type === "idle") return
+        command.trigger("session.interrupt")
+        evt.preventDefault()
+        return
+      }
+
+      if (keybind.match("input_submit", evt)) {
+        setHistoryMode(false)
+        evt.preventDefault()
+        return
+      }
+
       if (keybind.match("history_previous", evt)) {
         scrollToPrompt("prev")
         evt.preventDefault()
@@ -379,8 +402,7 @@ export function Session() {
     }
 
     if (!session()?.parentID) return
-    if (!keybind.match("app_exit", evt)) return
-    exit()
+    handleAppExit()
   })
 
   const visiblePrompts = () => {
