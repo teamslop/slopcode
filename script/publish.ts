@@ -67,6 +67,7 @@ if (Script.release) {
       console.log("release: skip commit (no version changes)")
     }
 
+    await $`git fetch --tags origin`
     const tag = `v${Script.version}`
     const tagged = (await $`git tag -l ${tag}`.text()).trim().length > 0
     if (!tagged) {
@@ -75,7 +76,6 @@ if (Script.release) {
       console.log("release: skip tag", tag)
     }
 
-    await $`git fetch origin`
     await $`git cherry-pick HEAD..origin/dev`.nothrow()
     await $`git push origin HEAD --tags --no-verify --force-with-lease`
     await new Promise((resolve) => setTimeout(resolve, 5_000))
