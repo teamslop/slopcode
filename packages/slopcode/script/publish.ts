@@ -155,12 +155,13 @@ const main = (async () => {
 await Promise.all([...tasks, main])
 
 if (Script.channel === "latest") {
-  await Promise.all([
-    import("./publish-apt.ts"),
-    import("./publish-homebrew.ts"),
-    import("./publish-aur.ts"),
-    import("./publish-snap.ts"),
-  ])
+  const jobs = [import("./publish-apt.ts"), import("./publish-aur.ts"), import("./publish-snap.ts")]
+  if (process.env.SLOPCODE_DISABLE_HOMEBREW !== "true") {
+    jobs.push(import("./publish-homebrew.ts"))
+  } else {
+    console.log("homebrew tap: disabled")
+  }
+  await Promise.all(jobs)
 }
 
 // Supplemental channels sourced from npm artifacts.
