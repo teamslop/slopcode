@@ -912,8 +912,9 @@ export function Prompt(props: PromptProps) {
                 if (store.mode === "normal") autocomplete.onKeyDown(e)
                 if (!autocomplete.visible) {
                   if (
-                    (keybind.match("history_previous", e) && input.cursorOffset === 0) ||
-                    (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length)
+                    !props.historyMode &&
+                    ((keybind.match("history_previous", e) && input.cursorOffset === 0) ||
+                      (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length))
                   ) {
                     const direction = keybind.match("history_previous", e) ? -1 : 1
                     const item = history.move(direction, input.plainText)
