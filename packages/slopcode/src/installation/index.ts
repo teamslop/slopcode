@@ -3,6 +3,7 @@ import path from "path"
 import { $ } from "bun"
 import z from "zod"
 import { NamedError } from "@slopcode-ai/util/error"
+import { product } from "@slopcode-ai/util/product"
 import { Log } from "../util/log"
 import { iife } from "@/util/iife"
 import { Flag } from "../flag/flag"
@@ -14,7 +15,10 @@ declare global {
 
 export namespace Installation {
   const log = Log.create({ service: "installation" })
-  const nixMatch = /(^|[^a-z0-9])slopcode([^a-z0-9]|$)/i
+  const pkg = product.package
+  const nixRef = product.id
+  const repo = product.github.full_repo
+  const nixMatch = new RegExp(`(^|[^a-z0-9])${nixRef}([^a-z0-9]|$)`, "i")
 
   const aptNormalizedVersion = (value: string) => {
     const plain = value.trim().replace(/^v/, "")
@@ -44,7 +48,7 @@ export namespace Installation {
     return value
   }
 
-  const aptPolicy = () => $`apt-cache policy slopcode`.throws(false).quiet().text()
+  const aptPolicy = () => $`apt-cache policy ${pkg}`.throws(false).quiet().text()
 
   const aptNeedsPrivilege = (stderr: string) => {
     const text = stderr.toLowerCase()
@@ -83,16 +87,16 @@ export namespace Installation {
 
   const snapUpgradeCommand = () => {
     if (typeof process.getuid === "function" && process.getuid() === 0) {
-      return $`snap refresh slopcode`
+      return $`snap refresh ${pkg}`
     }
-    return $`sudo -n snap refresh slopcode`
+    return $`sudo -n snap refresh ${pkg}`
   }
 
   const nixVersionInstallable = (source: string) => {
     const normalized = source.startsWith("flake:") ? source.replace(/^flake:/, "") : source
     const arch = process.arch === "x64" ? "x86_64" : process.arch === "arm64" ? "aarch64" : process.arch
     const os = process.platform === "darwin" ? "darwin" : process.platform === "linux" ? "linux" : process.platform
-    return `${normalized}#packages.${arch}-${os}.slopcode.version`
+    return `${normalized}#packages.${arch}-${os}.${nixRef}.version`
   }
 
   const isNixEntry = (entry: {
@@ -202,7 +206,7 @@ export namespace Installation {
   }
 
   export async function method() {
-    if (process.execPath.includes(path.join(".slopcode", "bin"))) return "curl"
+    if (process.execPath.includes(path.join(`.${product.id}`, "bin"))) return "curl"
     if (process.execPath.includes(path.join(".local", "bin"))) return "curl"
     const exec = process.execPath.toLowerCase()
     if (await nixSelector()) return "nix"
@@ -226,23 +230,23 @@ export namespace Installation {
       },
       {
         name: "brew" as const,
-        command: () => $`brew list --formula slopcode`.throws(false).quiet().text(),
+        command: () => $`brew list --formula ${pkg}`.throws(false).quiet().text(),
       },
       {
         name: "apt" as const,
-        command: () => $`dpkg-query -W -f='\${Package}' slopcode`.throws(false).quiet().text(),
+        command: () => $`dpkg-query -W -f='\${Package}' ${pkg}`.throws(false).quiet().text(),
       },
       {
         name: "snap" as const,
-        command: () => $`snap list slopcode`.throws(false).quiet().text(),
+        command: () => $`snap list ${pkg}`.throws(false).quiet().text(),
       },
       {
         name: "scoop" as const,
-        command: () => $`scoop list slopcode`.throws(false).quiet().text(),
+        command: () => $`scoop list ${pkg}`.throws(false).quiet().text(),
       },
       {
         name: "choco" as const,
-        command: () => $`choco list --limit-output slopcode`.throws(false).quiet().text(),
+        command: () => $`choco list --limit-output ${pkg}`.throws(false).quiet().text(),
       },
     ]
 
@@ -256,7 +260,7 @@ export namespace Installation {
 
     for (const check of checks) {
       const output = await check.command()
-      const installedName = "slopcode"
+      const installedName = pkg
       if (output.includes(installedName)) {
         return check.name
       }
@@ -273,37 +277,37 @@ export namespace Installation {
   )
 
   async function getBrewFormula() {
-    const tapFormula = await $`brew list --formula teamslop/slopcode/slopcode`.throws(false).quiet().text()
-    if (tapFormula.includes("slopcode")) return "teamslop/slopcode/slopcode"
-    const coreFormula = await $`brew list --formula slopcode`.throws(false).quiet().text()
-    if (coreFormula.includes("slopcode")) return "slopcode"
-    return "slopcode"
+    const tap = `${product.github.owner}/${product.github.repo}/${pkg}`
+    const tapFormula = await $`brew list --formula ${tap}`.throws(false).quiet().text()
+    if (tapFormula.includes(pkg)) return tap
+    const coreFormula = await $`brew list --formula ${pkg}`.throws(false).quiet().text()
+    if (coreFormula.includes(pkg)) return pkg
+    return pkg
   }
 
   export async function upgrade(method: Method, target: string) {
     let cmd
     switch (method) {
       case "curl":
-        cmd = $`curl -fsSL https://slopcode.dev/install | bash`.env({
+        cmd = $`curl -fsSL ${product.urls.install} | bash`.env({
           ...process.env,
           VERSION: target,
         })
         break
       case "npm":
-        cmd = $`npm install -g slopcode@${target}`
+        cmd = $`npm install -g ${pkg}@${target}`
         break
       case "pnpm":
-        cmd = $`pnpm install -g slopcode@${target}`
+        cmd = $`pnpm install -g ${pkg}@${target}`
         break
       case "bun":
-        cmd = $`bun install -g slopcode@${target}`
+        cmd = $`bun install -g ${pkg}@${target}`
         break
       case "nix": {
         const selector = await nixSelector()
         if (!selector) {
           throw new UpgradeFailedError({
-            stderr:
-              "Could not find slopcode in your nix profile. Install with: nix profile install github:teamslop/slopcode#slopcode",
+            stderr: `Could not find ${pkg} in your nix profile. Install with: nix profile install github:${repo}#${nixRef}`,
           })
         }
         cmd = $`nix profile upgrade ${selector}`
@@ -312,13 +316,11 @@ export namespace Installation {
       case "brew": {
         const formula = await getBrewFormula()
         if (formula.includes("/")) {
-          cmd =
-            $`brew tap teamslop/slopcode && cd "$(brew --repo teamslop/slopcode)" && git pull --ff-only && brew upgrade ${formula}`.env(
-              {
-                HOMEBREW_NO_AUTO_UPDATE: "1",
-                ...process.env,
-              },
-            )
+          const tap = `${product.github.owner}/${product.github.repo}`
+          cmd = $`brew tap ${tap} && cd "$(brew --repo ${tap})" && git pull --ff-only && brew upgrade ${formula}`.env({
+            HOMEBREW_NO_AUTO_UPDATE: "1",
+            ...process.env,
+          })
           break
         }
         cmd = $`brew upgrade ${formula}`.env({
@@ -330,18 +332,19 @@ export namespace Installation {
       case "apt": {
         const candidate = aptCandidate(await aptPolicy())
         const version = candidate && aptNormalizedVersion(candidate) === target ? undefined : aptPackageVersion(target)
-        const pkg = version ? `slopcode=${version}` : "slopcode"
-        cmd = aptUpgradeCommand(pkg)
+        const targetPkg = version ? `${pkg}=${version}` : pkg
+        cmd = aptUpgradeCommand(targetPkg)
         break
       }
-      case "snap":
-        cmd = snapUpgradeCommand()
-        break
       case "choco":
-        cmd = $`echo Y | choco upgrade slopcode --version=${target}`
+        cmd = $`echo Y | choco upgrade ${pkg} --version=${target}`
         break
       case "scoop":
-        cmd = $`scoop install slopcode@${target}`
+        cmd = $`scoop install ${pkg}@${target}`
+        break
+
+      case "snap":
+        cmd = snapUpgradeCommand()
         break
       default:
         throw new Error(`Unknown method: ${method}`)
@@ -372,7 +375,7 @@ export namespace Installation {
 
   export const VERSION = typeof SLOPCODE_VERSION === "string" ? SLOPCODE_VERSION : "local"
   export const CHANNEL = typeof SLOPCODE_CHANNEL === "string" ? SLOPCODE_CHANNEL : "local"
-  export const USER_AGENT = `slopcode/${CHANNEL}/${VERSION}/${Flag.SLOPCODE_CLIENT}`
+  export const USER_AGENT = `${product.id}/${CHANNEL}/${VERSION}/${Flag.SLOPCODE_CLIENT}`
 
   export async function latest(installMethod?: Method) {
     const detectedMethod = installMethod || (await method())
@@ -386,7 +389,7 @@ export namespace Installation {
         if (!version) throw new Error(`Could not detect version for tap formula: ${formula}`)
         return version
       }
-      return fetch("https://formulae.brew.sh/api/formula/slopcode.json")
+      return fetch(`https://formulae.brew.sh/api/formula/${pkg}.json`)
         .then((res) => {
           if (!res.ok) throw new Error(res.statusText)
           return res.json()
@@ -407,7 +410,7 @@ export namespace Installation {
     }
 
     if (detectedMethod === "snap") {
-      const info = await $`snap info slopcode`.throws(false).quiet().text()
+      const info = await $`snap info ${pkg}`.throws(false).quiet().text()
       const stable = info.match(/^\s*(?:latest\/)?stable:\s*([^\s]+)/m)?.[1]?.replace(/^v/, "")
       return stable || VERSION
     }
@@ -422,7 +425,7 @@ export namespace Installation {
         return VERSION
       }
       if (source.includes("nixpkgs")) {
-        const latest = (await $`nix eval --raw nixpkgs#slopcode.version`.quiet().nothrow().text()).trim()
+        const latest = (await $`nix eval --raw nixpkgs#${nixRef}.version`.quiet().nothrow().text()).trim()
         if (latest) {
           return latest
         }
@@ -441,7 +444,7 @@ export namespace Installation {
         return reg.endsWith("/") ? reg.slice(0, -1) : reg
       })
       const channel = CHANNEL
-      return fetch(`${registry}/slopcode/${channel}`)
+      return fetch(`${registry}/${pkg}/${channel}`)
         .then((res) => {
           if (!res.ok) throw new Error(res.statusText)
           return res.json()
@@ -451,7 +454,7 @@ export namespace Installation {
 
     if (detectedMethod === "choco") {
       return fetch(
-        "https://community.chocolatey.org/api/v2/Packages?$filter=Id%20eq%20%27slopcode%27%20and%20IsLatestVersion&$select=Version",
+        `https://community.chocolatey.org/api/v2/Packages?$filter=Id%20eq%20%27${pkg}%27%20and%20IsLatestVersion&$select=Version`,
         { headers: { Accept: "application/json;odata=verbose" } },
       )
         .then((res) => {
@@ -462,7 +465,7 @@ export namespace Installation {
     }
 
     if (detectedMethod === "scoop") {
-      return fetch("https://raw.githubusercontent.com/ScoopInstaller/Main/master/bucket/slopcode.json", {
+      return fetch(`https://raw.githubusercontent.com/ScoopInstaller/Main/master/bucket/${pkg}.json`, {
         headers: { Accept: "application/json" },
       })
         .then((res) => {
@@ -472,7 +475,7 @@ export namespace Installation {
         .then((data: any) => data.version)
     }
 
-    return fetch("https://api.github.com/repos/teamslop/slopcode/releases/latest")
+    return fetch(`https://api.github.com/repos/${repo}/releases/latest`)
       .then((res) => {
         if (!res.ok) throw new Error(res.statusText)
         return res.json()

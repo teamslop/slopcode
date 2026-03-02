@@ -10,6 +10,7 @@ import { Global } from "../global"
 import fs from "fs/promises"
 import { lazy } from "../util/lazy"
 import { NamedError } from "@slopcode-ai/util/error"
+import { product } from "@slopcode-ai/util/product"
 import { Flag } from "../flag/flag"
 import { Auth } from "../auth"
 import {
@@ -46,11 +47,11 @@ export namespace Config {
   function systemManagedConfigDir(): string {
     switch (process.platform) {
       case "darwin":
-        return "/Library/Application Support/slopcode"
+        return `/Library/Application Support/${product.id}`
       case "win32":
-        return path.join(process.env.ProgramData || "C:\\ProgramData", "slopcode")
+        return path.join(process.env.ProgramData || "C:\\ProgramData", product.id)
       default:
-        return "/etc/slopcode"
+        return `/etc/${product.id}`
     }
   }
 
@@ -87,20 +88,21 @@ export namespace Config {
     for (const [key, value] of Object.entries(auth)) {
       if (value.type === "wellknown") {
         process.env[value.key] = value.token
-        log.debug("fetching remote config", { url: `${key}/.well-known/slopcode` })
-        const response = await fetch(`${key}/.well-known/slopcode`)
+        const wellKnown = `${key}/${product.config.well_known}`
+        log.debug("fetching remote config", { url: wellKnown })
+        const response = await fetch(wellKnown)
         if (!response.ok) {
           throw new Error(`failed to fetch remote config from ${key}: ${response.status}`)
         }
         const wellknown = (await response.json()) as any
         const remoteConfig = wellknown.config ?? {}
         // Add $schema to prevent load() from trying to write back to a non-existent file
-        if (!remoteConfig.$schema) remoteConfig.$schema = "https://slopcode.dev/config.json"
+        if (!remoteConfig.$schema) remoteConfig.$schema = product.config.schema
         result = mergeConfigConcatArrays(
           result,
           await load(JSON.stringify(remoteConfig), {
-            dir: path.dirname(`${key}/.well-known/slopcode`),
-            source: `${key}/.well-known/slopcode`,
+            dir: path.dirname(wellKnown),
+            source: wellKnown,
           }),
         )
         log.debug("loaded remote config from well-known", { url: key })
@@ -1205,7 +1207,7 @@ export namespace Config {
   export type Info = z.output<typeof Info>
 
   export const global = lazy(async () => {
-    const legacyDir = path.join(path.dirname(Global.Path.config), "opencode")
+    const legacyDir = path.join(path.dirname(Global.Path.config), product.legacy_id)
     let result: Info = {}
 
     for (const file of [
@@ -1227,7 +1229,7 @@ export namespace Config {
         .then(async (mod) => {
           const { provider, model, ...rest } = mod.default
           if (provider && model) result.model = `${provider}/${model}`
-          result["$schema"] = "https://slopcode.dev/config.json"
+          result["$schema"] = product.config.schema
           result = mergeDeep(result, rest)
           await Filesystem.writeJson(path.join(Global.Path.config, "config.json"), result)
           await fs.unlink(toml)
@@ -1271,8 +1273,12 @@ export namespace Config {
     const parsed = Info.safeParse(normalized)
     if (parsed.success) {
       if (!parsed.data.$schema && isFile) {
-        parsed.data.$schema = "https://slopcode.dev/config.json"
-        const updated = original.replace(/^\s*\{/, '{\n  "$schema": "https://slopcode.dev/config.json",')
+        parsed.data.$schema = product.config.schema
+        const updated = original.replace(
+          /^\s*\{/,
+          `{
+  "$schema": "${product.config.schema}",`,
+        )
         await Bun.write(options.path, updated).catch(() => {})
       }
       const data = parsed.data
@@ -1328,18 +1334,10 @@ export namespace Config {
   }
 
   function globalConfigFile() {
-    const legacyDir = path.join(path.dirname(Global.Path.config), "opencode")
+    const legacyDir = path.join(path.dirname(Global.Path.config), product.legacy_id)
     const candidates = [
-      path.join(Global.Path.config, "slopcode.jsonc"),
-      path.join(Global.Path.config, "slopcode.json"),
-      path.join(Global.Path.config, "config.json"),
-      path.join(Global.Path.config, "opencode.jsonc"),
-      path.join(Global.Path.config, "opencode.json"),
-      path.join(legacyDir, "slopcode.jsonc"),
-      path.join(legacyDir, "slopcode.json"),
-      path.join(legacyDir, "opencode.jsonc"),
-      path.join(legacyDir, "opencode.json"),
-      path.join(legacyDir, "config.json"),
+      ...product.config.global_files.map((file) => path.join(Global.Path.config, file)),
+      ...product.config.global_files.map((file) => path.join(legacyDir, file)),
     ]
     for (const file of candidates) {
       if (existsSync(file)) return file

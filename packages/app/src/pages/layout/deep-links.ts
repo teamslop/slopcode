@@ -1,7 +1,9 @@
-export const deepLinkEvent = "slopcode:deep-link"
+import { product } from "@slopcode-ai/util/product"
+
+export const deepLinkEvent = `${product.id}:deep-link`
 
 const parseUrl = (input: string) => {
-  if (!input.startsWith("opencode://")) return
+  if (!product.deep_link.schemes.some((scheme) => input.startsWith(scheme))) return
   if (typeof URL.canParse === "function" && !URL.canParse(input)) return
   try {
     return new URL(input)

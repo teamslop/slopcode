@@ -2,9 +2,10 @@ import fs from "fs/promises"
 import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
 import path from "path"
 import os from "os"
+import { product } from "@slopcode-ai/util/product"
 import { Filesystem } from "../util/filesystem"
 
-const app = "slopcode"
+const app = product.id
 
 const data = path.join(xdgData!, app)
 const cache = path.join(xdgCache!, app)

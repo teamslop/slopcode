@@ -11,6 +11,7 @@ import { ModelsCommand } from "./cli/cmd/models"
 import { UI } from "./cli/ui"
 import { Installation } from "./installation"
 import { NamedError } from "@slopcode-ai/util/error"
+import { product } from "@slopcode-ai/util/product"
 import { FormatError } from "./cli/error"
 import { ServeCommand } from "./cli/cmd/serve"
 import { WorkspaceServeCommand } from "./cli/cmd/workspace-serve"
@@ -48,7 +49,7 @@ process.on("uncaughtException", (e) => {
 
 let cli = yargs(hideBin(process.argv))
   .parserConfiguration({ "populate--": true })
-  .scriptName("slopcode")
+  .scriptName(product.id)
   .wrap(100)
   .help("help", "show help")
   .alias("help", "h")
@@ -77,15 +78,15 @@ let cli = yargs(hideBin(process.argv))
     process.env.AGENT = "1"
     process.env.SLOPCODE = "1"
 
-    Log.Default.info("slopcode", {
+    Log.Default.info(product.id, {
       version: Installation.VERSION,
       args: process.argv.slice(2),
     })
 
-    const marker = path.join(Global.Path.data, "slopcode.db")
+    const marker = path.join(Global.Path.data, `${product.id}.db`)
     const storageDir = path.join(Global.Path.data, "storage")
-    const legacyStorageDir = path.join(path.dirname(Global.Path.data), "opencode", "storage")
-    const legacyMarker = path.join(Global.Path.data, "opencode-history-import.json")
+    const legacyStorageDir = path.join(path.dirname(Global.Path.data), product.legacy_id, "storage")
+    const legacyMarker = path.join(Global.Path.data, `${product.legacy_id}-history-import.json`)
 
     async function hasStorageData(dir: string) {
       if (!(await Filesystem.isDir(dir))) return false
@@ -158,9 +159,11 @@ let cli = yargs(hideBin(process.argv))
     if (!hasLegacyStorageData) return
     if (await Filesystem.exists(legacyMarker)) return
 
-    await migrate("Importing one-time OpenCode history into SlopCode...", "OpenCode history import complete.", [
-      legacyStorageDir,
-    ])
+    await migrate(
+      `Importing one-time ${product.legacy_app} history into ${product.app}...`,
+      `${product.legacy_app} history import complete.`,
+      [legacyStorageDir],
+    )
     await Filesystem.writeJson(legacyMarker, {
       time: Date.now(),
       storageDir: legacyStorageDir,
