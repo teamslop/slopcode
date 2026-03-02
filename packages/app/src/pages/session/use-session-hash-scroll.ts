@@ -1,4 +1,4 @@
-import { createEffect, createMemo, on, onCleanup } from "solid-js"
+import { createEffect, createMemo, onCleanup, onMount } from "solid-js"
 import { UserMessage } from "@slopcode-ai/sdk/v2"
 
 export const messageIdFromHash = (hash: string) => {
@@ -29,6 +29,7 @@ export const useSessionHashScroll = (input: {
   const visibleUserMessages = createMemo(() => input.visibleUserMessages())
   const messageById = createMemo(() => new Map(visibleUserMessages().map((m) => [m.id, m])))
   const messageIndex = createMemo(() => new Map(visibleUserMessages().map((m, i) => [m.id, i])))
+  let pendingKey = ""
 
   const clearMessageHash = () => {
     if (!window.location.hash) return
@@ -132,15 +133,6 @@ export const useSessionHashScroll = (input: {
     if (el) input.scheduleScrollState(el)
   }
 
-  createEffect(
-    on(input.sessionKey, (key) => {
-      if (!input.sessionID()) return
-      const messageID = input.consumePendingMessage(key)
-      if (!messageID) return
-      input.setPendingMessage(messageID)
-    }),
-  )
-
   createEffect(() => {
     if (!input.sessionID() || !input.messagesReady()) return
     requestAnimationFrame(() => applyHash("auto"))
@@ -152,7 +144,20 @@ export const useSessionHashScroll = (input: {
     visibleUserMessages()
     input.turnStart()
 
-    const targetId = input.pendingMessage() ?? messageIdFromHash(window.location.hash)
+    let targetId = input.pendingMessage()
+    if (!targetId) {
+      const key = input.sessionKey()
+      if (pendingKey !== key) {
+        pendingKey = key
+        const next = input.consumePendingMessage(key)
+        if (next) {
+          input.setPendingMessage(next)
+          targetId = next
+        }
+      }
+    }
+
+    if (!targetId) targetId = messageIdFromHash(window.location.hash)
     if (!targetId) return
     if (input.currentMessageId() === targetId) return
 
@@ -164,9 +169,12 @@ export const useSessionHashScroll = (input: {
     requestAnimationFrame(() => scrollToMessage(msg, "auto"))
   })
 
-  createEffect(() => {
-    if (!input.sessionID() || !input.messagesReady()) return
-    const handler = () => requestAnimationFrame(() => applyHash("auto"))
+  onMount(() => {
+    const handler = () => {
+      if (!input.sessionID() || !input.messagesReady()) return
+      requestAnimationFrame(() => applyHash("auto"))
+    }
+
     window.addEventListener("hashchange", handler)
     onCleanup(() => window.removeEventListener("hashchange", handler))
   })
