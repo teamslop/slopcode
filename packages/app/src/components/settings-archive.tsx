@@ -168,11 +168,7 @@ export const SettingsArchive: Component = () => {
                           </span>
                         )}
                       </Show>
-                      <Button
-                        size="normal"
-                        variant="secondary"
-                        onClick={() => unarchiveSession(session)}
-                      >
+                      <Button size="normal" variant="secondary" onClick={() => unarchiveSession(session)}>
                         {language.t("common.unarchive")}
                       </Button>
                     </div>

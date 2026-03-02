@@ -1253,7 +1253,7 @@ export class Session2 extends HeyApiClient {
       directory?: string
       title?: string
       time?: {
-        archived?: number
+        archived?: number | null
       }
     },
     options?: Options<never, ThrowOnError>,

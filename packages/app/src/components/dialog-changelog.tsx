@@ -15,9 +15,7 @@ export function DialogChangelog() {
       <div class="flex-1 min-h-0 flex flex-col">
         <ErrorBoundary
           fallback={(e) => (
-            <p class="text-text-weak p-6">
-              {e instanceof Error ? e.message : "Failed to load changelog"}
-            </p>
+            <p class="text-text-weak p-6">{e instanceof Error ? e.message : "Failed to load changelog"}</p>
           )}
         >
           <Suspense fallback={<p class="text-text-weak p-6">{language.t("common.loading")}...</p>}>
@@ -25,12 +23,7 @@ export function DialogChangelog() {
               when={(data()?.releases.length ?? 0) > 0}
               fallback={<p class="text-text-weak p-6">{language.t("common.noReleasesFound")}</p>}
             >
-              <ReleaseList
-                releases={data()!.releases}
-                hasMore={false}
-                loadingMore={false}
-                onLoadMore={() => {}}
-              />
+              <ReleaseList releases={data()!.releases} hasMore={false} loadingMore={false} onLoadMore={() => {}} />
             </Show>
           </Suspense>
         </ErrorBoundary>

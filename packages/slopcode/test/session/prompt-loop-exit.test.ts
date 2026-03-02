@@ -13,11 +13,7 @@ function makeUser(id: string): MessageV2.User {
   } as MessageV2.User
 }
 
-function makeAssistant(
-  id: string,
-  parentID: string,
-  finish?: string,
-): MessageV2.Assistant {
+function makeAssistant(id: string, parentID: string, finish?: string): MessageV2.Assistant {
   return {
     id,
     role: "assistant",

@@ -8,11 +8,7 @@ import type { AssistantMessage, Message as MessageType } from "@opencode-ai/sdk/
  * (generated server-side) sort before the user message (generated client-side
  * with an ahead clock) in the ID-sorted array.
  */
-export function findAssistantMessages(
-  messages: MessageType[],
-  userIndex: number,
-  userID: string,
-): AssistantMessage[] {
+export function findAssistantMessages(messages: MessageType[], userIndex: number, userID: string): AssistantMessage[] {
   if (userIndex < 0 || userIndex >= messages.length) return []
 
   const result: AssistantMessage[] = []

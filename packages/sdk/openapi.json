@@ -1881,7 +1881,14 @@
                     "type": "object",
                     "properties": {
                       "archived": {
-                        "type": "number"
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     }
                   }
@@ -9901,6 +9908,14 @@
               },
               "batch_tool": {
                 "description": "Enable the batch tool",
+                "type": "boolean"
+              },
+              "hashline_edit": {
+                "description": "Enable hashline-backed edit/read tool behavior (default true, set false to disable)",
+                "type": "boolean"
+              },
+              "hashline_autocorrect": {
+                "description": "Enable hashline autocorrect cleanup for copied prefixes and formatting artifacts (default true)",
                 "type": "boolean"
               },
               "openTelemetry": {
