@@ -374,7 +374,7 @@ export namespace LSPServer {
       })
       if (!bin) {
         if (!which("go")) return
-        if (Flag.OPENCODE_DISABLE_LSP_DOWNLOAD) return
+        if (Flag.SLOPCODE_DISABLE_LSP_DOWNLOAD) return
 
         log.info("installing gopls")
         const proc = Process.spawn(["go", "install", "golang.org/x/tools/gopls@latest"], {
