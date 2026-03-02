@@ -1,6 +1,6 @@
 {
   "name": "@slopcode-ai/app",
-  "version": "1.2.15",
+  "version": "0.0.12",
   "description": "",
   "type": "module",
   "exports": {
