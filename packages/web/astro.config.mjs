@@ -19,6 +19,43 @@ const redirects = onVercel
     }
   : undefined
 
+/**
+ * @typedef {{
+ *   type?: string
+ *   url?: string
+ *   children?: Node[]
+ * }} Node
+ */
+
+/** @param {string} url */
+function link(url) {
+  if (url === "/docs") return "/"
+  if (url.startsWith("/docs/")) return url.slice(5)
+  if (url.startsWith("/docs?") || url.startsWith("/docs#")) return `/${url.slice(6)}`
+  return url
+}
+
+/**
+ * @param {Node} node
+ * @param {(node: Node) => void} fn
+ */
+function visit(node, fn) {
+  fn(node)
+  if (!Array.isArray(node.children)) return
+  node.children.forEach((child) => visit(child, fn))
+}
+
+function rewrite() {
+  /** @param {Node} tree */
+  return (tree) => {
+    visit(tree, (node) => {
+      if (node.type !== "link" && node.type !== "definition") return
+      if (typeof node.url !== "string") return
+      node.url = link(node.url)
+    })
+  }
+}
+
 export default defineConfig({
   site: config.url,
   base,
@@ -36,6 +73,7 @@ export default defineConfig({
     host: "0.0.0.0",
   },
   markdown: {
+    remarkPlugins: onVercel ? [rewrite] : [],
     rehypePlugins: [rehypeHeadingIds, [rehypeAutolinkHeadings, { behavior: "wrap" }]],
   },
   integrations: [
