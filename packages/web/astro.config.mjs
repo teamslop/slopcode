@@ -3,19 +3,24 @@ import { defineConfig } from "astro/config"
 import starlight from "@astrojs/starlight"
 import solidJs from "@astrojs/solid-js"
 import cloudflare from "@astrojs/cloudflare"
+import vercel from "@astrojs/vercel"
 import config from "./config.mjs"
 import { rehypeHeadingIds } from "@astrojs/markdown-remark"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import { spawnSync } from "child_process"
-import { copyFileSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdirSync, writeFileSync } from "node:fs"
+
+const onVercel = process.env.VERCEL === "1"
 
 export default defineConfig({
   site: config.url,
   base: "/docs",
   output: "server",
-  adapter: cloudflare({
-    imageService: "passthrough",
-  }),
+  adapter: onVercel
+    ? vercel({})
+    : cloudflare({
+        imageService: "passthrough",
+      }),
   devToolbar: {
     enabled: false,
   },
@@ -102,6 +107,7 @@ function configSchema() {
           throw new Error("failed to generate config schema")
         }
 
+        mkdirSync("./dist/docs", { recursive: true })
         copyFileSync("./dist/config.json", "./dist/docs/config.json")
         copyFileSync("./dist/tui.json", "./dist/docs/tui.json")
 
