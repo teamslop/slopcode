@@ -1151,9 +1151,11 @@ export function Prompt(props: PromptProps) {
                   <text fg={theme.text}>
                     {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>agents</span>
                   </text>
-                  <text fg={theme.text}>
-                    {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>history</span>
-                  </text>
+                  <Show when={history.has()}>
+                    <text fg={theme.text}>
+                      {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>history</span>
+                    </text>
+                  </Show>
                   <text fg={theme.text}>
                     {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>commands</span>
                   </text>
