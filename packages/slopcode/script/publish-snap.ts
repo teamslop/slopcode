@@ -7,7 +7,7 @@ import os from "os"
 import path from "path"
 
 const creds = process.env.SNAPCRAFT_STORE_CREDENTIALS?.trim()
-const channel = process.env.SNAPCRAFT_CHANNEL ?? "stable"
+const channel = (process.env.SNAPCRAFT_CHANNEL ?? "latest/stable").replace(/^stable$/, "latest/stable")
 const snap = process.env.SNAPCRAFT_SNAP_NAME ?? "slopcode"
 
 const run = async () => {
@@ -80,6 +80,8 @@ const run = async () => {
         "confinement: classic",
         "platforms:",
         `  ${item.arch}:`,
+        "    build-on: [amd64]",
+        `    build-for: [${item.arch}]`,
         "apps:",
         "  slopcode:",
         "    command: bin/slopcode",
@@ -93,7 +95,7 @@ const run = async () => {
       ].join("\n"),
     )
 
-    await $`snapcraft pack --destructive-mode --platform ${item.arch} --output ${dir} ${dir}`.env(env)
+    await $`snapcraft pack --destructive-mode --platform ${item.arch} --output ${dir}`.cwd(dir).env(env)
     const file = path.join(dir, `${snap}_${version}_${item.arch}.snap`)
     if (!(await Bun.file(file).exists())) {
       throw new Error(`Missing snap artifact at ${file}`)

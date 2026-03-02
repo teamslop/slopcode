@@ -328,7 +328,7 @@ jobs:
           AUR_PACKAGE: ${{ vars.AUR_PACKAGE || 'slopcode-bin' }}
           # Snap store sync
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-          SNAPCRAFT_CHANNEL: ${{ vars.SNAPCRAFT_CHANNEL || 'stable' }}
+          SNAPCRAFT_CHANNEL: ${{ vars.SNAPCRAFT_CHANNEL || 'latest/stable' }}
           SNAPCRAFT_SNAP_NAME: ${{ vars.SNAPCRAFT_SNAP_NAME || 'slopcode' }}
           # apt repository sync
           APT_REPO_TOKEN: ${{ secrets.APT_REPO_TOKEN || steps.committer.outputs.token }}
