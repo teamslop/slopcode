@@ -60,8 +60,21 @@ await $`bun install`
 
 if (Script.release) {
   if (!Script.preview) {
-    await $`git commit -am "release: v${Script.version}"`
-    await $`git tag v${Script.version}`
+    const dirty = (await $`git status --porcelain`.text()).trim().length > 0
+    if (dirty) {
+      await $`git commit -am "release: v${Script.version}"`
+    } else {
+      console.log("release: skip commit (no version changes)")
+    }
+
+    const tag = `v${Script.version}`
+    const tagged = (await $`git tag -l ${tag}`.text()).trim().length > 0
+    if (!tagged) {
+      await $`git tag ${tag}`
+    } else {
+      console.log("release: skip tag", tag)
+    }
+
     await $`git fetch origin`
     await $`git cherry-pick HEAD..origin/dev`.nothrow()
     await $`git push origin HEAD --tags --no-verify --force-with-lease`
