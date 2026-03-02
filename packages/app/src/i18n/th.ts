@@ -567,6 +567,9 @@ export const dict = {
   "common.close": "ปิด",
   "common.edit": "แก้ไข",
   "common.loadMore": "โหลดเพิ่มเติม",
+  "common.changelog": "อัปเดต",
+  "common.noReleasesFound": "ไม่พบเวอร์ชัน",
+  "changelog.tag.latest": "ล่าสุด",
   "common.key.esc": "ESC",
 
   "sidebar.menu.toggle": "สลับเมนู",
@@ -811,6 +814,12 @@ export const dict = {
   "workspace.reset.archived.one": "1 เซสชันจะถูกจัดเก็บ",
   "workspace.reset.archived.many": "{{count}} เซสชันจะถูกจัดเก็บ",
   "workspace.reset.note": "สิ่งนี้จะรีเซ็ตพื้นที่ทำงานให้ตรงกับสาขาเริ่มต้น",
+
+  "settings.archive.title": "เซสชันที่จัดเก็บ",
+  "settings.archive.description": "กู้คืนเซสชันที่จัดเก็บเพื่อให้แสดงในแถบด้านข้าง",
+  "settings.archive.none": "ไม่มีเซสชันที่จัดเก็บ",
+  "settings.archive.scope.all": "โปรเจกต์ทั้งหมด",
+  "settings.archive.scope.current": "โปรเจกต์ปัจจุบัน",
   "common.open": "เปิด",
   "dialog.releaseNotes.action.getStarted": "เริ่มต้น",
   "dialog.releaseNotes.action.next": "ถัดไป",

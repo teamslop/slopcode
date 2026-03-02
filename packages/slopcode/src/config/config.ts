@@ -783,6 +783,7 @@ export namespace Config {
       stash_delete: z.string().optional().default("ctrl+d").describe("Delete stash entry"),
       model_provider_list: z.string().optional().default("ctrl+a").describe("Open provider list from model dialog"),
       model_favorite_toggle: z.string().optional().default("ctrl+f").describe("Toggle model favorite status"),
+      model_show_all_toggle: z.string().optional().default("ctrl+o").describe("Toggle showing all models"),
       session_share: z.string().optional().default("none").describe("Share current session"),
       session_unshare: z.string().optional().default("none").describe("Unshare current session"),
       session_interrupt: z.string().optional().default("escape").describe("Interrupt current session"),
@@ -823,7 +824,12 @@ export namespace Config {
       command_list: z.string().optional().default("ctrl+p").describe("List available commands"),
       agent_list: z.string().optional().default("<leader>a").describe("List agents"),
       agent_cycle: z.string().optional().default("tab").describe("Next agent"),
-      agent_cycle_reverse: z.string().optional().default("shift+tab").describe("Previous agent"),
+      agent_cycle_reverse: z.string().optional().default("none").describe("Previous agent"),
+      permission_auto_accept_toggle: z
+        .string()
+        .optional()
+        .default("shift+tab")
+        .describe("Toggle auto-accept mode for permissions"),
       variant_cycle: z.string().optional().default("ctrl+t").describe("Cycle model variants"),
       history_mode_toggle: z.string().optional().default("ctrl+h,ctrl+j").describe("Toggle history navigation mode"),
       input_clear: z.string().optional().default("ctrl+c").describe("Clear input field"),
@@ -1163,6 +1169,16 @@ export namespace Config {
         .object({
           disable_paste_summary: z.boolean().optional(),
           batch_tool: z.boolean().optional().describe("Enable the batch tool"),
+          hashline_edit: z
+            .boolean()
+            .optional()
+            .describe("Enable hashline-backed edit/read tool behavior (default true, set false to disable)"),
+          hashline_autocorrect: z
+            .boolean()
+            .optional()
+            .describe(
+              "Enable hashline autocorrect cleanup for copied prefixes and formatting artifacts (default true)",
+            ),
           openTelemetry: z
             .boolean()
             .optional()

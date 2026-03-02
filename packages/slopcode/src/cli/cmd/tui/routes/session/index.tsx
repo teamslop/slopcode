@@ -334,6 +334,14 @@ export function Session() {
   useKeyboard((evt) => {
     if (dialog.stack.length > 0) return
 
+    const handleAppExit = () => {
+      if (!keybind.match("app_exit", evt)) return false
+      if (renderer.getSelection()?.getSelectedText()) return false
+      exit()
+      evt.preventDefault()
+      return true
+    }
+
     if (keybind.match("history_mode_toggle", evt)) {
       const current = promptRef.current
 
@@ -347,6 +355,21 @@ export function Session() {
     }
 
     if (history()) {
+      if (handleAppExit()) return
+
+      if (keybind.match("session_interrupt", evt)) {
+        if (sync.data.session_status?.[route.sessionID]?.type === "idle") return
+        command.trigger("session.interrupt")
+        evt.preventDefault()
+        return
+      }
+
+      if (keybind.match("input_submit", evt)) {
+        setHistoryMode(false)
+        evt.preventDefault()
+        return
+      }
+
       if (keybind.match("history_previous", evt)) {
         scrollToPrompt("prev")
         evt.preventDefault()
@@ -379,8 +402,7 @@ export function Session() {
     }
 
     if (!session()?.parentID) return
-    if (!keybind.match("app_exit", evt)) return
-    exit()
+    handleAppExit()
   })
 
   const visiblePrompts = () => {
@@ -398,13 +420,6 @@ export function Session() {
         return parts.some((part) => part && part.type === "text" && !part.synthetic && !part.ignored)
       })
       .sort((a, b) => a.y - b.y)
-  }
-
-  const findCurrentVisiblePrompt = () => {
-    const prompts = visiblePrompts()
-    if (prompts.length === 0) return null
-    const top = scroll.y + 1
-    return [...prompts].reverse().find((item) => item.y <= top)?.id ?? prompts[0]?.id ?? null
   }
 
   const findNextVisiblePrompt = (direction: "next" | "prev") => {
@@ -515,6 +530,14 @@ export function Session() {
     return result.sort((a, b) => a.y - b.y)
   }
 
+  const historyTraceList = () => {
+    const prompts = messages().flatMap((message) => {
+      if (message.role !== "user") return []
+      return [message.id]
+    })
+    return prompts.flatMap((id) => historyTraces(id)).sort((a, b) => a.y - b.y)
+  }
+
   const focusHistoryTrace = (trace: HistoryTrace) => {
     setHistoryPart(trace.partID)
     const child = scroll.getChildren().find((item) => item.id === trace.anchorID)
@@ -523,10 +546,7 @@ export function Session() {
   }
 
   const moveHistoryTrace = (direction: "next" | "prev") => {
-    const promptID = findCurrentVisiblePrompt()
-    if (!promptID) return
-
-    const traces = historyTraces(promptID)
+    const traces = historyTraceList()
     if (traces.length === 0) return
 
     const selectedID = historyPart()
@@ -553,10 +573,7 @@ export function Session() {
   }
 
   const historyAction = () => {
-    const promptID = findCurrentVisiblePrompt()
-    if (!promptID) return
-
-    const traces = historyTraces(promptID)
+    const traces = historyTraceList()
     if (traces.length === 0) return
 
     const current = (() => {

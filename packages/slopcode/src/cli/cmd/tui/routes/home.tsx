@@ -46,6 +46,7 @@ export function Home() {
     {
       title: tipsHidden() ? "Show tips" : "Hide tips",
       value: "tips.toggle",
+      search: "toggle tips",
       keybind: "tips_toggle",
       category: "System",
       onSelect: (dialog) => {
@@ -107,6 +108,7 @@ export function Home() {
               promptRef.set(r)
             }}
             hint={Hint}
+            showHistoryHint={false}
           />
         </box>
         <box height={4} minHeight={0} width="100%" maxWidth={75} alignItems="center" paddingTop={3} flexShrink={1}>

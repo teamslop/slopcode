@@ -58,8 +58,9 @@ If the desktop app is crashing on launch, hanging, or behaving strangely, start 
 Open your global config file and look for a `plugin` key.
 
 - **macOS/Linux**: `~/.config/slopcode/slopcode.jsonc` (or `~/.config/slopcode/slopcode.json`)
-- **macOS/Linux** (older installs): `~/.local/share/slopcode/slopcode.jsonc`
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\slopcode\slopcode.jsonc`
+- **macOS/Linux** (legacy): `~/.config/opencode/opencode.jsonc` (or `~/.config/opencode/opencode.json`)
+- **macOS/Linux** (older installs): `~/.local/share/opencode/opencode.jsonc`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\slopcode\slopcode.jsonc` (legacy path `%USERPROFILE%\.config\opencode\opencode.jsonc` is also supported)
 
 If you have plugins configured, temporarily disable them by removing the key or setting it to an empty array:
 
@@ -75,10 +76,10 @@ If you have plugins configured, temporarily disable them by removing the key or 
 SlopCode can also load local plugins from disk. Temporarily move these out of the way (or rename the folder) and restart the desktop app:
 
 - **Global plugins**
-  - **macOS/Linux**: `~/.config/slopcode/plugins/`
-  - **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\slopcode\plugins`
+  - **macOS/Linux**: `~/.config/slopcode/plugins/` (legacy `~/.config/opencode/plugins/`)
+  - **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\slopcode\plugins` (legacy `%USERPROFILE%\.config\opencode\plugins`)
 - **Project plugins** (only if you use per-project config)
-  - `<your-project>/.slopcode/plugins/`
+  - `<your-project>/.slopcode/plugins/` (legacy `<your-project>/.opencode/plugins/`)
 
 If the app starts working again, re-enable plugins one at a time to find which one is causing the issue.
 
@@ -111,7 +112,7 @@ From the Home screen, click the server name (with the status dot) to open the Se
 
 #### Remove `server.port` / `server.hostname` from your config
 
-If your `slopcode.json(c)` contains a `server` section, temporarily remove it and restart the desktop app.
+If your `slopcode.json(c)` (or legacy `opencode.json(c)`) contains a `server` section, temporarily remove it and restart the desktop app.
 
 #### Check environment variables
 
