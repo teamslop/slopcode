@@ -80,7 +80,7 @@ export default defineConfig({
         dark: "./src/assets/logo-dark.svg",
         replacesTitle: true,
       },
-      sidebar: ["", "go", "cli", "config", "providers", "tools", "commands", "agents", "themes", "troubleshooting"],
+      sidebar: ["", "cli", "config", "providers", "tools", "commands", "agents", "themes", "troubleshooting"],
     }),
   ],
 })
