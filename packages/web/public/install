@@ -187,7 +187,7 @@ candidate_packages=()
 add_candidate() {
   local item="$1"
   local existing
-  for existing in "${candidate_packages[@]}"; do
+  for existing in "${candidate_packages[@]-}"; do
     if [[ "$existing" == "$item" ]]; then
       return
     fi
@@ -214,7 +214,7 @@ mkdir -p "$tmp_dir"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 selected_pkg=""
-for pkg in "${candidate_packages[@]}"; do
+for pkg in "${candidate_packages[@]-}"; do
   url="https://registry.npmjs.org/${pkg}/-/${pkg}-${requested_version}.tgz"
   if curl -fsSL "$url" -o "$tmp_dir/pkg.tgz"; then
     selected_pkg="$pkg"
@@ -224,7 +224,7 @@ done
 
 if [[ -z "$selected_pkg" ]]; then
   print_message error "Could not find a binary package for $os/$arch (version $requested_version)"
-  print_message info "Checked: ${candidate_packages[*]}"
+  print_message info "Checked: ${candidate_packages[*]-}"
   exit 1
 fi
 
