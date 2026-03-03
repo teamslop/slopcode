@@ -272,43 +272,25 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Check required credentials
-        id: guard
-        env:
-          HAVE_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' && 'true' || 'false' }}
-        run: |
-          if [ "$HAVE_NPM_TOKEN" != "true" ]; then
-            echo "Skipping publish: missing NPM_TOKEN"
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "ready=true" >> "$GITHUB_OUTPUT"
-
       - name: Setup git committer
         id: committer
-        if: steps.guard.outputs.ready == 'true'
         uses: ./.github/actions/setup-git-committer
         with:
           slopcode-app-id: ${{ vars.SLOPCODE_APP_ID }}
           slopcode-app-secret: ${{ secrets.SLOPCODE_APP_SECRET }}
 
       - uses: actions/download-artifact@v4
-        if: steps.guard.outputs.ready == 'true'
         with:
           name: slopcode-cli
           path: packages/slopcode/dist
 
       - name: Install apt repository tooling
-        if: steps.guard.outputs.ready == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends dpkg-dev gnupg
 
       - run: ./script/publish.ts
-        if: steps.guard.outputs.ready == 'true'
         env:
-          # npm release destination
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           # Homebrew tap sync
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || steps.committer.outputs.token }}
           HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO || 'teamslop/homebrew-slopcode' }}
@@ -345,4 +327,4 @@ jobs:
           SLOPCODE_RELEASE: ${{ needs.version.outputs.release }}
           GITHUB_TOKEN: ${{ steps.committer.outputs.token }}
           GH_REPO: ${{ needs.version.outputs.repo }}
-          NPM_CONFIG_PROVENANCE: false
+          NPM_CONFIG_PROVENANCE: true
