@@ -87,12 +87,13 @@ export namespace Config {
     let result: Info = {}
     for (const [key, value] of Object.entries(auth)) {
       if (value.type === "wellknown") {
+        const url = key.replace(/\/+$/, "")
         process.env[value.key] = value.token
-        const wellKnown = `${key}/${product.config.well_known}`
+        const wellKnown = `${url}/${product.config.well_known}`
         log.debug("fetching remote config", { url: wellKnown })
         const response = await fetch(wellKnown)
         if (!response.ok) {
-          throw new Error(`failed to fetch remote config from ${key}: ${response.status}`)
+          throw new Error(`failed to fetch remote config from ${url}: ${response.status}`)
         }
         const wellknown = (await response.json()) as any
         const remoteConfig = wellknown.config ?? {}
@@ -105,7 +106,7 @@ export namespace Config {
             source: wellKnown,
           }),
         )
-        log.debug("loaded remote config from well-known", { url: key })
+        log.debug("loaded remote config from well-known", { url })
       }
     }
 
