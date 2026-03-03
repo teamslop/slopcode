@@ -200,6 +200,10 @@ for (const item of targets) {
       {
         name,
         version: Script.version,
+        repository: {
+          type: "git",
+          url: "https://github.com/teamslop/slopcode",
+        },
         os: [item.os],
         cpu: [item.arch],
       },
