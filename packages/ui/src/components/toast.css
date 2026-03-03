@@ -171,9 +171,26 @@
     font-weight: var(--font-weight-medium);
     line-height: var(--line-height-large);
     letter-spacing: var(--letter-spacing-normal);
+    transition:
+      color 0.12s ease,
+      text-decoration-color 0.12s ease,
+      transform 0.08s ease;
 
     &:hover {
       text-decoration: underline;
+    }
+
+    &:active {
+      color: color-mix(in oklab, var(--text-invert-strong) 88%, black);
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      transform: translateY(0.5px);
+    }
+
+    &:focus-visible {
+      outline: 2px solid color-mix(in oklab, var(--text-invert-strong) 45%, transparent);
+      outline-offset: 2px;
+      border-radius: var(--radius-sm);
     }
 
     &:first-child {

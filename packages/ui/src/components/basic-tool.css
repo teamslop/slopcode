@@ -119,6 +119,10 @@
       text-decoration: none;
       text-underline-offset: 2px;
       font-weight: var(--font-weight-regular);
+      transition:
+        color 0.12s ease,
+        text-decoration-color 0.12s ease,
+        transform 0.08s ease;
 
       &:hover {
         color: var(--text-interactive-base);
@@ -126,7 +130,16 @@
       }
 
       &:active {
-        color: var(--text-interactive-base);
+        color: color-mix(in oklab, var(--text-interactive-base) 82%, black);
+        text-decoration: underline;
+        text-decoration-thickness: 2px;
+        transform: translateY(0.5px);
+      }
+
+      &:focus-visible {
+        outline: 2px solid color-mix(in oklab, var(--text-interactive-base) 35%, transparent);
+        outline-offset: 2px;
+        border-radius: var(--radius-sm);
       }
 
       &:visited {

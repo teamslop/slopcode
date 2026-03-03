@@ -33,7 +33,7 @@ html,
   font-family: var(--font-family-sans); /* 4 */
   font-feature-settings: var(--font-family-sans--font-feature-settings, normal); /* 5 */
   font-variation-settings: var(--font-family-sans--font-variation-settings, normal); /* 6 */
-  -webkit-tap-highlight-color: transparent; /* 7 */
+  -webkit-tap-highlight-color: color-mix(in oklab, var(--text-interactive-base) 28%, transparent); /* 7 */
 }
 
 /*
