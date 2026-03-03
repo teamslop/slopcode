@@ -188,6 +188,11 @@ function canExpand(part: ToolPart, metadata: Record<string, unknown>, generic: b
     return questions.length > QUESTION_EXPAND_ITEMS
   }
 
+  if (part.tool === "task") {
+    if (part.state.status !== "completed") return false
+    return lines(completedOutput(part)) > OUTPUT_EXPAND_LINES
+  }
+
   if (OUTPUT_EXPAND_TOOL_PARTS.has(part.tool)) {
     return lines(completedOutput(part)) > OUTPUT_EXPAND_LINES
   }
@@ -217,6 +222,8 @@ const context = createContext<{
   showDetails: () => boolean
   showGenericToolOutput: () => boolean
   isHistoryPartSelected: (id: string) => boolean
+  isHistoryPromptSelected: (id: string) => boolean
+  isHistoryTimeline: () => boolean
   diffWrapMode: () => "word" | "none"
   isToolExpanded: (id: string) => boolean
   toggleToolExpanded: (id: string) => void
@@ -279,6 +286,7 @@ export function Session() {
   const [history, setHistory] = createSignal(false)
   const [historyPart, setHistoryPart] = createSignal<string>()
   const [historyPrompt, setHistoryPrompt] = createSignal<string>()
+  const [target, setTarget] = createSignal<"prompt" | "timeline">("prompt")
   const [expandedToolParts, setExpandedToolParts] = createSignal<Record<string, boolean>>({})
 
   type HistoryTrace = {
@@ -312,6 +320,8 @@ export function Session() {
 
     return new CustomSpeedScroll(3)
   })
+
+  const follow = createMemo(() => !history() || target() === "prompt")
 
   createEffect(async () => {
     await sync.session
@@ -374,22 +384,21 @@ export function Session() {
     }))
   }
 
-  const isHistoryPartSelected = (id: string) => history() && historyPart() === id
+  const isHistoryTimeline = () => history() && target() === "timeline"
+  const isHistoryPartSelected = (id: string) => isHistoryTimeline() && historyPart() === id
+  const isHistoryPromptSelected = (id: string) => isHistoryTimeline() && !historyPart() && historyPrompt() === id
 
   function setHistoryMode(value: boolean) {
     if (history() === value) return
     setHistory(value)
     setHistoryPart(undefined)
     setHistoryPrompt(undefined)
+    setTarget(value ? "timeline" : "prompt")
+
+    if (value) return
 
     const current = promptRef.current
     if (!current) return
-
-    if (value) {
-      current.blur()
-      return
-    }
-
     if (session()?.parentID) return
     if (permissions().length > 0 || questions().length > 0) return
     current.focus()
@@ -406,6 +415,7 @@ export function Session() {
     if (!current) return false
     setHistoryPart(undefined)
     setHistoryPrompt(visiblePrompts().at(-1)?.id)
+    setTarget("prompt")
     current.focus()
     return true
   }
@@ -417,6 +427,7 @@ export function Session() {
         setHistoryMode(false)
         setHistoryPart(undefined)
         setHistoryPrompt(undefined)
+        setTarget("prompt")
         setExpandedToolParts({})
       },
       { defer: true },
@@ -476,26 +487,7 @@ export function Session() {
         return
       }
 
-      const current = promptRef.current
-      if (current?.focused && keybind.match("history_previous", evt)) {
-        scrollToPrompt("prev")
-        evt.preventDefault()
-        return
-      }
-
-      if (current?.focused && evt.name === "left") {
-        if (!focusLatestHistoryTrace()) focusPromptByID(currentPromptID())
-        evt.preventDefault()
-        return
-      }
-
-      if (current?.focused && evt.name === "space") {
-        return
-      }
-
-      if (current?.focused) return
-
-      if (keybind.match("input_submit", evt)) {
+      if (target() !== "prompt" && keybind.match("input_submit", evt)) {
         setHistoryMode(false)
         evt.preventDefault()
         return
@@ -514,18 +506,30 @@ export function Session() {
       }
 
       if (evt.name === "left") {
-        moveHistoryTrace("prev")
+        if (target() === "prompt") {
+          if (!focusLatestHistoryTrace()) focusPromptByID(currentPromptID())
+          evt.preventDefault()
+          return
+        }
+
+        if (!moveHistoryTrace("prev")) focusPromptByID(currentPromptID())
         evt.preventDefault()
         return
       }
 
       if (evt.name === "right") {
+        if (target() === "prompt") {
+          evt.preventDefault()
+          return
+        }
+
         if (!moveHistoryTrace("next")) focusPrompt()
         evt.preventDefault()
         return
       }
 
       if (evt.name === "space") {
+        if (target() === "prompt") return
         historyAction()
         evt.preventDefault()
         return
@@ -561,6 +565,7 @@ export function Session() {
     if (!child) return false
     setHistoryPart(undefined)
     setHistoryPrompt(id)
+    setTarget("timeline")
     scroll.scrollBy(child.y - scroll.y - 1)
     return true
   }
@@ -575,7 +580,7 @@ export function Session() {
     const prompts = visiblePrompts()
     if (prompts.length === 0) return undefined
 
-    if (promptRef.current?.focused) {
+    if (target() === "prompt") {
       return prompts.at(-1)?.id
     }
 
@@ -696,6 +701,7 @@ export function Session() {
     if (!child) return false
     setHistoryPrompt(trace.promptID)
     setHistoryPart(trace.partID)
+    setTarget("timeline")
     scroll.scrollBy(child.y - scroll.y - 1)
     return true
   }
@@ -716,28 +722,30 @@ export function Session() {
     const selectedID = historyPart()
     if (selectedID) {
       const trace = traces.find((item) => item.partID === selectedID)
-      if (!trace) return false
+      if (trace) {
+        const group = traces.filter((item) => item.promptID === trace.promptID)
+        const index = group.findIndex((item) => item.partID === selectedID)
+        if (index < 0) return false
 
-      const group = traces.filter((item) => item.promptID === trace.promptID)
-      const index = group.findIndex((item) => item.partID === selectedID)
-      if (index < 0) return false
+        if (direction === "next") {
+          const next = group[index + 1]
+          if (next) return focusHistoryTrace(next)
 
-      if (direction === "next") {
-        const next = group[index + 1]
-        if (next) return focusHistoryTrace(next)
+          const prompts = promptIDs()
+          const promptIndex = prompts.findIndex((item) => item === trace.promptID)
+          if (promptIndex < 0) return false
 
-        const prompts = promptIDs()
-        const promptIndex = prompts.findIndex((item) => item === trace.promptID)
-        if (promptIndex < 0) return false
+          const nextPrompt = prompts[promptIndex + 1]
+          if (!nextPrompt) return false
+          return focusPromptByID(nextPrompt)
+        }
 
-        const nextPrompt = prompts[promptIndex + 1]
-        if (!nextPrompt) return false
-        return focusPromptByID(nextPrompt)
+        const prev = group[index - 1]
+        if (prev) return focusHistoryTrace(prev)
+        return focusPromptByID(trace.promptID)
       }
 
-      const prev = group[index - 1]
-      if (prev) return focusHistoryTrace(prev)
-      return focusPromptByID(trace.promptID)
+      setHistoryPart(undefined)
     }
 
     if (!promptID) {
@@ -780,18 +788,36 @@ export function Session() {
     if (!current) return
     setHistoryPrompt(current.promptID)
     setHistoryPart(current.partID)
+    setTarget("timeline")
 
-    if (current.childSessionID) {
-      navigate({
-        type: "session",
-        sessionID: current.childSessionID,
-      })
+    if (current.expandable) {
+      toggleToolExpanded(current.partID)
       return
     }
 
-    if (!current.expandable) return
-    toggleToolExpanded(current.partID)
+    if (!current.childSessionID) return
+    navigate({
+      type: "session",
+      sessionID: current.childSessionID,
+    })
   }
+
+  createEffect(() => {
+    if (!history()) return
+    if (!scroll || scroll.isDestroyed) return
+
+    const traces = historyTraceList()
+    const prompts = promptIDs()
+    const selectedPart = historyPart()
+    if (selectedPart && !traces.some((item) => item.partID === selectedPart)) {
+      setHistoryPart(undefined)
+    }
+
+    const selectedPrompt = historyPrompt()
+    if (selectedPrompt && !prompts.includes(selectedPrompt)) {
+      setHistoryPrompt(prompts.at(-1)?.toString())
+    }
+  })
 
   // Helper: Find next visible message boundary in direction
   const findNextVisibleMessage = (direction: "next" | "prev"): string | null => {
@@ -1571,6 +1597,8 @@ export function Session() {
         showDetails,
         showGenericToolOutput,
         isHistoryPartSelected,
+        isHistoryPromptSelected,
+        isHistoryTimeline,
         diffWrapMode,
         isToolExpanded,
         toggleToolExpanded,
@@ -1597,7 +1625,7 @@ export function Session() {
                   foregroundColor: theme.border,
                 },
               }}
-              stickyScroll={true}
+              stickyScroll={follow()}
               stickyStart="bottom"
               flexGrow={1}
               scrollAcceleration={scrollAcceleration()}
@@ -1708,6 +1736,7 @@ export function Session() {
               <Prompt
                 visible={!session()?.parentID && permissions().length === 0 && questions().length === 0}
                 historyMode={history()}
+                historyTarget={target()}
                 ref={(r) => {
                   prompt = r
                   promptRef.set(r)
@@ -1777,6 +1806,8 @@ function UserMessage(props: {
   const [hover, setHover] = createSignal(false)
   const queued = createMemo(() => props.pending && props.message.id > props.pending)
   const color = createMemo(() => local.agent.color(props.message.agent))
+  const selected = createMemo(() => ctx.isHistoryPromptSelected(props.message.id))
+  const border = createMemo(() => (selected() ? theme.borderActive : color()))
   const queuedFg = createMemo(() => selectedForeground(theme, color()))
   const metadataVisible = createMemo(() => queued() || ctx.showTimestamps())
 
@@ -1788,7 +1819,7 @@ function UserMessage(props: {
         <box
           id={props.message.id}
           border={["left"]}
-          borderColor={color()}
+          borderColor={border()}
           customBorderChars={SplitBorder.customBorderChars}
           marginTop={props.index === 0 ? 0 : 1}
         >
@@ -2644,6 +2675,7 @@ function WebSearch(props: ToolProps<any>) {
 }
 
 function Task(props: ToolProps<typeof TaskTool>) {
+  const ctx = use()
   const { theme } = useTheme()
   const keybind = useKeybind()
   const { navigate } = useRoute()
@@ -2661,23 +2693,30 @@ function Task(props: ToolProps<typeof TaskTool>) {
   })
 
   const current = createMemo(() => tools().findLast((x) => x.state.status !== "pending"))
-
   const isRunning = createMemo(() => props.part.state.status === "running")
+  const output = createMemo(() => props.output?.trim() ?? "")
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const overflow = createMemo(() => lines(output()) > OUTPUT_EXPAND_LINES)
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return output()
+    return clip(output(), OUTPUT_EXPAND_LINES)
+  })
+
+  const open = () => {
+    if (!props.metadata.sessionId) return
+    navigate({ type: "session", sessionID: props.metadata.sessionId })
+  }
 
   return (
     <Switch>
       <Match when={props.input.description || props.input.subagent_type}>
         <BlockTool
           title={"# " + Locale.titlecase(props.input.subagent_type ?? "unknown") + " Task"}
-          onClick={
-            props.metadata.sessionId
-              ? () => navigate({ type: "session", sessionID: props.metadata.sessionId! })
-              : undefined
-          }
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : props.metadata.sessionId ? open : undefined}
           part={props.part}
           spinner={isRunning()}
         >
-          <box>
+          <box gap={1}>
             <text style={{ fg: theme.textMuted }}>
               {props.input.description} ({tools().length} toolcalls)
             </text>
@@ -2690,6 +2729,12 @@ function Task(props: ToolProps<typeof TaskTool>) {
                   </text>
                 )
               }}
+            </Show>
+            <Show when={expanded() && output()}>
+              <text style={{ fg: theme.text }}>{limited()}</text>
+            </Show>
+            <Show when={overflow()}>
+              <text style={{ fg: theme.textMuted }}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
             </Show>
           </box>
           <Show when={props.metadata.sessionId}>
