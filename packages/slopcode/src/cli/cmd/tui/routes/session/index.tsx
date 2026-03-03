@@ -293,7 +293,7 @@ export function Session() {
     partID: string
     promptID: string
     anchorID: string
-    kind: "tool" | "reasoning"
+    kind: "text" | "tool" | "reasoning"
     childSessionID?: string
     expandable: boolean
     y: number
@@ -641,6 +641,25 @@ export function Session() {
     for (const message of turns) {
       const parts = sync.data.part[message.id] ?? []
       for (const part of parts) {
+        if (part.type === "text") {
+          const text = part.text.trim()
+          if (part.synthetic || part.ignored || !text) continue
+
+          const anchorID = "text-" + part.id
+          const anchor = anchors.get(anchorID)
+          if (!anchor) continue
+
+          result.push({
+            partID: part.id,
+            promptID,
+            anchorID,
+            kind: "text",
+            expandable: false,
+            y: anchor.y,
+          })
+          continue
+        }
+
         if (part.type === "reasoning") {
           const text = part.text.replace("[REDACTED]", "").trim()
           if (!showThinking() || !text) continue
@@ -2034,9 +2053,16 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { theme, syntax } = useTheme()
+  const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
   return (
     <Show when={props.part.text.trim()}>
-      <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
+      <box
+        id={"text-" + props.part.id}
+        paddingLeft={3}
+        marginTop={1}
+        flexShrink={0}
+        backgroundColor={selected() ? theme.backgroundElement : undefined}
+      >
         <Switch>
           <Match when={Flag.SLOPCODE_EXPERIMENTAL_MARKDOWN}>
             <markdown
