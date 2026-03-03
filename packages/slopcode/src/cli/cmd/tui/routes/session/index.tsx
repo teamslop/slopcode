@@ -2157,10 +2157,6 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
               streaming={streaming()}
               content={props.part.text.trim()}
               conceal={ctx.conceal()}
-              tableOptions={{
-                widthMode: "full",
-                columnFitter: "balanced",
-              }}
             />
           </Match>
           <Match when={!Flag.SLOPCODE_EXPERIMENTAL_MARKDOWN}>
@@ -2854,8 +2850,8 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
     if (isRunning() && tools().length > 0) {
       // content[0] += ` · ${tools().length} toolcalls`
-      if (current()) content.push(`└ ${Locale.titlecase(current()!.tool)} ${(current()!.state as any).title}`)
-      else content.push(`└ Running...`)
+      if (current()) content.push(`⤷ ${Locale.titlecase(current()!.tool)} ${(current()!.state as any).title}`)
+      else content.push(`⤷ ${tools().length} toolcalls`)
     }
 
     if (props.part.state.status === "completed") {
