@@ -1737,6 +1737,7 @@ export function Session() {
                 visible={!session()?.parentID && permissions().length === 0 && questions().length === 0}
                 historyMode={history()}
                 historyTarget={target()}
+                onFocus={() => setTarget("prompt")}
                 ref={(r) => {
                   prompt = r
                   promptRef.set(r)
