@@ -1158,12 +1158,22 @@ export function Prompt(props: PromptProps) {
                   })()}
                 </box>
               </box>
-              <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
-                esc{" "}
-                <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
-                  {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
-                </span>
-              </text>
+              <box
+                paddingLeft={1}
+                paddingRight={1}
+                onMouseDown={() => input?.focus()}
+                onMouseOver={() => setHover("interrupt")}
+                onMouseOut={() => setHover(undefined)}
+                onMouseUp={() => run("interrupt", () => command.trigger("session.interrupt"))}
+                backgroundColor={chip("interrupt")}
+              >
+                <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
+                  esc{" "}
+                  <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
+                    {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
+                  </span>
+                </text>
+              </box>
             </box>
           </Show>
           <Show when={status().type !== "retry"}>

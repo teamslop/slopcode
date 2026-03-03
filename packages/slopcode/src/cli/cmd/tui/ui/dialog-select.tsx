@@ -10,6 +10,7 @@ import { useDialog, type DialogContext } from "@tui/ui/dialog"
 import { useKeybind } from "@tui/context/keybind"
 import { Keybind } from "@/util/keybind"
 import { Locale } from "@/util/locale"
+import { ShortcutHint } from "@tui/ui/shortcut-hint"
 
 export interface DialogSelectProps<T> {
   title: string
@@ -341,12 +342,15 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         <box paddingRight={2} paddingLeft={4} flexDirection="row" gap={2} flexShrink={0} paddingTop={1}>
           <For each={keybinds()}>
             {(item) => (
-              <text>
-                <span style={{ fg: theme.text }}>
-                  <b>{item.title}</b>{" "}
-                </span>
-                <span style={{ fg: theme.textMuted }}>{Keybind.toString(item.keybind)}</span>
-              </text>
+              <ShortcutHint
+                shortcut={Keybind.toString(item.keybind)}
+                label={item.title}
+                onTrigger={() => {
+                  const s = selected()
+                  if (!s) return
+                  item.onTrigger(s)
+                }}
+              />
             )}
           </For>
         </box>

@@ -16,6 +16,7 @@ import { Locale } from "@/util/locale"
 import { Global } from "@/global"
 import { useDialog } from "../../ui/dialog"
 import { useTuiConfig } from "../../context/tui-config"
+import { ShortcutHint } from "../../ui/shortcut-hint"
 
 type PermissionStage = "permission" | "always" | "reject"
 
@@ -557,22 +558,24 @@ function Prompt<const T extends Record<string, string>>(props: {
   const diffKey = Keybind.parse("ctrl+f")[0]
   const narrow = createMemo(() => dimensions().width < 80)
   const dialog = useDialog()
+  const toggle = () => setStore("expanded", (v) => !v)
+  const cycle = (step: number) => {
+    const idx = keys.indexOf(store.selected)
+    const next = keys[(idx + step + keys.length) % keys.length]
+    setStore("selected", next)
+  }
 
   useKeyboard((evt) => {
     if (dialog.stack.length > 0) return
 
     if (evt.name === "left" || evt.name == "h") {
       evt.preventDefault()
-      const idx = keys.indexOf(store.selected)
-      const next = keys[(idx - 1 + keys.length) % keys.length]
-      setStore("selected", next)
+      cycle(-1)
     }
 
     if (evt.name === "right" || evt.name == "l") {
       evt.preventDefault()
-      const idx = keys.indexOf(store.selected)
-      const next = keys[(idx + 1) % keys.length]
-      setStore("selected", next)
+      cycle(1)
     }
 
     if (evt.name === "return") {
@@ -588,7 +591,7 @@ function Prompt<const T extends Record<string, string>>(props: {
     if (props.fullscreen && diffKey && Keybind.match(diffKey, keybind.parse(evt))) {
       evt.preventDefault()
       evt.stopPropagation()
-      setStore("expanded", (v) => !v)
+      toggle()
     }
   })
 
@@ -662,16 +665,10 @@ function Prompt<const T extends Record<string, string>>(props: {
         </box>
         <box flexDirection="row" gap={2} flexShrink={0}>
           <Show when={props.fullscreen}>
-            <text fg={theme.text}>
-              {"ctrl+f"} <span style={{ fg: theme.textMuted }}>{hint()}</span>
-            </text>
+            <ShortcutHint shortcut="ctrl+f" label={hint()} onTrigger={toggle} />
           </Show>
-          <text fg={theme.text}>
-            {"⇆"} <span style={{ fg: theme.textMuted }}>select</span>
-          </text>
-          <text fg={theme.text}>
-            enter <span style={{ fg: theme.textMuted }}>confirm</span>
-          </text>
+          <ShortcutHint shortcut="⇆" label="select" onTrigger={() => cycle(1)} />
+          <ShortcutHint shortcut="enter" label="confirm" onTrigger={() => props.onSelect(store.selected)} />
         </box>
       </box>
     </box>

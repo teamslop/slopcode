@@ -14,6 +14,7 @@ import { usePromptRef } from "../context/prompt"
 import { Installation } from "@/installation"
 import { useKV } from "../context/kv"
 import { useCommandDialog } from "../component/dialog-command"
+import { ShortcutHint } from "../ui/shortcut-hint"
 
 // TODO: what is the best way to do this?
 let once = false
@@ -56,21 +57,30 @@ export function Home() {
     },
   ])
 
+  const keybind = useKeybind()
   const Hint = (
     <Show when={connectedMcpCount() > 0}>
       <box flexShrink={0} flexDirection="row" gap={1}>
-        <text fg={theme.text}>
-          <Switch>
-            <Match when={mcpError()}>
-              <span style={{ fg: theme.error }}>•</span> mcp errors{" "}
-              <span style={{ fg: theme.textMuted }}>ctrl+x s</span>
-            </Match>
-            <Match when={true}>
+        <Switch>
+          <Match when={mcpError()}>
+            <box flexDirection="row" gap={1} alignItems="center">
+              <text fg={theme.text}>
+                <span style={{ fg: theme.error }}>•</span> mcp errors
+              </text>
+              <ShortcutHint
+                shortcut={keybind.print("status_view")}
+                label="status"
+                onTrigger={() => command.trigger("slopcode.status")}
+              />
+            </box>
+          </Match>
+          <Match when={true}>
+            <text fg={theme.text}>
               <span style={{ fg: theme.success }}>•</span>{" "}
               {Locale.pluralize(connectedMcpCount(), "{} mcp server", "{} mcp servers")}
-            </Match>
-          </Switch>
-        </text>
+            </text>
+          </Match>
+        </Switch>
       </box>
     </Show>
   )
@@ -89,8 +99,6 @@ export function Home() {
     }
   })
   const directory = useDirectory()
-
-  const keybind = useKeybind()
 
   return (
     <>
