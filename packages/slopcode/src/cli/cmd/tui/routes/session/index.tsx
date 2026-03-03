@@ -2713,7 +2713,9 @@ function Task(props: ToolProps<typeof TaskTool>) {
       <Match when={props.input.description || props.input.subagent_type}>
         <BlockTool
           title={"# " + Locale.titlecase(props.input.subagent_type ?? "unknown") + " Task"}
-          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : props.metadata.sessionId ? open : undefined}
+          onClick={
+            overflow() ? () => ctx.toggleToolExpanded(props.part.id) : props.metadata.sessionId ? open : undefined
+          }
           part={props.part}
           spinner={isRunning()}
         >
