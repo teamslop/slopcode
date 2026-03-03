@@ -105,6 +105,23 @@ const GENERIC_EXPAND_LINES = 3
 const EDIT_EXPAND_LINES = 40
 const PATCH_EXPAND_LINES = 60
 const PATCH_FILE_PREVIEW_LINES = 20
+const WRITE_EXPAND_LINES = 60
+const REASONING_EXPAND_LINES = 18
+const REASONING_EXPAND_CHARS = 1200
+const OUTPUT_EXPAND_LINES = 20
+const TODO_EXPAND_ITEMS = 8
+const QUESTION_EXPAND_ITEMS = 4
+
+const OUTPUT_EXPAND_TOOL_PARTS = new Set([
+  "read",
+  "grep",
+  "list",
+  "glob",
+  "webfetch",
+  "codesearch",
+  "websearch",
+  "skill",
+])
 
 function lines(text: string) {
   if (!text.trim()) return 0
@@ -117,6 +134,10 @@ function clip(text: string, max: number) {
   return [...all.slice(0, max), "…"].join("\n")
 }
 
+function canExpandReasoning(text: string) {
+  return lines(text) > REASONING_EXPAND_LINES || text.length > REASONING_EXPAND_CHARS
+}
+
 function patchlines(metadata: Record<string, unknown>) {
   const files = Array.isArray(metadata.files) ? metadata.files : []
   return files.reduce((sum, file) => {
@@ -124,6 +145,11 @@ function patchlines(metadata: Record<string, unknown>) {
     const diff = typeof file.diff === "string" ? file.diff : ""
     return sum + lines(diff)
   }, 0)
+}
+
+function completedOutput(part: ToolPart) {
+  if (part.state.status !== "completed") return ""
+  return part.state.output.trim()
 }
 
 function canExpand(part: ToolPart, metadata: Record<string, unknown>, generic: boolean) {
@@ -139,6 +165,31 @@ function canExpand(part: ToolPart, metadata: Record<string, unknown>, generic: b
 
   if (part.tool === "apply_patch") {
     return patchlines(metadata) > PATCH_EXPAND_LINES
+  }
+
+  if (part.tool === "write") {
+    if (part.state.status !== "completed") return false
+    const content =
+      typeof (part.state.input as any)?.content === "string" ? (part.state.input as any).content.trim() : ""
+    return lines(content) > WRITE_EXPAND_LINES
+  }
+
+  if (part.tool === "todowrite") {
+    if (part.state.status !== "completed") return false
+    const todos = (part.state.input as any)?.todos
+    if (!Array.isArray(todos)) return false
+    return todos.length > TODO_EXPAND_ITEMS
+  }
+
+  if (part.tool === "question") {
+    if (part.state.status !== "completed") return false
+    const questions = (part.state.input as any)?.questions
+    if (!Array.isArray(questions)) return false
+    return questions.length > QUESTION_EXPAND_ITEMS
+  }
+
+  if (OUTPUT_EXPAND_TOOL_PARTS.has(part.tool)) {
+    return lines(completedOutput(part)) > OUTPUT_EXPAND_LINES
   }
 
   if (CUSTOM_TOOL_PARTS.has(part.tool)) return false
@@ -598,7 +649,7 @@ export function Session() {
             promptID,
             anchorID,
             kind: "reasoning",
-            expandable: false,
+            expandable: canExpandReasoning(text),
             y: anchor.y,
           })
           continue
@@ -1893,14 +1944,23 @@ const PART_MAPPING = {
 }
 
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
+  const renderer = useRenderer()
   const { theme, subtleSyntax } = useTheme()
   const ctx = use()
+  const [hover, setHover] = createSignal(false)
   const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
   const content = createMemo(() => {
     // Filter out redacted reasoning chunks from OpenRouter
     // OpenRouter sends encrypted reasoning data that appears as [REDACTED]
     return props.part.text.replace("[REDACTED]", "").trim()
   })
+  const overflow = createMemo(() => canExpandReasoning(content()))
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return content()
+    return clip(content(), REASONING_EXPAND_LINES)
+  })
+
   return (
     <Show when={content() && ctx.showThinking()}>
       <box
@@ -1911,16 +1971,29 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         border={["left"]}
         customBorderChars={SplitBorder.customBorderChars}
         borderColor={selected() ? theme.textMuted : theme.backgroundElement}
+        backgroundColor={hover() ? theme.backgroundPanel : undefined}
+        onMouseOver={() => overflow() && setHover(true)}
+        onMouseOut={() => setHover(false)}
+        onMouseUp={() => {
+          if (!overflow()) return
+          if (renderer.getSelection()?.getSelectedText()) return
+          ctx.toggleToolExpanded(props.part.id)
+        }}
       >
         <code
           filetype="markdown"
           drawUnstyledText={false}
           streaming={true}
           syntaxStyle={subtleSyntax()}
-          content={"_Thinking:_ " + content()}
+          content={"_Thinking:_ " + limited()}
           conceal={ctx.conceal()}
           fg={theme.textMuted}
         />
+        <Show when={overflow()}>
+          <text fg={theme.textMuted} paddingLeft={3}>
+            {expanded() ? "Click to collapse" : "Click to expand"}
+          </text>
+        </Show>
       </box>
     </Show>
   )
@@ -2113,8 +2186,11 @@ function InlineTool(props: {
   pending: string
   children: JSX.Element
   part: ToolPart
+  onClick?: () => void
 }) {
+  const renderer = useRenderer()
   const [margin, setMargin] = createSignal(0)
+  const [hover, setHover] = createSignal(false)
   const { theme } = useTheme()
   const ctx = use()
   const sync = useSync()
@@ -2150,6 +2226,13 @@ function InlineTool(props: {
       borderColor={selected() ? theme.textMuted : theme.background}
       customBorderChars={SplitBorder.customBorderChars}
       paddingLeft={2}
+      backgroundColor={hover() ? theme.backgroundMenu : undefined}
+      onMouseOver={() => props.onClick && setHover(true)}
+      onMouseOut={() => setHover(false)}
+      onMouseUp={() => {
+        if (renderer.getSelection()?.getSelectedText()) return
+        props.onClick?.()
+      }}
       renderBefore={function () {
         const el = this as BoxRenderable
         const parent = el.parent
@@ -2235,6 +2318,61 @@ function BlockTool(props: {
   )
 }
 
+function ExpandableOutputTool(props: {
+  icon: string
+  pending: string
+  complete: any
+  title: string
+  summary: JSX.Element
+  output?: string
+  part: ToolPart
+  limit?: number
+}) {
+  const { theme } = useTheme()
+  const ctx = use()
+  const output = createMemo(() => props.output?.trim() ?? "")
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const limit = createMemo(() => props.limit ?? OUTPUT_EXPAND_LINES)
+  const overflow = createMemo(() => lines(output()) > limit())
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return output()
+    return clip(output(), limit())
+  })
+
+  return (
+    <Switch>
+      <Match when={props.output !== undefined && expanded()}>
+        <BlockTool
+          title={props.title}
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
+          <box gap={1}>
+            <text fg={theme.text}>{limited()}</text>
+            <Show when={overflow()}>
+              <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
+            </Show>
+          </box>
+        </BlockTool>
+      </Match>
+      <Match when={true}>
+        <InlineTool
+          icon={props.icon}
+          pending={props.pending}
+          complete={props.complete}
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
+          {props.summary}
+          <Show when={overflow()}>
+            <span style={{ fg: theme.textMuted }}> (click to expand)</span>
+          </Show>
+        </InlineTool>
+      </Match>
+    </Switch>
+  )
+}
+
 function Bash(props: ToolProps<typeof BashTool>) {
   const { theme } = useTheme()
   const ctx = use()
@@ -2304,25 +2442,41 @@ function Bash(props: ToolProps<typeof BashTool>) {
 }
 
 function Write(props: ToolProps<typeof WriteTool>) {
+  const ctx = use()
   const { theme, syntax } = useTheme()
   const code = createMemo(() => {
     if (!props.input.content) return ""
     return props.input.content
   })
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const overflow = createMemo(() => lines(code()) > WRITE_EXPAND_LINES)
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return code()
+    return clip(code(), WRITE_EXPAND_LINES)
+  })
 
   return (
     <Switch>
       <Match when={props.metadata.diagnostics !== undefined}>
-        <BlockTool title={"# Wrote " + normalizePath(props.input.filePath!)} part={props.part}>
+        <BlockTool
+          title={"# Wrote " + normalizePath(props.input.filePath!)}
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
           <line_number fg={theme.textMuted} minWidth={3} paddingRight={1}>
             <code
               conceal={false}
               fg={theme.text}
               filetype={filetype(props.input.filePath!)}
               syntaxStyle={syntax()}
-              content={code()}
+              content={limited()}
             />
           </line_number>
+          <Show when={overflow()}>
+            <text fg={theme.textMuted} paddingLeft={3}>
+              {expanded() ? "Click to collapse" : "Click to expand"}
+            </text>
+          </Show>
           <Diagnostics diagnostics={props.metadata.diagnostics} filePath={props.input.filePath ?? ""} />
         </BlockTool>
       </Match>
@@ -2337,12 +2491,22 @@ function Write(props: ToolProps<typeof WriteTool>) {
 
 function Glob(props: ToolProps<typeof GlobTool>) {
   return (
-    <InlineTool icon="✱" pending="Finding files..." complete={props.input.pattern} part={props.part}>
-      Glob "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
-      <Show when={props.metadata.count}>
-        ({props.metadata.count} {props.metadata.count === 1 ? "match" : "matches"})
-      </Show>
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="✱"
+      pending="Finding files..."
+      complete={props.input.pattern}
+      title={`# Glob "${props.input.pattern}"${props.input.path ? ` in ${normalizePath(props.input.path)}` : ""}`}
+      output={props.output}
+      part={props.part}
+      summary={
+        <>
+          Glob "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
+          <Show when={props.metadata.count}>
+            ({props.metadata.count} {props.metadata.count === 1 ? "match" : "matches"})
+          </Show>
+        </>
+      }
+    />
   )
 }
 
@@ -2357,9 +2521,19 @@ function Read(props: ToolProps<typeof ReadTool>) {
   })
   return (
     <>
-      <InlineTool icon="→" pending="Reading file..." complete={props.input.filePath} part={props.part}>
-        Read {normalizePath(props.input.filePath!)} {input(props.input, ["filePath"])}
-      </InlineTool>
+      <ExpandableOutputTool
+        icon="→"
+        pending="Reading file..."
+        complete={props.input.filePath}
+        title={"# Read " + normalizePath(props.input.filePath!)}
+        output={props.output}
+        part={props.part}
+        summary={
+          <>
+            Read {normalizePath(props.input.filePath!)} {input(props.input, ["filePath"])}
+          </>
+        }
+      />
       <For each={loaded()}>
         {(filepath) => (
           <box paddingLeft={3}>
@@ -2375,12 +2549,22 @@ function Read(props: ToolProps<typeof ReadTool>) {
 
 function Grep(props: ToolProps<typeof GrepTool>) {
   return (
-    <InlineTool icon="✱" pending="Searching content..." complete={props.input.pattern} part={props.part}>
-      Grep "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
-      <Show when={props.metadata.matches}>
-        ({props.metadata.matches} {props.metadata.matches === 1 ? "match" : "matches"})
-      </Show>
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="✱"
+      pending="Searching content..."
+      complete={props.input.pattern}
+      title={`# Grep "${props.input.pattern}"${props.input.path ? ` in ${normalizePath(props.input.path)}` : ""}`}
+      output={props.output}
+      part={props.part}
+      summary={
+        <>
+          Grep "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
+          <Show when={props.metadata.matches}>
+            ({props.metadata.matches} {props.metadata.matches === 1 ? "match" : "matches"})
+          </Show>
+        </>
+      }
+    />
   )
 }
 
@@ -2392,17 +2576,30 @@ function List(props: ToolProps<typeof ListTool>) {
     return ""
   })
   return (
-    <InlineTool icon="→" pending="Listing directory..." complete={props.input.path !== undefined} part={props.part}>
-      List {dir()}
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="→"
+      pending="Listing directory..."
+      complete={props.input.path !== undefined}
+      title={"# List " + dir()}
+      output={props.output}
+      part={props.part}
+      summary={<>List {dir()}</>}
+    />
   )
 }
 
 function WebFetch(props: ToolProps<typeof WebFetchTool>) {
+  const input = props.input as any
   return (
-    <InlineTool icon="%" pending="Fetching from the web..." complete={(props.input as any).url} part={props.part}>
-      WebFetch {(props.input as any).url}
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="%"
+      pending="Fetching from the web..."
+      complete={input.url}
+      title={`# WebFetch ${input.url}`}
+      output={props.output}
+      part={props.part}
+      summary={<>WebFetch {input.url}</>}
+    />
   )
 }
 
@@ -2410,9 +2607,19 @@ function CodeSearch(props: ToolProps<any>) {
   const input = props.input as any
   const metadata = props.metadata as any
   return (
-    <InlineTool icon="◇" pending="Searching code..." complete={input.query} part={props.part}>
-      Exa Code Search "{input.query}" <Show when={metadata.results}>({metadata.results} results)</Show>
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="◇"
+      pending="Searching code..."
+      complete={input.query}
+      title={`# Exa Code Search "${input.query}"`}
+      output={props.output}
+      part={props.part}
+      summary={
+        <>
+          Exa Code Search "{input.query}" <Show when={metadata.results}>({metadata.results} results)</Show>
+        </>
+      }
+    />
   )
 }
 
@@ -2420,9 +2627,19 @@ function WebSearch(props: ToolProps<any>) {
   const input = props.input as any
   const metadata = props.metadata as any
   return (
-    <InlineTool icon="◈" pending="Searching web..." complete={input.query} part={props.part}>
-      Exa Web Search "{input.query}" <Show when={metadata.numResults}>({metadata.numResults} results)</Show>
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="◈"
+      pending="Searching web..."
+      complete={input.query}
+      title={`# Exa Web Search "${input.query}"`}
+      output={props.output}
+      part={props.part}
+      summary={
+        <>
+          Exa Web Search "{input.query}" <Show when={metadata.numResults}>({metadata.numResults} results)</Show>
+        </>
+      }
+    />
   )
 }
 
@@ -2654,15 +2871,37 @@ function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
 }
 
 function TodoWrite(props: ToolProps<typeof TodoWriteTool>) {
+  const { theme } = useTheme()
+  const ctx = use()
+  const todos = createMemo(() => props.input.todos ?? [])
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const overflow = createMemo(() => todos().length > TODO_EXPAND_ITEMS)
+  const visible = createMemo(() => {
+    if (expanded() || !overflow()) return todos()
+    return todos().slice(0, TODO_EXPAND_ITEMS)
+  })
+
   return (
     <Switch>
       <Match when={props.metadata.todos?.length}>
-        <BlockTool title="# Todos" part={props.part}>
+        <BlockTool
+          title="# Todos"
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
           <box>
-            <For each={props.input.todos ?? []}>
-              {(todo) => <TodoItem status={todo.status} content={todo.content} />}
-            </For>
+            <For each={visible()}>{(todo) => <TodoItem status={todo.status} content={todo.content} />}</For>
+            <Show when={overflow() && !expanded()}>
+              <text fg={theme.textMuted} paddingLeft={3}>
+                … {todos().length - TODO_EXPAND_ITEMS} more
+              </text>
+            </Show>
           </box>
+          <Show when={overflow()}>
+            <text fg={theme.textMuted} paddingLeft={3}>
+              {expanded() ? "Click to collapse" : "Click to expand"}
+            </text>
+          </Show>
         </BlockTool>
       </Match>
       <Match when={true}>
@@ -2676,7 +2915,20 @@ function TodoWrite(props: ToolProps<typeof TodoWriteTool>) {
 
 function Question(props: ToolProps<typeof QuestionTool>) {
   const { theme } = useTheme()
+  const ctx = use()
   const count = createMemo(() => props.input.questions?.length ?? 0)
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const rows = createMemo(() =>
+    (props.input.questions ?? []).map((question, index) => ({
+      question: question.question,
+      answer: props.metadata.answers?.[index],
+    })),
+  )
+  const overflow = createMemo(() => rows().length > QUESTION_EXPAND_ITEMS)
+  const visible = createMemo(() => {
+    if (expanded() || !overflow()) return rows()
+    return rows().slice(0, QUESTION_EXPAND_ITEMS)
+  })
 
   function format(answer?: string[]) {
     if (!answer?.length) return "(no answer)"
@@ -2686,17 +2938,31 @@ function Question(props: ToolProps<typeof QuestionTool>) {
   return (
     <Switch>
       <Match when={props.metadata.answers}>
-        <BlockTool title="# Questions" part={props.part}>
+        <BlockTool
+          title="# Questions"
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
           <box gap={1}>
-            <For each={props.input.questions ?? []}>
-              {(q, i) => (
+            <For each={visible()}>
+              {(item) => (
                 <box flexDirection="column">
-                  <text fg={theme.textMuted}>{q.question}</text>
-                  <text fg={theme.text}>{format(props.metadata.answers?.[i()])}</text>
+                  <text fg={theme.textMuted}>{item.question}</text>
+                  <text fg={theme.text}>{format(item.answer)}</text>
                 </box>
               )}
             </For>
+            <Show when={overflow() && !expanded()}>
+              <text fg={theme.textMuted} paddingLeft={3}>
+                … {rows().length - QUESTION_EXPAND_ITEMS} more
+              </text>
+            </Show>
           </box>
+          <Show when={overflow()}>
+            <text fg={theme.textMuted} paddingLeft={3}>
+              {expanded() ? "Click to collapse" : "Click to expand"}
+            </text>
+          </Show>
         </BlockTool>
       </Match>
       <Match when={true}>
@@ -2710,9 +2976,15 @@ function Question(props: ToolProps<typeof QuestionTool>) {
 
 function Skill(props: ToolProps<typeof SkillTool>) {
   return (
-    <InlineTool icon="→" pending="Loading skill..." complete={props.input.name} part={props.part}>
-      Skill "{props.input.name}"
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="→"
+      pending="Loading skill..."
+      complete={props.input.name}
+      title={`# Skill "${props.input.name}"`}
+      output={props.output}
+      part={props.part}
+      summary={<>Skill "{props.input.name}"</>}
+    />
   )
 }
 
