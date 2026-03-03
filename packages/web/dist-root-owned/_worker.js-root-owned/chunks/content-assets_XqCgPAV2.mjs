@@ -1,4 +1,5 @@
-globalThis.process ??= {}; globalThis.process.env ??= {};
-const contentAssets = new Map();
+globalThis.process ??= {}
+globalThis.process.env ??= {}
+const contentAssets = new Map()
 
-export { contentAssets as default };
+export { contentAssets as default }
