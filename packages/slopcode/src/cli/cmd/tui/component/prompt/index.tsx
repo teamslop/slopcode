@@ -40,8 +40,10 @@ export type PromptProps = {
   visible?: boolean
   disabled?: boolean
   historyMode?: boolean
+  historyTarget?: "prompt" | "timeline"
   showHistoryHint?: boolean
   onSubmit?: () => void
+  onFocus?: () => void
   ref?: (ref: PromptRef) => void
   hint?: JSX.Element
   showPlaceholder?: boolean
@@ -111,8 +113,17 @@ export function Prompt(props: PromptProps) {
   })
 
   createEffect(() => {
-    if (props.disabled) input.cursorColor = theme.backgroundElement
-    if (!props.disabled) input.cursorColor = theme.text
+    if (props.disabled) {
+      input.cursorColor = theme.backgroundElement
+      return
+    }
+
+    if (props.historyMode && props.historyTarget === "timeline") {
+      input.cursorColor = theme.backgroundElement
+      return
+    }
+
+    input.cursorColor = theme.text
   })
 
   const lastUserMessage = createMemo(() => {
@@ -738,6 +749,7 @@ export function Prompt(props: PromptProps) {
   }
 
   const highlight = createMemo(() => {
+    if (props.historyMode && props.historyTarget === "timeline") return theme.backgroundElement
     if (keybind.leader) return theme.border
     if (store.mode === "shell") return theme.primary
     return local.agent.color(local.agent.current().name)
@@ -1014,10 +1026,14 @@ export function Prompt(props: PromptProps) {
                 setTimeout(() => {
                   // setTimeout is a workaround and needs to be addressed properly
                   if (!input || input.isDestroyed) return
-                  input.cursorColor = theme.text
+                  const hidden = props.disabled || (props.historyMode && props.historyTarget === "timeline")
+                  input.cursorColor = hidden ? theme.backgroundElement : theme.text
                 }, 0)
               }}
-              onMouseDown={(r: MouseEvent) => r.target?.focus()}
+              onMouseDown={(r: MouseEvent) => {
+                props.onFocus?.()
+                r.target?.focus()
+              }}
               focusedBackgroundColor={theme.backgroundElement}
               cursorColor={theme.text}
               syntaxStyle={syntax()}
