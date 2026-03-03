@@ -664,12 +664,29 @@ export function Session() {
 
     const selectedID = historyPart()
     if (selectedID) {
-      const selected = traces.findIndex((item) => item.partID === selectedID)
-      if (selected < 0) return false
-      const target = traces[direction === "next" ? selected + 1 : selected - 1]
-      if (target) return focusHistoryTrace(target)
-      if (direction === "next") return false
-      return focusPromptByID(traces[selected]?.promptID)
+      const trace = traces.find((item) => item.partID === selectedID)
+      if (!trace) return false
+
+      const group = traces.filter((item) => item.promptID === trace.promptID)
+      const index = group.findIndex((item) => item.partID === selectedID)
+      if (index < 0) return false
+
+      if (direction === "next") {
+        const next = group[index + 1]
+        if (next) return focusHistoryTrace(next)
+
+        const prompts = promptIDs()
+        const promptIndex = prompts.findIndex((item) => item === trace.promptID)
+        if (promptIndex < 0) return false
+
+        const nextPrompt = prompts[promptIndex + 1]
+        if (!nextPrompt) return false
+        return focusPromptByID(nextPrompt)
+      }
+
+      const prev = group[index - 1]
+      if (prev) return focusHistoryTrace(prev)
+      return focusPromptByID(trace.promptID)
     }
 
     if (!promptID) {
