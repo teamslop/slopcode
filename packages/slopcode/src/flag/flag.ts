@@ -3,6 +3,11 @@ function truthy(key: string) {
   return value === "true" || value === "1"
 }
 
+function falsy(key: string) {
+  const value = process.env[key]?.toLowerCase()
+  return value === "false" || value === "0"
+}
+
 export namespace Flag {
   export const SLOPCODE_AUTO_SHARE = truthy("SLOPCODE_AUTO_SHARE")
   export const SLOPCODE_GIT_BASH_PATH = process.env["SLOPCODE_GIT_BASH_PATH"]
@@ -52,7 +57,7 @@ export namespace Flag {
   export const SLOPCODE_EXPERIMENTAL_LSP_TOOL = SLOPCODE_EXPERIMENTAL || truthy("SLOPCODE_EXPERIMENTAL_LSP_TOOL")
   export const SLOPCODE_DISABLE_FILETIME_CHECK = truthy("SLOPCODE_DISABLE_FILETIME_CHECK")
   export const SLOPCODE_EXPERIMENTAL_PLAN_MODE = SLOPCODE_EXPERIMENTAL || truthy("SLOPCODE_EXPERIMENTAL_PLAN_MODE")
-  export const SLOPCODE_EXPERIMENTAL_MARKDOWN = truthy("SLOPCODE_EXPERIMENTAL_MARKDOWN")
+  export const SLOPCODE_EXPERIMENTAL_MARKDOWN = !falsy("SLOPCODE_EXPERIMENTAL_MARKDOWN")
   export const SLOPCODE_MODELS_URL = process.env["SLOPCODE_MODELS_URL"]
   export const SLOPCODE_MODELS_PATH = process.env["SLOPCODE_MODELS_PATH"]
 

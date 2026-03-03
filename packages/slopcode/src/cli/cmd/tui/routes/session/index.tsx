@@ -2075,7 +2075,13 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
     if (expanded() || !overflow()) return content()
     return clip(content(), REASONING_EXPAND_LINES)
   })
-
+  const streaming = createMemo(() => {
+    if (!props.last) return false
+    if (props.part.time.end) return false
+    if (props.message.time.completed) return false
+    if (props.message.error) return false
+    return true
+  })
   return (
     <Show when={content() && ctx.showThinking()}>
       <box
@@ -2098,7 +2104,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         <code
           filetype="markdown"
           drawUnstyledText={false}
-          streaming={true}
+          streaming={streaming()}
           syntaxStyle={subtleSyntax()}
           content={"_Thinking:_ " + limited()}
           conceal={ctx.conceal()}
@@ -2118,6 +2124,13 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
   const ctx = use()
   const { theme, syntax } = useTheme()
   const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
+  const streaming = createMemo(() => {
+    if (!props.last) return false
+    if (props.part.time?.end) return false
+    if (props.message.time.completed) return false
+    if (props.message.error) return false
+    return true
+  })
   return (
     <Show when={props.part.text.trim()}>
       <box
@@ -2131,16 +2144,20 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
           <Match when={Flag.SLOPCODE_EXPERIMENTAL_MARKDOWN}>
             <markdown
               syntaxStyle={syntax()}
-              streaming={true}
+              streaming={streaming()}
               content={props.part.text.trim()}
               conceal={ctx.conceal()}
+              tableOptions={{
+                widthMode: "full",
+                columnFitter: "balanced",
+              }}
             />
           </Match>
           <Match when={!Flag.SLOPCODE_EXPERIMENTAL_MARKDOWN}>
             <code
               filetype="markdown"
               drawUnstyledText={false}
-              streaming={true}
+              streaming={streaming()}
               syntaxStyle={syntax()}
               content={props.part.text.trim()}
               conceal={ctx.conceal()}
