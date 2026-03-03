@@ -725,8 +725,10 @@ export function Session() {
     return true
   }
 
-  const focusLatestHistoryTrace = () => {
-    const latest = historyTraceList().at(-1)
+  const focusLatestHistoryTrace = (promptID?: string) => {
+    const current = promptID ?? currentPromptID()
+    if (!current) return false
+    const latest = [...historyTraceList()].reverse().find((item) => item.promptID === current)
     if (!latest) return false
     return focusHistoryTrace(latest)
   }
@@ -779,13 +781,8 @@ export function Session() {
       return focusPromptByID(promptID)
     }
 
-    const prompts = promptIDs()
-    const index = prompts.findIndex((item) => item === promptID)
-    if (index <= 0) return focusPromptByID(promptID)
-
-    const prevPrompt = prompts[index - 1]
-    const prev = [...traces].reverse().find((item) => item.promptID === prevPrompt)
-    if (prev) return focusHistoryTrace(prev)
+    const last = [...traces].reverse().find((item) => item.promptID === promptID)
+    if (last) return focusHistoryTrace(last)
     return focusPromptByID(promptID)
   }
 
