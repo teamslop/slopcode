@@ -815,7 +815,7 @@ export function Session() {
 
     const selectedPrompt = historyPrompt()
     if (selectedPrompt && !prompts.includes(selectedPrompt)) {
-      setHistoryPrompt(prompts.at(-1)?.toString())
+      setHistoryPrompt(prompts.at(-1))
     }
   })
 
