@@ -442,7 +442,6 @@ export function Session() {
     const logo = UI.logo("  ").split(/\r?\n/)
     return exit.message.set(
       [
-        ``,
         `${logo[0] ?? ""}`,
         `${logo[1] ?? ""}`,
         `${logo[2] ?? ""}`,
@@ -2695,10 +2694,8 @@ function Read(props: ToolProps<typeof ReadTool>) {
       />
       <For each={loaded()}>
         {(filepath) => (
-          <box paddingLeft={3}>
-            <text paddingLeft={3} fg={theme.textMuted}>
-              ↳ Loaded {normalizePath(filepath)}
-            </text>
+          <box paddingLeft={5}>
+            <text fg={theme.textMuted}>⤷ Loaded {normalizePath(filepath)}</text>
           </box>
         )}
       </For>
@@ -2851,6 +2848,23 @@ function Task(props: ToolProps<typeof TaskTool>) {
     return assistant - first
   })
 
+  const content = createMemo(() => {
+    if (!props.input.description) return ""
+    let content = [`Task ${props.input.description}`]
+
+    if (isRunning() && tools().length > 0) {
+      // content[0] += ` · ${tools().length} toolcalls`
+      if (current()) content.push(`└ ${Locale.titlecase(current()!.tool)} ${(current()!.state as any).title}`)
+      else content.push(`└ Running...`)
+    }
+
+    if (props.part.state.status === "completed") {
+      content.push(`└ ${tools().length} toolcalls · ${Locale.duration(duration())}`)
+    }
+
+    return content.join("\n")
+  })
+
   return (
     <Switch>
       <Match when={props.input.description || props.input.subagent_type}>
@@ -2868,10 +2882,12 @@ function Task(props: ToolProps<typeof TaskTool>) {
             </text>
             <Show when={current()}>
               {(item) => {
-                const title = item().state.status === "completed" ? (item().state as any).title : ""
+                const status = item().state.status
+                const title = status === "completed" ? (item().state as any).title : ""
+                const marker = status === "running" || status === "pending" ? "│" : "└"
                 return (
-                  <text style={{ fg: item().state.status === "error" ? theme.error : theme.textMuted }}>
-                    └ {Locale.titlecase(item().tool)} {title}
+                  <text style={{ fg: status === "error" ? theme.error : theme.textMuted }}>
+                    {marker} {Locale.titlecase(item().tool)} {title}
                   </text>
                 )
               }}
@@ -3204,10 +3220,16 @@ function Diagnostics(props: { diagnostics?: Record<string, Record<string, any>[]
 
 function normalizePath(input?: string) {
   if (!input) return ""
-  if (path.isAbsolute(input)) {
-    return path.relative(process.cwd(), input) || "."
-  }
-  return input
+
+  const cwd = process.cwd()
+  const absolute = path.isAbsolute(input) ? input : path.resolve(cwd, input)
+  const relative = path.relative(cwd, absolute)
+
+  if (!relative) return "."
+  if (!relative.startsWith("..")) return relative
+
+  // outside cwd - use absolute
+  return absolute
 }
 
 function input(input: Record<string, any>, omit?: string[]): string {
