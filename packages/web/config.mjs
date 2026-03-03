@@ -5,7 +5,7 @@ export default {
   console: stage === "production" ? "https://slopcode.dev/auth" : `https://${stage}.slopcode.ai/auth`,
   email: "contact@slopcode.dev",
   socialCard: "https://social-cards.sst.dev",
-  github: "http://github.com/teamslop/slopcode",
+  github: "https://github.com/teamslop/slopcode",
   headerLinks: [
     { name: "app.header.home", url: "/" },
     { name: "app.header.docs", url: "/docs/" },
