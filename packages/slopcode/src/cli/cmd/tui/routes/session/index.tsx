@@ -414,7 +414,7 @@ export function Session() {
     const current = promptRef.current
     if (!current) return false
     setHistoryPart(undefined)
-    setHistoryPrompt(visiblePrompts().at(-1)?.id)
+    setHistoryPrompt(undefined)
     setTarget("prompt")
     current.focus()
     return true
@@ -507,7 +507,8 @@ export function Session() {
 
       if (evt.name === "left") {
         if (target() === "prompt") {
-          if (!focusLatestHistoryTrace()) focusPromptByID(currentPromptID())
+          const latestPrompt = promptIDs().at(-1)
+          if (!focusLatestHistoryTrace(latestPrompt)) focusPromptByID(latestPrompt)
           evt.preventDefault()
           return
         }
@@ -571,17 +572,17 @@ export function Session() {
   }
 
   const currentPromptID = () => {
-    const selected = historyPart()
-    if (selected) {
-      const trace = historyTraceList().find((item) => item.partID === selected)
-      if (trace) return trace.promptID
-    }
-
     const prompts = visiblePrompts()
     if (prompts.length === 0) return undefined
 
     if (target() === "prompt") {
       return prompts.at(-1)?.id
+    }
+
+    const selected = historyPart()
+    if (selected) {
+      const trace = historyTraceList().find((item) => item.partID === selected)
+      if (trace) return trace.promptID
     }
 
     const chosen = historyPrompt()
@@ -603,7 +604,7 @@ export function Session() {
     const prompts = promptIDs()
     if (prompts.length === 0) return false
 
-    if (!historyPrompt() && direction === "prev") {
+    if (target() === "prompt" && direction === "prev") {
       return focusPromptByID(prompts.at(-1))
     }
 
@@ -613,9 +614,9 @@ export function Session() {
     const index = prompts.findIndex((item) => item === current)
     if (index < 0) return false
 
-    const target = direction === "next" ? prompts[index + 1] : prompts[index - 1]
-    if (!target) return false
-    return focusPromptByID(target)
+    const nextPrompt = direction === "next" ? prompts[index + 1] : prompts[index - 1]
+    if (!nextPrompt) return false
+    return focusPromptByID(nextPrompt)
   }
 
   const historyTraces = (promptID: string): HistoryTrace[] => {
@@ -730,9 +731,8 @@ export function Session() {
   }
 
   const focusLatestHistoryTrace = (promptID?: string) => {
-    const current = promptID ?? currentPromptID()
-    if (!current) return false
-    const latest = [...historyTraceList()].reverse().find((item) => item.promptID === current)
+    if (!promptID) return false
+    const latest = [...historyTraceList()].reverse().find((item) => item.promptID === promptID)
     if (!latest) return false
     return focusHistoryTrace(latest)
   }
@@ -1757,7 +1757,11 @@ export function Session() {
                 visible={!session()?.parentID && permissions().length === 0 && questions().length === 0}
                 historyMode={history()}
                 historyTarget={target()}
-                onFocus={() => setTarget("prompt")}
+                onFocus={() => {
+                  setHistoryPart(undefined)
+                  setHistoryPrompt(undefined)
+                  setTarget("prompt")
+                }}
                 ref={(r) => {
                   prompt = r
                   promptRef.set(r)
