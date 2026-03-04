@@ -57,6 +57,11 @@ export const { use: usePromptHistory, provider: PromptHistoryProvider } = create
 
     const [store, setStore] = createStore({
       index: 0,
+      draft: {
+        input: "",
+        parts: [],
+        mode: "normal",
+      } as PromptInfo,
       history: [] as PromptInfo[],
     })
 
@@ -64,25 +69,34 @@ export const { use: usePromptHistory, provider: PromptHistoryProvider } = create
       has() {
         return store.history.length > 0
       },
-      move(direction: 1 | -1, input: string) {
+      move(direction: 1 | -1, item: PromptInfo) {
         if (!store.history.length) return undefined
+
         const current = store.history.at(store.index)
-        if (!current) return undefined
-        if (current.input !== input && input.length) return
-        setStore(
-          produce((draft) => {
-            const next = store.index + direction
-            if (Math.abs(next) > store.history.length) return
-            if (next > 0) return
-            draft.index = next
-          }),
-        )
-        if (store.index === 0)
-          return {
-            input: "",
-            parts: [],
+        const match =
+          current &&
+          current.input === item.input &&
+          current.mode === item.mode &&
+          Bun.deepEquals(current.parts, item.parts)
+
+        if (direction === -1) {
+          if (!match) {
+            setStore("draft", structuredClone(unwrap(item)))
+            setStore("index", -1)
+            return store.history.at(-1)
           }
-        return store.history.at(store.index)
+
+          const next = Math.max(-store.history.length, store.index - 1)
+          if (next === store.index) return store.history.at(store.index)
+          setStore("index", next)
+          return store.history.at(next)
+        }
+
+        if (store.index === 0) return undefined
+        const next = Math.min(0, store.index + 1)
+        setStore("index", next)
+        if (next === 0) return store.draft
+        return store.history.at(next)
       },
       append(item: PromptInfo) {
         const entry = structuredClone(unwrap(item))
@@ -93,6 +107,11 @@ export const { use: usePromptHistory, provider: PromptHistoryProvider } = create
             if (draft.history.length > MAX_HISTORY_ENTRIES) {
               draft.history = draft.history.slice(-MAX_HISTORY_ENTRIES)
               trimmed = true
+            }
+            draft.draft = {
+              input: "",
+              parts: [],
+              mode: "normal",
             }
             draft.index = 0
           }),

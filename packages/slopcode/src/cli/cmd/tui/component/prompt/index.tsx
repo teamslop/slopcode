@@ -929,7 +929,10 @@ export function Prompt(props: PromptProps) {
                       (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length))
                   ) {
                     const direction = keybind.match("history_previous", e) ? -1 : 1
-                    const item = history.move(direction, input.plainText)
+                    const item = history.move(direction, {
+                      ...store.prompt,
+                      mode: store.mode,
+                    })
 
                     if (item) {
                       input.setText(item.input)
