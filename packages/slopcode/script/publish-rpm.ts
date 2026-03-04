@@ -140,7 +140,7 @@ const run = async () => {
       ].join("\n")
       await Bun.write(path.join(top, "SPECS", "slopcode.spec"), spec)
 
-      await $`rpmbuild --define _topdir\ ${top} --target ${item.arch} -bb ${path.join(top, "SPECS", "slopcode.spec")}`
+      await $`rpmbuild --define ${`_topdir ${top}`} --target ${item.arch} -bb ${path.join(top, "SPECS", "slopcode.spec")}`
 
       const built = await Array.fromAsync(new Bun.Glob(`RPMS/${item.arch}/*.rpm`).scan({ cwd: top })).then(
         (arr) => arr[0],
