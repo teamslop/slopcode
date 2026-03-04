@@ -603,6 +603,10 @@ export function Session() {
     const prompts = promptIDs()
     if (prompts.length === 0) return false
 
+    if (!historyPrompt() && direction === "prev") {
+      return focusPromptByID(prompts.at(-1))
+    }
+
     const current = currentPromptID()
     if (!current) return false
 
