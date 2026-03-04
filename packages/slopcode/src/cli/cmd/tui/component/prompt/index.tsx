@@ -1196,7 +1196,7 @@ export function Prompt(props: PromptProps) {
                       {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>edit mode</span>
                     </text>
                   </box>
-                  <box flexDirection="row" alignItems="center" gap={2}>
+                  <box flexDirection="row" alignItems="center" gap={1}>
                     <box
                       paddingLeft={1}
                       paddingRight={1}
@@ -1221,7 +1221,7 @@ export function Prompt(props: PromptProps) {
                     </box>
                     <text fg={theme.textMuted}>nav. prompt</text>
                   </box>
-                  <box flexDirection="row" alignItems="center" gap={2}>
+                  <box flexDirection="row" alignItems="center" gap={1}>
                     <box
                       paddingLeft={1}
                       paddingRight={1}
