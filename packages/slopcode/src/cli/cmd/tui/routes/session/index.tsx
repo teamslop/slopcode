@@ -1888,7 +1888,7 @@ function UserMessage(props: {
   const queued = createMemo(() => props.pending && props.message.id > props.pending)
   const color = createMemo(() => local.agent.color(props.message.agent))
   const selected = createMemo(() => ctx.isHistoryPromptSelected(props.message.id))
-  const border = createMemo(() => (selected() ? tint(theme.borderActive, theme.primary, 0.28) : color()))
+  const border = createMemo(() => (selected() ? tint(theme.borderActive, theme.primary, 0.4) : color()))
   const queuedFg = createMemo(() => selectedForeground(theme, color()))
   const metadataVisible = createMemo(() => queued() || ctx.showTimestamps())
 
