@@ -57,6 +57,35 @@ export namespace Installation {
     return match[1]
   }
 
+  const rpmVersion = (info: string) => {
+    const version = infoVersion(info)
+    if (!version) {
+      return
+    }
+    const release = info.match(/^\s*Release\s*:\s*(\S+)/m)?.[1]
+    if (!release) {
+      return version
+    }
+    return `${version}-${release}`
+  }
+
+  const apkVersion = (info: string) => {
+    const value = info.match(/^\s*([0-9][A-Za-z0-9._:+~-]*)\s*:/m)?.[1]
+    if (!value) {
+      return
+    }
+    return value.replace(/-r\d+$/, "")
+  }
+
+  const pkgVersion = (info: string) => {
+    const value = info.trim().split("\n")[0]?.trim().replace(/^v/, "")
+    if (!value) {
+      return
+    }
+    const noEpoch = value.includes(":") ? value.split(":").slice(-1)[0] : value
+    return noEpoch.replace(/_[0-9]+$/, "")
+  }
+
   const aptNeedsPrivilege = (stderr: string) => {
     const text = stderr.toLowerCase()
     return (
@@ -65,6 +94,36 @@ export namespace Installation {
       text.includes("permission denied") ||
       text.includes("no tty present") ||
       text.includes("command not found")
+    )
+  }
+
+  const rpmNeedsPrivilege = (stderr: string) => {
+    const text = stderr.toLowerCase()
+    return (
+      aptNeedsPrivilege(stderr) ||
+      text.includes("superuser privileges") ||
+      text.includes("run under the root user") ||
+      text.includes("need to be root")
+    )
+  }
+
+  const apkNeedsPrivilege = (stderr: string) => {
+    const text = stderr.toLowerCase()
+    return (
+      aptNeedsPrivilege(stderr) ||
+      text.includes("unable to lock database") ||
+      text.includes("failed to open apk database") ||
+      text.includes("operation not permitted")
+    )
+  }
+
+  const pkgNeedsPrivilege = (stderr: string) => {
+    const text = stderr.toLowerCase()
+    return (
+      aptNeedsPrivilege(stderr) ||
+      text.includes("insufficient privileges") ||
+      text.includes("not enough privileges") ||
+      text.includes("must be root")
     )
   }
 
@@ -102,6 +161,34 @@ export namespace Installation {
       return $`apt-get install -y --only-upgrade ${pkg}`.env(env)
     }
     return $`sudo -n apt-get install -y --only-upgrade ${pkg}`.env(env)
+  }
+
+  const dnfUpgradeCommand = (pkg: string) => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      return $`dnf upgrade -y ${pkg}`
+    }
+    return $`sudo -n dnf upgrade -y ${pkg}`
+  }
+
+  const yumUpgradeCommand = (pkg: string) => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      return $`yum update -y ${pkg}`
+    }
+    return $`sudo -n yum update -y ${pkg}`
+  }
+
+  const apkUpgradeCommand = (pkg: string) => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      return $`apk upgrade --no-interactive ${pkg}`
+    }
+    return $`sudo -n apk upgrade --no-interactive ${pkg}`
+  }
+
+  const pkgUpgradeCommand = (pkg: string) => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      return $`pkg upgrade -y ${pkg}`
+    }
+    return $`sudo -n pkg upgrade -y ${pkg}`
   }
 
   const pacmanUpgradeCommand = (pkg: string) => {
@@ -317,6 +404,22 @@ export namespace Installation {
         command: () => $`dpkg-query -W -f='\${Package}' ${pkg}`.throws(false).quiet().text(),
       },
       {
+        name: "dnf" as const,
+        command: () => $`dnf list --installed ${pkg}`.throws(false).quiet().text(),
+      },
+      {
+        name: "yum" as const,
+        command: () => $`yum list installed ${pkg}`.throws(false).quiet().text(),
+      },
+      {
+        name: "apk" as const,
+        command: () => $`apk info -e ${pkg}`.throws(false).quiet().text(),
+      },
+      {
+        name: "pkg" as const,
+        command: () => $`pkg info ${pkg}`.throws(false).quiet().text(),
+      },
+      {
         name: "pacman" as const,
         command: () => $`pacman -Q ${pkg}`.throws(false).quiet().text(),
       },
@@ -440,6 +543,18 @@ export namespace Installation {
         cmd = aptUpgradeCommand(targetPkg)
         break
       }
+      case "dnf":
+        cmd = dnfUpgradeCommand(pkg)
+        break
+      case "yum":
+        cmd = yumUpgradeCommand(pkg)
+        break
+      case "apk":
+        cmd = apkUpgradeCommand(pkg)
+        break
+      case "pkg":
+        cmd = pkgUpgradeCommand(pkg)
+        break
       case "pacman":
         cmd = pacmanUpgradeCommand(pkg)
         break
@@ -469,11 +584,17 @@ export namespace Installation {
           ? "not running from an elevated command shell"
           : method === "apt" && aptNeedsPrivilege(stderrText)
             ? "not running from a privileged shell"
-            : method === "pacman" && pacmanNeedsPrivilege(stderrText)
+            : (method === "dnf" || method === "yum") && rpmNeedsPrivilege(stderrText)
               ? "not running from a privileged shell"
-              : method === "snap" && snapNeedsPrivilege(stderrText)
+              : method === "apk" && apkNeedsPrivilege(stderrText)
                 ? "not running from a privileged shell"
-                : output
+                : method === "pkg" && pkgNeedsPrivilege(stderrText)
+                  ? "not running from a privileged shell"
+                  : method === "pacman" && pacmanNeedsPrivilege(stderrText)
+                    ? "not running from a privileged shell"
+                    : method === "snap" && snapNeedsPrivilege(stderrText)
+                      ? "not running from a privileged shell"
+                      : output
       throw new UpgradeFailedError({
         stderr: stderr,
       })
@@ -517,6 +638,58 @@ export namespace Installation {
         return VERSION
       }
       const latest = aptNormalizedVersion(candidate)
+      if (!latest) {
+        return VERSION
+      }
+      return latest
+    }
+
+    if (detectedMethod === "dnf") {
+      const info = await $`dnf info ${pkg}`.throws(false).quiet().text()
+      const version = rpmVersion(info)
+      if (!version) {
+        return VERSION
+      }
+      const latest = aptNormalizedVersion(version)
+      if (!latest) {
+        return VERSION
+      }
+      return latest
+    }
+
+    if (detectedMethod === "yum") {
+      const info = await $`yum info ${pkg}`.throws(false).quiet().text()
+      const version = rpmVersion(info)
+      if (!version) {
+        return VERSION
+      }
+      const latest = aptNormalizedVersion(version)
+      if (!latest) {
+        return VERSION
+      }
+      return latest
+    }
+
+    if (detectedMethod === "apk") {
+      const info = await $`apk policy ${pkg}`.throws(false).quiet().text()
+      const version = apkVersion(info)
+      if (!version) {
+        return VERSION
+      }
+      const latest = aptNormalizedVersion(version)
+      if (!latest) {
+        return VERSION
+      }
+      return latest
+    }
+
+    if (detectedMethod === "pkg") {
+      const info = await $`pkg rquery %v ${pkg}`.throws(false).quiet().text()
+      const version = pkgVersion(info)
+      if (!version) {
+        return VERSION
+      }
+      const latest = aptNormalizedVersion(version)
       if (!latest) {
         return VERSION
       }

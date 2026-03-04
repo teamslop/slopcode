@@ -284,10 +284,10 @@ jobs:
           name: slopcode-cli
           path: packages/slopcode/dist
 
-      - name: Install apt repository tooling
+      - name: Install package repository tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends dpkg-dev gnupg
+          sudo apt-get install -y --no-install-recommends dpkg-dev gnupg rpm createrepo-c
 
       - run: ./script/publish.ts
         env:
@@ -298,6 +298,10 @@ jobs:
           HOMEBREW_TAP_PATH: ${{ vars.HOMEBREW_TAP_PATH || 'Formula/slopcode.rb' }}
           SLOPCODE_DISABLE_HOMEBREW: "true"
           SLOPCODE_ENFORCE_APT: "true"
+          SLOPCODE_ENFORCE_RPM: ${{ vars.SLOPCODE_ENFORCE_RPM || 'false' }}
+          SLOPCODE_ENFORCE_APK: ${{ vars.SLOPCODE_ENFORCE_APK || 'false' }}
+          SLOPCODE_DISABLE_RPM: ${{ vars.SLOPCODE_DISABLE_RPM || 'false' }}
+          SLOPCODE_DISABLE_APK: ${{ vars.SLOPCODE_DISABLE_APK || 'false' }}
           # Homebrew core PR sync (non-blocking)
           HOMEBREW_CORE_TOKEN: ${{ secrets.HOMEBREW_CORE_TOKEN || steps.committer.outputs.token }}
           HOMEBREW_CORE_FORK_REPO: ${{ vars.HOMEBREW_CORE_FORK_REPO || '' }}
@@ -323,6 +327,17 @@ jobs:
           APT_REPO_GPG_PRIVATE_KEY: ${{ secrets.APT_REPO_GPG_PRIVATE_KEY }}
           APT_REPO_GPG_PASSPHRASE: ${{ secrets.APT_REPO_GPG_PASSPHRASE }}
           APT_REPO_GPG_KEY_ID: ${{ secrets.APT_REPO_GPG_KEY_ID }}
+          # rpm repository sync
+          RPM_REPO_TOKEN: ${{ secrets.RPM_REPO_TOKEN || steps.committer.outputs.token }}
+          RPM_REPO_REPO: ${{ vars.RPM_REPO_REPO || 'teamslop/rpm-slopcode' }}
+          RPM_REPO_BRANCH: ${{ vars.RPM_REPO_BRANCH || 'main' }}
+          RPM_REPO_BASE_URL: ${{ vars.RPM_REPO_BASE_URL || 'https://teamslop.github.io/rpm-slopcode' }}
+          # apk repository sync
+          APK_REPO_TOKEN: ${{ secrets.APK_REPO_TOKEN || steps.committer.outputs.token }}
+          APK_REPO_REPO: ${{ vars.APK_REPO_REPO || 'teamslop/apk-slopcode' }}
+          APK_REPO_BRANCH: ${{ vars.APK_REPO_BRANCH || 'main' }}
+          APK_REPO_BASE_URL: ${{ vars.APK_REPO_BASE_URL || 'https://teamslop.github.io/apk-slopcode' }}
+          APK_REPO_IMAGE: ${{ vars.APK_REPO_IMAGE || 'alpine:3.20' }}
           SLOPCODE_VERSION: ${{ needs.version.outputs.version }}
           SLOPCODE_RELEASE: ${{ needs.version.outputs.release }}
           GITHUB_TOKEN: ${{ steps.committer.outputs.token }}

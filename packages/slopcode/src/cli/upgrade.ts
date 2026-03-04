@@ -26,7 +26,16 @@ export async function upgrade() {
       return
     }
   }
-  if (method === "apt" || method === "pacman" || method === "paru" || method === "snap") {
+  if (
+    method === "apt" ||
+    method === "dnf" ||
+    method === "yum" ||
+    method === "apk" ||
+    method === "pkg" ||
+    method === "pacman" ||
+    method === "paru" ||
+    method === "snap"
+  ) {
     await Bus.publish(Installation.Event.UpdateAvailable, { version: latest })
     return
   }

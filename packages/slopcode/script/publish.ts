@@ -3,6 +3,7 @@ import { $ } from "bun"
 import pkg from "../package.json"
 import { Script } from "@slopcode-ai/script"
 import { fileURLToPath } from "url"
+import { gunzipSync } from "zlib"
 
 const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)
@@ -55,9 +56,13 @@ const registry = (process.env.npm_config_registry ?? "https://registry.npmjs.org
 const exists = (name: string, version: string) => fetch(`${registry}/${name}/${version}`).then((x) => x.ok)
 const latestRelease = Script.channel === "latest" && Script.release
 const enforceApt = process.env.SLOPCODE_ENFORCE_APT === "true"
+const enforceRpm = process.env.SLOPCODE_ENFORCE_RPM === "true"
+const enforceApk = process.env.SLOPCODE_ENFORCE_APK === "true"
 const aptBase = (process.env.APT_REPO_BASE_URL ?? "https://teamslop.github.io/apt-slopcode").replace(/\/$/, "")
 const aptDist = process.env.APT_REPO_DIST ?? "stable"
 const aptComponent = process.env.APT_REPO_COMPONENT ?? "main"
+const rpmBase = (process.env.RPM_REPO_BASE_URL ?? "https://teamslop.github.io/rpm-slopcode").replace(/\/$/, "")
+const apkBase = (process.env.APK_REPO_BASE_URL ?? "https://teamslop.github.io/apk-slopcode").replace(/\/$/, "")
 const parse = (value: string | undefined, fallback: number) => {
   const next = Number(value)
   if (Number.isFinite(next) && next > 0) {
@@ -65,16 +70,41 @@ const parse = (value: string | undefined, fallback: number) => {
   }
   return fallback
 }
-const wait = parse(process.env.SLOPCODE_APT_PARITY_WAIT_MS, 600000)
-const poll = parse(process.env.SLOPCODE_APT_PARITY_POLL_MS, 5000)
-const aptVersion = (value: string) => {
-  const raw = value.match(/^Version:\s*(.+)$/m)?.[1]?.trim().replace(/^v/, "")
+const aptWait = parse(process.env.SLOPCODE_APT_PARITY_WAIT_MS, 600000)
+const aptPoll = parse(process.env.SLOPCODE_APT_PARITY_POLL_MS, 5000)
+const rpmWait = parse(process.env.SLOPCODE_RPM_PARITY_WAIT_MS, 600000)
+const rpmPoll = parse(process.env.SLOPCODE_RPM_PARITY_POLL_MS, 5000)
+const apkWait = parse(process.env.SLOPCODE_APK_PARITY_WAIT_MS, 600000)
+const apkPoll = parse(process.env.SLOPCODE_APK_PARITY_POLL_MS, 5000)
+const normalize = (value: string) => {
+  const raw = value.trim().replace(/^v/, "")
   if (!raw) {
     return ""
   }
   const noEpoch = raw.includes(":") ? raw.split(":").slice(-1)[0] : raw
   const upstream = noEpoch.replace(/-[^-]+$/, "")
   return upstream.replace(/~/g, "-")
+}
+const aptVersion = (value: string) => {
+  const raw = value.match(/^Version:\s*(.+)$/m)?.[1]
+  if (!raw) {
+    return ""
+  }
+  return normalize(raw)
+}
+const rpmVersion = (value: string) => {
+  const match = value.match(/<name>slopcode<\/name>[\s\S]*?<version\s+[^>]*ver="([^"]+)"[^>]*rel="([^"]+)"/)
+  if (!match) {
+    return ""
+  }
+  return normalize(`${match[1]}-${match[2]}`)
+}
+const apkVersion = (value: string) => {
+  const match = value.match(/(?:^|\n)P:slopcode\nV:([^\n]+)/)
+  if (!match) {
+    return ""
+  }
+  return normalize(match[1])
 }
 const readNpm = () =>
   fetch(`${registry}/${pkg.name}/latest`)
@@ -96,6 +126,26 @@ const readApt = (arch: string) =>
     })
     .then(aptVersion)
     .catch(() => "")
+const readRpm = () =>
+  fetch(`${rpmBase}/stable/repodata/primary.xml.gz`)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(res.statusText)
+      }
+      return res.arrayBuffer()
+    })
+    .then((data) => rpmVersion(gunzipSync(new Uint8Array(data)).toString("utf8")))
+    .catch(() => "")
+const readApk = () =>
+  fetch(`${apkBase}/x86_64/APKINDEX`)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(res.statusText)
+      }
+      return res.text()
+    })
+    .then(apkVersion)
+    .catch(() => "")
 const verifyAptParity = async () => {
   if (!latestRelease || !enforceApt) {
     return
@@ -112,11 +162,51 @@ const verifyAptParity = async () => {
         `apt parity failed: expected ${target}, npm=${npm || "missing"}, apt-amd64=${amd64 || "missing"}, apt-arm64=${arm64 || "missing"}`,
       )
     }
-    const next = Math.min(poll, left)
+    const next = Math.min(aptPoll, left)
     await Bun.sleep(next)
     return loop(left - next)
   }
-  await loop(wait)
+  await loop(aptWait)
+}
+const verifyRpmParity = async () => {
+  if (!latestRelease || !enforceRpm) {
+    return
+  }
+  const target = Script.version.replace(/^v/, "")
+  const loop = async (left: number) => {
+    const [npm, rpm] = await Promise.all([readNpm(), readRpm()])
+    if (npm === target && rpm === target) {
+      console.log("rpm parity: ok", target)
+      return
+    }
+    if (left <= 0) {
+      throw new Error(`rpm parity failed: expected ${target}, npm=${npm || "missing"}, rpm=${rpm || "missing"}`)
+    }
+    const next = Math.min(rpmPoll, left)
+    await Bun.sleep(next)
+    return loop(left - next)
+  }
+  await loop(rpmWait)
+}
+const verifyApkParity = async () => {
+  if (!latestRelease || !enforceApk) {
+    return
+  }
+  const target = Script.version.replace(/^v/, "")
+  const loop = async (left: number) => {
+    const [npm, apk] = await Promise.all([readNpm(), readApk()])
+    if (npm === target && apk === target) {
+      console.log("apk parity: ok", target)
+      return
+    }
+    if (left <= 0) {
+      throw new Error(`apk parity failed: expected ${target}, npm=${npm || "missing"}, apk=${apk || "missing"}`)
+    }
+    const next = Math.min(apkPoll, left)
+    await Bun.sleep(next)
+    return loop(left - next)
+  }
+  await loop(apkWait)
 }
 
 const readme = (await Bun.file("./README.npm.md").text()).trim()
@@ -187,7 +277,15 @@ if (latestRelease) {
   if (enforceApt && process.env.SLOPCODE_DISABLE_APT === "true") {
     throw new Error("apt repo: disabled in a required release")
   }
+  if (enforceRpm && process.env.SLOPCODE_DISABLE_RPM === "true") {
+    throw new Error("rpm repo: disabled in a required release")
+  }
+  if (enforceApk && process.env.SLOPCODE_DISABLE_APK === "true") {
+    throw new Error("apk repo: disabled in a required release")
+  }
   await import("./publish-apt.ts")
+  await import("./publish-rpm.ts")
+  await import("./publish-apk.ts")
 }
 
 const tasks = binaries.map(async (binary) => {
@@ -226,6 +324,8 @@ const main = (async () => {
 
 await Promise.all([...tasks, main])
 await verifyAptParity()
+await verifyRpmParity()
+await verifyApkParity()
 
 if (Script.channel === "latest") {
   const jobs = [import("./publish-aur.ts"), import("./publish-snap.ts")]

@@ -143,6 +143,10 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
       nix: nix ? `nix profile remove ${nix}` : "nix profile remove github:teamslop/slopcode#slopcode",
       brew: "brew uninstall slopcode",
       apt: "sudo apt-get remove -y slopcode",
+      dnf: "sudo dnf remove -y slopcode",
+      yum: "sudo yum remove -y slopcode",
+      apk: "sudo apk del slopcode",
+      pkg: "sudo pkg delete -y slopcode",
       pacman: "sudo pacman -R --noconfirm slopcode",
       paru: "paru -R --noconfirm slopcode-bin",
       snap: "sudo snap remove slopcode",
@@ -206,6 +210,10 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
       nix: nix ? ["nix", "profile", "remove", nix] : ["nix", "profile", "remove", "github:teamslop/slopcode#slopcode"],
       brew: ["brew", "uninstall", "slopcode"],
       apt: ["apt-get", "remove", "-y", "slopcode"],
+      dnf: ["dnf", "remove", "-y", "slopcode"],
+      yum: ["yum", "remove", "-y", "slopcode"],
+      apk: ["apk", "del", "slopcode"],
+      pkg: ["pkg", "delete", "-y", "slopcode"],
       pacman: ["pacman", "-R", "--noconfirm", "slopcode"],
       paru: ["paru", "-R", "--noconfirm", "slopcode-bin"],
       snap: ["snap", "remove", "slopcode"],
@@ -229,6 +237,30 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
         }
         return $`sudo -n apt-get remove -y slopcode`.env(env)
       }
+      const dnf = () => {
+        if (typeof process.getuid === "function" && process.getuid() === 0) {
+          return $`dnf remove -y slopcode`
+        }
+        return $`sudo -n dnf remove -y slopcode`
+      }
+      const yum = () => {
+        if (typeof process.getuid === "function" && process.getuid() === 0) {
+          return $`yum remove -y slopcode`
+        }
+        return $`sudo -n yum remove -y slopcode`
+      }
+      const apk = () => {
+        if (typeof process.getuid === "function" && process.getuid() === 0) {
+          return $`apk del slopcode`
+        }
+        return $`sudo -n apk del slopcode`
+      }
+      const pkg = () => {
+        if (typeof process.getuid === "function" && process.getuid() === 0) {
+          return $`pkg delete -y slopcode`
+        }
+        return $`sudo -n pkg delete -y slopcode`
+      }
       const pacman = () => {
         if (typeof process.getuid === "function" && process.getuid() === 0) {
           return $`pacman -R --noconfirm slopcode`
@@ -246,25 +278,41 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
           ? await $`echo Y | choco uninstall slopcode -y -r`.quiet().nothrow()
           : method === "apt"
             ? await apt().quiet().nothrow()
-            : method === "pacman"
-              ? await pacman().quiet().nothrow()
-              : method === "snap"
-                ? await snap().quiet().nothrow()
-                : method === "yarn" && yarn?.mode === "berry" && yarn.root
-                  ? await $`yarn remove slopcode`.cwd(yarn.root).quiet().nothrow()
-                  : await $`${cmd}`.quiet().nothrow()
+            : method === "dnf"
+              ? await dnf().quiet().nothrow()
+              : method === "yum"
+                ? await yum().quiet().nothrow()
+                : method === "apk"
+                  ? await apk().quiet().nothrow()
+                  : method === "pkg"
+                    ? await pkg().quiet().nothrow()
+                    : method === "pacman"
+                      ? await pacman().quiet().nothrow()
+                      : method === "snap"
+                        ? await snap().quiet().nothrow()
+                        : method === "yarn" && yarn?.mode === "berry" && yarn.root
+                          ? await $`yarn remove slopcode`.cwd(yarn.root).quiet().nothrow()
+                          : await $`${cmd}`.quiet().nothrow()
       if (result.exitCode !== 0) {
         spinner.stop(`Package manager uninstall failed: exit code ${result.exitCode}`, 1)
         const manual =
           method === "apt"
             ? "sudo apt-get remove -y slopcode"
-            : method === "pacman"
-              ? "sudo pacman -R --noconfirm slopcode"
-              : method === "snap"
-                ? "sudo snap remove slopcode"
-                : method === "yarn" && yarn?.mode === "berry" && yarn.root
-                  ? `cd "${yarn.root}" && yarn remove slopcode`
-                  : cmd.join(" ")
+            : method === "dnf"
+              ? "sudo dnf remove -y slopcode"
+              : method === "yum"
+                ? "sudo yum remove -y slopcode"
+                : method === "apk"
+                  ? "sudo apk del slopcode"
+                  : method === "pkg"
+                    ? "sudo pkg delete -y slopcode"
+                    : method === "pacman"
+                      ? "sudo pacman -R --noconfirm slopcode"
+                      : method === "snap"
+                        ? "sudo snap remove slopcode"
+                        : method === "yarn" && yarn?.mode === "berry" && yarn.root
+                          ? `cd "${yarn.root}" && yarn remove slopcode`
+                          : cmd.join(" ")
         const stderr = result.stderr.toString("utf8").toLowerCase()
         if (
           method === "choco" &&
@@ -272,13 +320,44 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
         ) {
           prompts.log.warn(`You may need to run '${cmd.join(" ")}' from an elevated command shell`)
         } else if (
-          method === "apt" &&
+          (method === "apt" || method === "dnf" || method === "yum") &&
           [
             "a password is required",
             "not in the sudoers",
             "permission denied",
             "no tty present",
             "command not found",
+            "superuser privileges",
+            "run under the root user",
+            "need to be root",
+          ].some((item) => stderr.includes(item))
+        ) {
+          prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)
+        } else if (
+          method === "apk" &&
+          [
+            "a password is required",
+            "not in the sudoers",
+            "permission denied",
+            "no tty present",
+            "command not found",
+            "unable to lock database",
+            "failed to open apk database",
+            "operation not permitted",
+          ].some((item) => stderr.includes(item))
+        ) {
+          prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)
+        } else if (
+          method === "pkg" &&
+          [
+            "a password is required",
+            "not in the sudoers",
+            "permission denied",
+            "no tty present",
+            "command not found",
+            "insufficient privileges",
+            "not enough privileges",
+            "must be root",
           ].some((item) => stderr.includes(item))
         ) {
           prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)

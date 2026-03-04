@@ -25,6 +25,10 @@ export const UpgradeCommand = {
           "nix",
           "brew",
           "apt",
+          "dnf",
+          "yum",
+          "apk",
+          "pkg",
           "pacman",
           "paru",
           "snap",
@@ -75,7 +79,13 @@ export const UpgradeCommand = {
         if (method === "choco" && err.data.stderr.includes("not running from an elevated command shell")) {
           prompts.log.error("Please run the terminal as Administrator and try again")
         } else if (
-          (method === "apt" || method === "pacman" || method === "snap") &&
+          (method === "apt" ||
+            method === "dnf" ||
+            method === "yum" ||
+            method === "apk" ||
+            method === "pkg" ||
+            method === "pacman" ||
+            method === "snap") &&
           err.data.stderr.includes("not running from a privileged shell")
         ) {
           prompts.log.error("Please rerun with sudo privileges and try again")

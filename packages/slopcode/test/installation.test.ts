@@ -15,6 +15,10 @@ const tools = [
   "bun",
   "brew",
   "dpkg-query",
+  "dnf",
+  "yum",
+  "apk",
+  "pkg",
   "pacman",
   "paru",
   "snap",
@@ -96,6 +100,46 @@ async function installTools(dir: string) {
     "  dpkg-query)",
     '    echo "${SLOPCODE_TEST_DPKG_QUERY:-}"',
     "    exit 0",
+    "    ;;",
+    "  dnf)",
+    '    if [ "$1" = "list" ] && [ "$2" = "--installed" ]; then',
+    '      echo "${SLOPCODE_TEST_DNF_LIST:-}"',
+    "      exit 0",
+    "    fi",
+    '    if [ "$1" = "info" ]; then',
+    '      echo "${SLOPCODE_TEST_DNF_INFO:-}"',
+    "      exit 0",
+    "    fi",
+    "    ;;",
+    "  yum)",
+    '    if [ "$1" = "list" ] && [ "$2" = "installed" ]; then',
+    '      echo "${SLOPCODE_TEST_YUM_LIST:-}"',
+    "      exit 0",
+    "    fi",
+    '    if [ "$1" = "info" ]; then',
+    '      echo "${SLOPCODE_TEST_YUM_INFO:-}"',
+    "      exit 0",
+    "    fi",
+    "    ;;",
+    "  apk)",
+    '    if [ "$1" = "info" ] && [ "$2" = "-e" ]; then',
+    '      echo "${SLOPCODE_TEST_APK_INFO_E:-}"',
+    "      exit 0",
+    "    fi",
+    '    if [ "$1" = "policy" ]; then',
+    '      echo "${SLOPCODE_TEST_APK_POLICY:-}"',
+    "      exit 0",
+    "    fi",
+    "    ;;",
+    "  pkg)",
+    '    if [ "$1" = "info" ]; then',
+    '      echo "${SLOPCODE_TEST_PKG_INFO:-}"',
+    "      exit 0",
+    "    fi",
+    '    if [ "$1" = "rquery" ]; then',
+    '      echo "${SLOPCODE_TEST_PKG_RQUERY:-}"',
+    "      exit 0",
+    "    fi",
     "    ;;",
     "  pacman)",
     '    if [ "$1" = "-Q" ]; then',
@@ -231,6 +275,42 @@ describe("installation package manager behaviors", () => {
     expect(run.result?.value).toBe("yarn")
   })
 
+  test("detects dnf installs", async () => {
+    const run = await runCase("method", {
+      npm_config_user_agent: "",
+      SLOPCODE_TEST_DNF_LIST: "Installed Packages\nslopcode.x86_64 0.1.15-1 @updates",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("dnf")
+  })
+
+  test("detects yum installs", async () => {
+    const run = await runCase("method", {
+      npm_config_user_agent: "",
+      SLOPCODE_TEST_YUM_LIST: "Installed Packages\nslopcode.x86_64 0.1.15-1 @base",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("yum")
+  })
+
+  test("detects apk installs", async () => {
+    const run = await runCase("method", {
+      npm_config_user_agent: "",
+      SLOPCODE_TEST_APK_INFO_E: "slopcode",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("apk")
+  })
+
+  test("detects pkg installs", async () => {
+    const run = await runCase("method", {
+      npm_config_user_agent: "",
+      SLOPCODE_TEST_PKG_INFO: "slopcode-0.1.15",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("pkg")
+  })
+
   test("detects pacman installs", async () => {
     const run = await runCase("method", {
       npm_config_user_agent: "",
@@ -247,6 +327,43 @@ describe("installation package manager behaviors", () => {
     })
     expect(run.exitCode).toBe(0)
     expect(run.result?.value).toBe("paru")
+  })
+
+  test("parses latest dnf version", async () => {
+    const run = await runCase("latest", {
+      METHOD: "dnf",
+      SLOPCODE_TEST_DNF_INFO: "Name         : slopcode\nVersion      : 0.1.22\nRelease      : 3.fc40",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("0.1.22")
+  })
+
+  test("parses latest yum version", async () => {
+    const run = await runCase("latest", {
+      METHOD: "yum",
+      SLOPCODE_TEST_YUM_INFO: "Name        : slopcode\nVersion     : 0.1.23\nRelease     : 1.el9",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("0.1.23")
+  })
+
+  test("parses latest apk version", async () => {
+    const run = await runCase("latest", {
+      METHOD: "apk",
+      SLOPCODE_TEST_APK_POLICY:
+        "slopcode policy:\n  0.1.24-r2:\n    https://dl-cdn.alpinelinux.org/alpine/edge/testing",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("0.1.24")
+  })
+
+  test("parses latest pkg version", async () => {
+    const run = await runCase("latest", {
+      METHOD: "pkg",
+      SLOPCODE_TEST_PKG_RQUERY: "0.1.25_1",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("0.1.25")
   })
 
   test("parses latest pacman version", async () => {
@@ -288,6 +405,66 @@ describe("installation package manager behaviors", () => {
     expect(run.exitCode).toBe(0)
     expect(run.logs.some((item) => item === `yarn|${project}|up slopcode@0.9.1`)).toBe(true)
     await fs.rm(project, { recursive: true, force: true })
+  })
+
+  test("runs dnf upgrade command", async () => {
+    const run = await runCase("upgrade", {
+      METHOD: "dnf",
+      TARGET: "0.9.2",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(
+      run.logs.some(
+        (item) =>
+          (item.startsWith("dnf|") && item.endsWith("|upgrade -y slopcode")) ||
+          (item.startsWith("sudo|") && item.includes("dnf upgrade -y slopcode")),
+      ),
+    ).toBe(true)
+  })
+
+  test("runs yum upgrade command", async () => {
+    const run = await runCase("upgrade", {
+      METHOD: "yum",
+      TARGET: "0.9.2",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(
+      run.logs.some(
+        (item) =>
+          (item.startsWith("yum|") && item.endsWith("|update -y slopcode")) ||
+          (item.startsWith("sudo|") && item.includes("yum update -y slopcode")),
+      ),
+    ).toBe(true)
+  })
+
+  test("runs apk upgrade command", async () => {
+    const run = await runCase("upgrade", {
+      METHOD: "apk",
+      TARGET: "0.9.2",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(
+      run.logs.some(
+        (item) =>
+          (item.startsWith("apk|") && item.endsWith("|upgrade --no-interactive slopcode")) ||
+          (item.startsWith("sudo|") && item.includes("apk upgrade --no-interactive slopcode")),
+      ),
+    ).toBe(true)
+  })
+
+  test("runs pkg upgrade command", async () => {
+    const run = await runCase("upgrade", {
+      METHOD: "pkg",
+      TARGET: "0.9.2",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(
+      run.logs.some(
+        (item) =>
+          (item.startsWith("pkg|") && item.endsWith("|upgrade -y slopcode")) ||
+          (item.startsWith("sudo|") && item.includes("pkg upgrade -y slopcode")),
+      ),
+    ).toBe(true)
   })
 
   test("runs pacman upgrade command", async () => {
