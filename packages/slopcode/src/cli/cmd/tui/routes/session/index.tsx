@@ -322,6 +322,10 @@ export function Session() {
   })
 
   const follow = createMemo(() => !history() || target() === "prompt")
+  const busy = createMemo(() => {
+    const status = sync.data.session_status?.[route.sessionID]
+    return status ? status.type !== "idle" : false
+  })
 
   createEffect(async () => {
     await sync.session
@@ -527,7 +531,7 @@ export function Session() {
       if (evt.name === "right") {
         if (target() === "prompt") return
 
-        if (!moveHistoryTrace("next")) focusPrompt()
+        if (!moveHistoryTrace("next") && !busy()) focusPrompt()
         evt.preventDefault()
         return
       }
@@ -1087,7 +1091,7 @@ export function Session() {
       enabled: history(),
       onSelect: () => {
         if (target() === "prompt") return
-        if (!moveHistoryTrace("next")) focusPrompt()
+        if (!moveHistoryTrace("next") && !busy()) focusPrompt()
       },
     },
     {
