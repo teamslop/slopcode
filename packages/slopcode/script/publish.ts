@@ -155,7 +155,7 @@ const main = (async () => {
 await Promise.all([...tasks, main])
 
 if (Script.channel === "latest") {
-  const jobs = [import("./publish-aur.ts"), import("./publish-snap.ts")]
+  const jobs = [import("./publish-aur.ts"), import("./publish-snap.ts"), import("./publish-winget.ts")]
   if (process.env.SLOPCODE_DISABLE_APT !== "true") {
     jobs.push(import("./publish-apt.ts"))
   } else {

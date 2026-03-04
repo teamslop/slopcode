@@ -316,6 +316,8 @@ jobs:
           HOMEBREW_TAP_PATH: ${{ vars.HOMEBREW_TAP_PATH || 'Formula/slopcode.rb' }}
           SLOPCODE_DISABLE_HOMEBREW: "true"
           SLOPCODE_DISABLE_APT: "true"
+          SLOPCODE_DISABLE_WINGET: ${{ vars.SLOPCODE_DISABLE_WINGET || 'false' }}
+          SLOPCODE_ENFORCE_WINGET: ${{ vars.SLOPCODE_ENFORCE_WINGET || 'false' }}
           # Homebrew core PR sync (non-blocking)
           HOMEBREW_CORE_TOKEN: ${{ secrets.HOMEBREW_CORE_TOKEN || steps.committer.outputs.token }}
           HOMEBREW_CORE_FORK_REPO: ${{ vars.HOMEBREW_CORE_FORK_REPO || '' }}
@@ -341,6 +343,13 @@ jobs:
           APT_REPO_GPG_PRIVATE_KEY: ${{ secrets.APT_REPO_GPG_PRIVATE_KEY }}
           APT_REPO_GPG_PASSPHRASE: ${{ secrets.APT_REPO_GPG_PASSPHRASE }}
           APT_REPO_GPG_KEY_ID: ${{ secrets.APT_REPO_GPG_KEY_ID }}
+          # WinGet sync (best-effort unless enforced)
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN || steps.committer.outputs.token }}
+          WINGET_FORK_REPO: ${{ vars.WINGET_FORK_REPO || 'teamslop/winget-pkgs' }}
+          WINGET_UPSTREAM_REPO: ${{ vars.WINGET_UPSTREAM_REPO || 'microsoft/winget-pkgs' }}
+          WINGET_BASE_BRANCH: ${{ vars.WINGET_BASE_BRANCH || 'master' }}
+          WINGET_PACKAGE_IDENTIFIER: ${{ vars.WINGET_PACKAGE_IDENTIFIER || 'TeamSlop.Slopcode' }}
+          WINGET_BRANCH_PREFIX: ${{ vars.WINGET_BRANCH_PREFIX || 'teamslop-slopcode-' }}
           SLOPCODE_VERSION: ${{ needs.version.outputs.version }}
           SLOPCODE_RELEASE: ${{ needs.version.outputs.release }}
           GITHUB_TOKEN: ${{ steps.committer.outputs.token }}
