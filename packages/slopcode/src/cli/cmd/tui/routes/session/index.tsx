@@ -500,6 +500,7 @@ export function Session() {
       }
 
       if (keybind.match("history_next", evt)) {
+        if (target() === "prompt" && evt.name === "down") return
         if (!scrollToPrompt("next")) focusPrompt()
         evt.preventDefault()
         return
@@ -519,10 +520,7 @@ export function Session() {
       }
 
       if (evt.name === "right") {
-        if (target() === "prompt") {
-          evt.preventDefault()
-          return
-        }
+        if (target() === "prompt") return
 
         if (!moveHistoryTrace("next")) focusPrompt()
         evt.preventDefault()
@@ -595,14 +593,21 @@ export function Session() {
   }
 
   const scrollToPrompt = (direction: "next" | "prev") => {
+    const prompts = promptIDs()
+    if (prompts.length === 0) return false
+
     const selected = historyPart()
     if (selected) {
       const trace = historyTraceList().find((item) => item.partID === selected)
-      return focusPromptByID(trace?.promptID)
+      if (trace) {
+        const index = prompts.findIndex((item) => item === trace.promptID)
+        if (index < 0) return false
+        const next = direction === "next" ? prompts[index + 1] : prompts[index - 1]
+        if (!next) return false
+        return focusPromptByID(next)
+      }
+      setHistoryPart(undefined)
     }
-
-    const prompts = promptIDs()
-    if (prompts.length === 0) return false
 
     if (target() === "prompt" && direction === "prev") {
       return focusPromptByID(prompts.at(-1))
@@ -614,9 +619,9 @@ export function Session() {
     const index = prompts.findIndex((item) => item === current)
     if (index < 0) return false
 
-    const nextPrompt = direction === "next" ? prompts[index + 1] : prompts[index - 1]
-    if (!nextPrompt) return false
-    return focusPromptByID(nextPrompt)
+    const next = direction === "next" ? prompts[index + 1] : prompts[index - 1]
+    if (!next) return false
+    return focusPromptByID(next)
   }
 
   const historyTraces = (promptID: string): HistoryTrace[] => {
@@ -785,9 +790,14 @@ export function Session() {
       return focusPromptByID(promptID)
     }
 
-    const last = [...traces].reverse().find((item) => item.promptID === promptID)
+    const prompts = promptIDs()
+    const index = prompts.findIndex((item) => item === promptID)
+    if (index < 0) return false
+    const prevPrompt = prompts[index - 1]
+    if (!prevPrompt) return focusPromptByID(promptID)
+    const last = [...traces].reverse().find((item) => item.promptID === prevPrompt)
     if (last) return focusHistoryTrace(last)
-    return focusPromptByID(promptID)
+    return focusPromptByID(prevPrompt)
   }
 
   const historyAction = () => {
@@ -1027,6 +1037,52 @@ export function Session() {
       onSelect: (dialog) => {
         toggleHistoryMode()
         dialog.clear()
+      },
+    },
+    {
+      title: "History previous prompt",
+      value: "session.history.previous",
+      category: "Session",
+      hidden: true,
+      enabled: history(),
+      onSelect: () => {
+        scrollToPrompt("prev")
+      },
+    },
+    {
+      title: "History next prompt",
+      value: "session.history.next",
+      category: "Session",
+      hidden: true,
+      enabled: history(),
+      onSelect: () => {
+        if (!scrollToPrompt("next")) focusPrompt()
+      },
+    },
+    {
+      title: "History previous trace",
+      value: "session.history.left",
+      category: "Session",
+      hidden: true,
+      enabled: history(),
+      onSelect: () => {
+        if (target() === "prompt") {
+          const latestPrompt = promptIDs().at(-1)
+          if (!focusLatestHistoryTrace(latestPrompt)) focusPromptByID(latestPrompt)
+          return
+        }
+        if (!moveHistoryTrace("prev")) focusPromptByID(currentPromptID())
+      },
+    },
+    {
+      title: "History next trace",
+      value: "session.history.right",
+      category: "Session",
+      hidden: true,
+      enabled: history(),
+      onSelect: () => {
+        if (target() === "prompt") return
+        if (!moveHistoryTrace("next")) focusPrompt()
       },
     },
     {

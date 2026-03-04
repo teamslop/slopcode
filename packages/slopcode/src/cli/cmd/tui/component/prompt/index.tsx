@@ -1196,14 +1196,58 @@ export function Prompt(props: PromptProps) {
                       {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>edit mode</span>
                     </text>
                   </box>
+                  <box flexDirection="row" alignItems="center" gap={2}>
+                    <box
+                      paddingLeft={1}
+                      paddingRight={1}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history-previous")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history-previous", () => command.trigger("session.history.previous"))}
+                      backgroundColor={chip("history-previous")}
+                    >
+                      <text fg={theme.text}>↑</text>
+                    </box>
+                    <box
+                      paddingLeft={1}
+                      paddingRight={1}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history-next")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history-next", () => command.trigger("session.history.next"))}
+                      backgroundColor={chip("history-next")}
+                    >
+                      <text fg={theme.text}>↓</text>
+                    </box>
+                    <text fg={theme.textMuted}>nav. prompt</text>
+                  </box>
+                  <box flexDirection="row" alignItems="center" gap={2}>
+                    <box
+                      paddingLeft={1}
+                      paddingRight={1}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history-left")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history-left", () => command.trigger("session.history.left"))}
+                      backgroundColor={chip("history-left")}
+                    >
+                      <text fg={theme.text}>←</text>
+                    </box>
+                    <box
+                      paddingLeft={1}
+                      paddingRight={1}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history-right")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history-right", () => command.trigger("session.history.right"))}
+                      backgroundColor={chip("history-right")}
+                    >
+                      <text fg={theme.text}>→</text>
+                    </box>
+                    <text fg={theme.textMuted}>nav. trace</text>
+                  </box>
                   <text fg={theme.text}>
-                    ↑/↓ <span style={{ fg: theme.textMuted }}>navigate prompt</span>
-                  </text>
-                  <text fg={theme.text}>
-                    ←/→ <span style={{ fg: theme.textMuted }}>navigate trace</span>
-                  </text>
-                  <text fg={theme.text}>
-                    space <span style={{ fg: theme.textMuted }}>expand/collapse</span>
+                    space <span style={{ fg: theme.textMuted }}>expand</span>
                   </text>
                 </Match>
                 <Match when={store.mode === "normal"}>
