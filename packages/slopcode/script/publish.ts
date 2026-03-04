@@ -53,6 +53,71 @@ const otp = process.env.NPM_OTP?.trim()
 const skipPack = process.env.SLOPCODE_SKIP_PACK === "true"
 const registry = (process.env.npm_config_registry ?? "https://registry.npmjs.org").replace(/\/$/, "")
 const exists = (name: string, version: string) => fetch(`${registry}/${name}/${version}`).then((x) => x.ok)
+const latestRelease = Script.channel === "latest" && Script.release
+const enforceApt = process.env.SLOPCODE_ENFORCE_APT === "true"
+const aptBase = (process.env.APT_REPO_BASE_URL ?? "https://teamslop.github.io/apt-slopcode").replace(/\/$/, "")
+const aptDist = process.env.APT_REPO_DIST ?? "stable"
+const aptComponent = process.env.APT_REPO_COMPONENT ?? "main"
+const parse = (value: string | undefined, fallback: number) => {
+  const next = Number(value)
+  if (Number.isFinite(next) && next > 0) {
+    return next
+  }
+  return fallback
+}
+const wait = parse(process.env.SLOPCODE_APT_PARITY_WAIT_MS, 600000)
+const poll = parse(process.env.SLOPCODE_APT_PARITY_POLL_MS, 5000)
+const aptVersion = (value: string) => {
+  const raw = value.match(/^Version:\s*(.+)$/m)?.[1]?.trim().replace(/^v/, "")
+  if (!raw) {
+    return ""
+  }
+  const noEpoch = raw.includes(":") ? raw.split(":").slice(-1)[0] : raw
+  const upstream = noEpoch.replace(/-[^-]+$/, "")
+  return upstream.replace(/~/g, "-")
+}
+const readNpm = () =>
+  fetch(`${registry}/${pkg.name}/latest`)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(res.statusText)
+      }
+      return res.json()
+    })
+    .then((data: { version?: string }) => data.version?.replace(/^v/, "") ?? "")
+    .catch(() => "")
+const readApt = (arch: string) =>
+  fetch(`${aptBase}/dists/${aptDist}/${aptComponent}/binary-${arch}/Packages`)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(res.statusText)
+      }
+      return res.text()
+    })
+    .then(aptVersion)
+    .catch(() => "")
+const verifyAptParity = async () => {
+  if (!latestRelease || !enforceApt) {
+    return
+  }
+  const target = Script.version.replace(/^v/, "")
+  const loop = async (left: number) => {
+    const [npm, amd64, arm64] = await Promise.all([readNpm(), readApt("amd64"), readApt("arm64")])
+    if (npm === target && amd64 === target && arm64 === target) {
+      console.log("apt parity: ok", target)
+      return
+    }
+    if (left <= 0) {
+      throw new Error(
+        `apt parity failed: expected ${target}, npm=${npm || "missing"}, apt-amd64=${amd64 || "missing"}, apt-arm64=${arm64 || "missing"}`,
+      )
+    }
+    const next = Math.min(poll, left)
+    await Bun.sleep(next)
+    return loop(left - next)
+  }
+  await loop(wait)
+}
 
 const readme = (await Bun.file("./README.npm.md").text()).trim()
 if (!readme) {
@@ -118,6 +183,13 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
   ),
 )
 
+if (latestRelease) {
+  if (enforceApt && process.env.SLOPCODE_DISABLE_APT === "true") {
+    throw new Error("apt repo: disabled in a required release")
+  }
+  await import("./publish-apt.ts")
+}
+
 const tasks = binaries.map(async (binary) => {
   if (await exists(binary.name, binary.version)) {
     console.log("skip", binary.name, binary.version)
@@ -153,14 +225,10 @@ const main = (async () => {
 })()
 
 await Promise.all([...tasks, main])
+await verifyAptParity()
 
 if (Script.channel === "latest") {
   const jobs = [import("./publish-aur.ts"), import("./publish-snap.ts")]
-  if (process.env.SLOPCODE_DISABLE_APT !== "true") {
-    jobs.push(import("./publish-apt.ts"))
-  } else {
-    console.log("apt repo: disabled")
-  }
   if (process.env.SLOPCODE_DISABLE_HOMEBREW !== "true") {
     jobs.push(import("./publish-homebrew.ts"))
   } else {

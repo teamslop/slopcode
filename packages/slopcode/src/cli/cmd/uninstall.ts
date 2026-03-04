@@ -129,14 +129,22 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
 
   if (method !== "curl" && method !== "unknown") {
     const nix = method === "nix" ? await Installation.nixSelector() : undefined
+    const yarn = method === "yarn" ? await Installation.yarnContext() : undefined
     const cmds: Record<string, string> = {
       npm: "npm uninstall -g slopcode",
       pnpm: "pnpm uninstall -g slopcode",
       bun: "bun remove -g slopcode",
-      yarn: "yarn global remove slopcode",
+      yarn:
+        yarn?.mode === "berry"
+          ? yarn.root
+            ? `cd "${yarn.root}" && yarn remove slopcode`
+            : "yarn remove slopcode (run from your Yarn project root)"
+          : "yarn global remove slopcode",
       nix: nix ? `nix profile remove ${nix}` : "nix profile remove github:teamslop/slopcode#slopcode",
       brew: "brew uninstall slopcode",
       apt: "sudo apt-get remove -y slopcode",
+      pacman: "sudo pacman -R --noconfirm slopcode",
+      paru: "paru -R --noconfirm slopcode-bin",
       snap: "sudo snap remove slopcode",
       choco: "choco uninstall slopcode",
       scoop: "scoop uninstall slopcode",
@@ -184,20 +192,31 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
 
   if (method !== "curl" && method !== "unknown") {
     const nix = method === "nix" ? await Installation.nixSelector() : undefined
-    const cmds: Record<string, string[]> = {
+    const yarn = method === "yarn" ? await Installation.yarnContext() : undefined
+    const cmds: Record<string, string[] | undefined> = {
       npm: ["npm", "uninstall", "-g", "slopcode"],
       pnpm: ["pnpm", "uninstall", "-g", "slopcode"],
       bun: ["bun", "remove", "-g", "slopcode"],
-      yarn: ["yarn", "global", "remove", "slopcode"],
+      yarn:
+        yarn?.mode === "berry"
+          ? yarn.root
+            ? ["yarn", "remove", "slopcode"]
+            : undefined
+          : ["yarn", "global", "remove", "slopcode"],
       nix: nix ? ["nix", "profile", "remove", nix] : ["nix", "profile", "remove", "github:teamslop/slopcode#slopcode"],
       brew: ["brew", "uninstall", "slopcode"],
       apt: ["apt-get", "remove", "-y", "slopcode"],
+      pacman: ["pacman", "-R", "--noconfirm", "slopcode"],
+      paru: ["paru", "-R", "--noconfirm", "slopcode-bin"],
       snap: ["snap", "remove", "slopcode"],
       choco: ["choco", "uninstall", "slopcode"],
       scoop: ["scoop", "uninstall", "slopcode"],
     }
 
     const cmd = cmds[method]
+    if (method === "yarn" && yarn?.mode === "berry" && !yarn.root) {
+      prompts.log.warn("Could not detect Yarn project root. Run `yarn remove slopcode` from your project root.")
+    }
     if (cmd) {
       spinner.start(`Running ${cmd.join(" ")}...`)
       const apt = () => {
@@ -210,6 +229,12 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
         }
         return $`sudo -n apt-get remove -y slopcode`.env(env)
       }
+      const pacman = () => {
+        if (typeof process.getuid === "function" && process.getuid() === 0) {
+          return $`pacman -R --noconfirm slopcode`
+        }
+        return $`sudo -n pacman -R --noconfirm slopcode`
+      }
       const snap = () => {
         if (typeof process.getuid === "function" && process.getuid() === 0) {
           return $`snap remove slopcode`
@@ -221,17 +246,25 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
           ? await $`echo Y | choco uninstall slopcode -y -r`.quiet().nothrow()
           : method === "apt"
             ? await apt().quiet().nothrow()
-            : method === "snap"
-              ? await snap().quiet().nothrow()
-              : await $`${cmd}`.quiet().nothrow()
+            : method === "pacman"
+              ? await pacman().quiet().nothrow()
+              : method === "snap"
+                ? await snap().quiet().nothrow()
+                : method === "yarn" && yarn?.mode === "berry" && yarn.root
+                  ? await $`yarn remove slopcode`.cwd(yarn.root).quiet().nothrow()
+                  : await $`${cmd}`.quiet().nothrow()
       if (result.exitCode !== 0) {
         spinner.stop(`Package manager uninstall failed: exit code ${result.exitCode}`, 1)
         const manual =
           method === "apt"
             ? "sudo apt-get remove -y slopcode"
-            : method === "snap"
-              ? "sudo snap remove slopcode"
-              : cmd.join(" ")
+            : method === "pacman"
+              ? "sudo pacman -R --noconfirm slopcode"
+              : method === "snap"
+                ? "sudo snap remove slopcode"
+                : method === "yarn" && yarn?.mode === "berry" && yarn.root
+                  ? `cd "${yarn.root}" && yarn remove slopcode`
+                  : cmd.join(" ")
         const stderr = result.stderr.toString("utf8").toLowerCase()
         if (
           method === "choco" &&
@@ -246,6 +279,18 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
             "permission denied",
             "no tty present",
             "command not found",
+          ].some((item) => stderr.includes(item))
+        ) {
+          prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)
+        } else if (
+          method === "pacman" &&
+          [
+            "a password is required",
+            "not in the sudoers",
+            "permission denied",
+            "no tty present",
+            "command not found",
+            "you cannot perform this operation unless you are root",
           ].some((item) => stderr.includes(item))
         ) {
           prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)

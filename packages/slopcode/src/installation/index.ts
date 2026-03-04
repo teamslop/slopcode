@@ -5,7 +5,6 @@ import z from "zod"
 import { NamedError } from "@slopcode-ai/util/error"
 import { product } from "@slopcode-ai/util/product"
 import { Log } from "../util/log"
-import { iife } from "@/util/iife"
 import { Flag } from "../flag/flag"
 
 declare global {
@@ -50,6 +49,14 @@ export namespace Installation {
 
   const aptPolicy = () => $`apt-cache policy ${pkg}`.throws(false).quiet().text()
 
+  const infoVersion = (info: string) => {
+    const match = info.match(/^\s*Version\s*:\s*(\S+)/m)
+    if (!match) {
+      return
+    }
+    return match[1]
+  }
+
   const aptNeedsPrivilege = (stderr: string) => {
     const text = stderr.toLowerCase()
     return (
@@ -74,6 +81,18 @@ export namespace Installation {
     )
   }
 
+  const pacmanNeedsPrivilege = (stderr: string) => {
+    const text = stderr.toLowerCase()
+    return (
+      text.includes("a password is required") ||
+      text.includes("not in the sudoers") ||
+      text.includes("permission denied") ||
+      text.includes("no tty present") ||
+      text.includes("command not found") ||
+      text.includes("you cannot perform this operation unless you are root")
+    )
+  }
+
   const aptUpgradeCommand = (pkg: string) => {
     const env = {
       DEBIAN_FRONTEND: "noninteractive",
@@ -85,11 +104,70 @@ export namespace Installation {
     return $`sudo -n apt-get install -y --only-upgrade ${pkg}`.env(env)
   }
 
+  const pacmanUpgradeCommand = (pkg: string) => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      return $`pacman -S --noconfirm --needed ${pkg}`
+    }
+    return $`sudo -n pacman -S --noconfirm --needed ${pkg}`
+  }
+
   const snapUpgradeCommand = () => {
     if (typeof process.getuid === "function" && process.getuid() === 0) {
       return $`snap refresh ${pkg}`
     }
     return $`sudo -n snap refresh ${pkg}`
+  }
+
+  const normalizeValue = (value: string) => {
+    const clean = value.trim().replace(/^"|"$/g, "")
+    if (!clean || clean === "undefined" || clean === "null") {
+      return
+    }
+    return clean
+  }
+
+  const normalizeRegistry = (value: string) => {
+    const clean = normalizeValue(value)
+    if (!clean) {
+      return
+    }
+    return clean.endsWith("/") ? clean.slice(0, -1) : clean
+  }
+
+  const npmRegistry = async () => {
+    const value = await $`npm config get registry`.quiet().nothrow().text()
+    return normalizeRegistry(value) || "https://registry.npmjs.org"
+  }
+
+  const yarnRegistry = async () => {
+    const value = await $`yarn config get npmRegistryServer`.quiet().nothrow().text()
+    return normalizeRegistry(value) || (await npmRegistry())
+  }
+
+  const yarnMajor = async () => {
+    const value = (await $`yarn --version`.quiet().nothrow().text()).trim().replace(/^v/, "")
+    const major = Number.parseInt(value.split(".")[0] || "", 10)
+    if (!Number.isFinite(major)) {
+      return
+    }
+    return major
+  }
+
+  const yarnProject = async () => {
+    const value = await $`yarn config get projectCwd`.quiet().nothrow().text()
+    return normalizeValue(value)
+  }
+
+  export async function yarnContext() {
+    const major = await yarnMajor()
+    const mode = major && major >= 2 ? "berry" : major === 1 ? "classic" : "unknown"
+    if (mode !== "berry") {
+      return { mode }
+    }
+    return {
+      mode,
+      root: await yarnProject(),
+    }
   }
 
   const nixVersionInstallable = (source: string) => {
@@ -210,6 +288,8 @@ export namespace Installation {
     if (process.execPath.includes(path.join(".local", "bin"))) return "curl"
     const exec = process.execPath.toLowerCase()
     if (await nixSelector()) return "nix"
+    const agent = process.env.npm_config_user_agent?.toLowerCase()
+    if (agent?.includes("yarn/")) return "yarn"
 
     const checks = [
       {
@@ -237,6 +317,15 @@ export namespace Installation {
         command: () => $`dpkg-query -W -f='\${Package}' ${pkg}`.throws(false).quiet().text(),
       },
       {
+        name: "pacman" as const,
+        command: () => $`pacman -Q ${pkg}`.throws(false).quiet().text(),
+      },
+      {
+        name: "paru" as const,
+        match: "slopcode-bin",
+        command: () => $`paru -Q slopcode-bin`.throws(false).quiet().text(),
+      },
+      {
         name: "snap" as const,
         command: () => $`snap list ${pkg}`.throws(false).quiet().text(),
       },
@@ -260,7 +349,7 @@ export namespace Installation {
 
     for (const check of checks) {
       const output = await check.command()
-      const installedName = pkg
+      const installedName = check.match || pkg
       if (output.includes(installedName)) {
         return check.name
       }
@@ -300,6 +389,21 @@ export namespace Installation {
       case "pnpm":
         cmd = $`pnpm install -g ${pkg}@${target}`
         break
+      case "yarn": {
+        const yarn = await yarnContext()
+        if (yarn.mode === "berry") {
+          if (!yarn.root) {
+            throw new UpgradeFailedError({
+              stderr:
+                "Could not detect a Yarn Berry project root. Run this command from your Yarn project or use --method npm, --method pnpm, or --method bun.",
+            })
+          }
+          cmd = $`yarn up ${pkg}@${target}`.cwd(yarn.root)
+          break
+        }
+        cmd = $`yarn global add ${pkg}@${target}`
+        break
+      }
       case "bun":
         cmd = $`bun install -g ${pkg}@${target}`
         break
@@ -336,6 +440,12 @@ export namespace Installation {
         cmd = aptUpgradeCommand(targetPkg)
         break
       }
+      case "pacman":
+        cmd = pacmanUpgradeCommand(pkg)
+        break
+      case "paru":
+        cmd = $`paru -S --noconfirm --needed slopcode-bin`
+        break
       case "choco":
         cmd = $`echo Y | choco upgrade ${pkg} --version=${target}`
         break
@@ -352,14 +462,18 @@ export namespace Installation {
     const result = await cmd.quiet().throws(false)
     if (result.exitCode !== 0) {
       const stderrText = result.stderr.toString("utf8")
+      const stdoutText = result.stdout.toString("utf8")
+      const output = stderrText.trim() ? stderrText : stdoutText
       const stderr =
         method === "choco"
           ? "not running from an elevated command shell"
           : method === "apt" && aptNeedsPrivilege(stderrText)
             ? "not running from a privileged shell"
-            : method === "snap" && snapNeedsPrivilege(stderrText)
+            : method === "pacman" && pacmanNeedsPrivilege(stderrText)
               ? "not running from a privileged shell"
-              : stderrText
+              : method === "snap" && snapNeedsPrivilege(stderrText)
+                ? "not running from a privileged shell"
+                : output
       throw new UpgradeFailedError({
         stderr: stderr,
       })
@@ -409,6 +523,32 @@ export namespace Installation {
       return latest
     }
 
+    if (detectedMethod === "pacman") {
+      const info = await $`pacman -Si ${pkg}`.throws(false).quiet().text()
+      const version = infoVersion(info)
+      if (!version) {
+        return VERSION
+      }
+      const latest = aptNormalizedVersion(version)
+      if (!latest) {
+        return VERSION
+      }
+      return latest
+    }
+
+    if (detectedMethod === "paru") {
+      const info = await $`paru -Si slopcode-bin`.throws(false).quiet().text()
+      const version = infoVersion(info)
+      if (!version) {
+        return VERSION
+      }
+      const latest = aptNormalizedVersion(version)
+      if (!latest) {
+        return VERSION
+      }
+      return latest
+    }
+
     if (detectedMethod === "snap") {
       const info = await $`snap info ${pkg}`.throws(false).quiet().text()
       const stable = info.match(/^\s*(?:latest\/)?stable:\s*([^\s]+)/m)?.[1]?.replace(/^v/, "")
@@ -437,12 +577,19 @@ export namespace Installation {
       return VERSION
     }
 
+    if (detectedMethod === "yarn") {
+      const registry = await yarnRegistry()
+      const channel = CHANNEL
+      return fetch(`${registry}/${pkg}/${channel}`)
+        .then((res) => {
+          if (!res.ok) throw new Error(res.statusText)
+          return res.json()
+        })
+        .then((data: any) => data.version)
+    }
+
     if (detectedMethod === "npm" || detectedMethod === "bun" || detectedMethod === "pnpm") {
-      const registry = await iife(async () => {
-        const r = (await $`npm config get registry`.quiet().nothrow().text()).trim()
-        const reg = r || "https://registry.npmjs.org"
-        return reg.endsWith("/") ? reg.slice(0, -1) : reg
-      })
+      const registry = await npmRegistry()
       const channel = CHANNEL
       return fetch(`${registry}/${pkg}/${channel}`)
         .then((res) => {

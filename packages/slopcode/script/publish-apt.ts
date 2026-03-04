@@ -19,6 +19,7 @@ const base = (process.env.APT_REPO_BASE_URL ?? "https://teamslop.github.io/apt-s
 const key = process.env.APT_REPO_GPG_PRIVATE_KEY
 const pass = process.env.APT_REPO_GPG_PASSPHRASE
 const source = process.env.GH_REPO ?? "teamslop/slopcode"
+const enforce = process.env.SLOPCODE_ENFORCE_APT === "true"
 
 const run = async () => {
   if (Script.channel !== "latest") {
@@ -32,11 +33,17 @@ const run = async () => {
   }
 
   if (process.env.SLOPCODE_DISABLE_APT === "true") {
+    if (enforce) {
+      throw new Error("apt repo: disabled in a required release")
+    }
     console.log("apt repo: disabled")
     return
   }
 
   if (!token || !key) {
+    if (enforce) {
+      throw new Error("apt repo: missing APT_REPO_TOKEN/APT_REPO_GPG_PRIVATE_KEY in a required release")
+    }
     console.log("apt repo: skip missing APT_REPO_TOKEN/APT_REPO_GPG_PRIVATE_KEY")
     return
   }
