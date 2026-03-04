@@ -51,19 +51,6 @@ type Release = {
   assets?: ReleaseAsset[]
 }
 
-const fetchReady = async (url: string, left: number): Promise<Response> => {
-  const res = await fetch(url)
-  if (res.ok) {
-    return res
-  }
-  if (left <= 0) {
-    throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`)
-  }
-  const next = Math.min(poll, left)
-  await Bun.sleep(next)
-  return fetchReady(url, left - next)
-}
-
 const run = async () => {
   if (Script.channel !== "latest") {
     console.log("winget: skip", Script.channel)
@@ -152,35 +139,31 @@ const run = async () => {
   }
 
   const tag = `v${version}`
-  const release = async (left: number): Promise<{ date: string; url: string }> => {
-    const res = await fetch(`https://api.github.com/repos/${source}/releases/tags/${tag}`, {
-      headers,
-    })
-    if (res.ok) {
-      const data = (await res.json()) as Release
-      const url = data.assets?.find((item) => item.name === assetName)?.browser_download_url
-      if (url) {
-        const raw = data.published_at ?? data.created_at ?? new Date().toISOString()
-        const date = raw.slice(0, 10)
-        return {
-          date: date || new Date().toISOString().slice(0, 10),
-          url,
-        }
-      }
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "slopcode-winget-"))
+  const root = path.join(tmp, "repo")
+  const assetPath = path.join(tmp, assetName)
+  const releaseUrl = `https://github.com/${source}/releases/download/${tag}/${assetName}`
+  const download = async (left: number): Promise<void> => {
+    const run = await $`gh release download ${tag} --repo ${source} --dir ${tmp} --pattern ${assetName}`.env(env).nothrow()
+    if (run.exitCode === 0 && (await Bun.file(assetPath).exists())) {
+      return
     }
     if (left <= 0) {
       throw new Error(`winget: release asset ${assetName} not available for ${source}@${tag}`)
     }
     const next = Math.min(poll, left)
     await Bun.sleep(next)
-    return release(left - next)
+    return download(left - next)
   }
 
-  const meta = await release(wait)
-  const data = await fetchReady(meta.url, wait).then((res) => res.arrayBuffer())
-  const sha256 = new Bun.CryptoHasher("sha256").update(data).digest("hex").toUpperCase()
-  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "slopcode-winget-"))
-  const root = path.join(tmp, "repo")
+  await download(wait)
+  const sha256 = new Bun.CryptoHasher("sha256").update(await Bun.file(assetPath).arrayBuffer()).digest("hex").toUpperCase()
+  const releaseInfo = await $`gh release view ${tag} --repo ${source} --json createdAt,publishedAt`.env(env).quiet().text()
+  const parsed = JSON.parse(releaseInfo) as {
+    createdAt?: string
+    publishedAt?: string
+  }
+  const releaseDate = (parsed.publishedAt ?? parsed.createdAt ?? new Date().toISOString()).slice(0, 10)
   const manifestPath = path.join("manifests", lead, ...parts, version)
   const manifestDir = path.join(root, manifestPath)
   const versionFile = path.join(manifestDir, `${identifier}.yaml`)
@@ -234,10 +217,10 @@ NestedInstallerFiles:
   PortableCommandAlias: slopcode
 Commands:
 - slopcode
-ReleaseDate: ${meta.date}
+ReleaseDate: ${releaseDate}
 Installers:
 - Architecture: x64
-  InstallerUrl: ${meta.url}
+  InstallerUrl: ${releaseUrl}
   InstallerSha256: ${sha256}
 ManifestType: installer
 ManifestVersion: 1.12.0
@@ -284,7 +267,7 @@ ManifestVersion: 1.12.0
     `- PackageIdentifier: \`${identifier}\``,
     `- PackageVersion: \`${version}\``,
     "- InstallerType: `zip` (portable)",
-    `- InstallerUrl: ${meta.url}`,
+    `- InstallerUrl: ${releaseUrl}`,
     `- SHA256: \`${sha256}\``,
     `- Release: https://github.com/${source}/releases/tag/v${version}`,
     "",
