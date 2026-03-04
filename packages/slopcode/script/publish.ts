@@ -58,6 +58,7 @@ const latestRelease = Script.channel === "latest" && Script.release
 const enforceApt = process.env.SLOPCODE_ENFORCE_APT === "true"
 const enforceRpm = process.env.SLOPCODE_ENFORCE_RPM === "true"
 const enforceApk = process.env.SLOPCODE_ENFORCE_APK === "true"
+const enforceMacports = process.env.SLOPCODE_ENFORCE_MACPORTS === "true"
 const aptBase = (process.env.APT_REPO_BASE_URL ?? "https://teamslop.github.io/apt-slopcode").replace(/\/$/, "")
 const aptDist = process.env.APT_REPO_DIST ?? "stable"
 const aptComponent = process.env.APT_REPO_COMPONENT ?? "main"
@@ -283,9 +284,13 @@ if (latestRelease) {
   if (enforceApk && process.env.SLOPCODE_DISABLE_APK === "true") {
     throw new Error("apk repo: disabled in a required release")
   }
+  if (enforceMacports && process.env.SLOPCODE_DISABLE_MACPORTS === "true") {
+    throw new Error("macports sync: disabled in a required release")
+  }
   await import("./publish-apt.ts")
   await import("./publish-rpm.ts")
   await import("./publish-apk.ts")
+  await import("./publish-macports.ts")
 }
 
 const tasks = binaries.map(async (binary) => {

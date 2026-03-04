@@ -28,10 +28,12 @@ export async function upgrade() {
   }
   if (
     method === "apt" ||
+    method === "zypper" ||
     method === "dnf" ||
     method === "yum" ||
     method === "apk" ||
     method === "pkg" ||
+    method === "macports" ||
     method === "pacman" ||
     method === "paru" ||
     method === "snap"

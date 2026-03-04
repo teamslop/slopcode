@@ -24,7 +24,9 @@ export const UpgradeCommand = {
           "bun",
           "nix",
           "brew",
+          "macports",
           "apt",
+          "zypper",
           "dnf",
           "yum",
           "apk",
@@ -80,10 +82,12 @@ export const UpgradeCommand = {
           prompts.log.error("Please run the terminal as Administrator and try again")
         } else if (
           (method === "apt" ||
+            method === "zypper" ||
             method === "dnf" ||
             method === "yum" ||
             method === "apk" ||
             method === "pkg" ||
+            method === "macports" ||
             method === "pacman" ||
             method === "snap") &&
           err.data.stderr.includes("not running from a privileged shell")

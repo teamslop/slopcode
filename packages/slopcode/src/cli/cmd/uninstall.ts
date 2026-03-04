@@ -142,7 +142,9 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
           : "yarn global remove slopcode",
       nix: nix ? `nix profile remove ${nix}` : "nix profile remove github:teamslop/slopcode#slopcode",
       brew: "brew uninstall slopcode",
+      macports: "sudo port -N uninstall slopcode",
       apt: "sudo apt-get remove -y slopcode",
+      zypper: "sudo zypper --non-interactive rm slopcode",
       dnf: "sudo dnf remove -y slopcode",
       yum: "sudo yum remove -y slopcode",
       apk: "sudo apk del slopcode",
@@ -209,7 +211,9 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
           : ["yarn", "global", "remove", "slopcode"],
       nix: nix ? ["nix", "profile", "remove", nix] : ["nix", "profile", "remove", "github:teamslop/slopcode#slopcode"],
       brew: ["brew", "uninstall", "slopcode"],
+      macports: ["port", "-N", "uninstall", "slopcode"],
       apt: ["apt-get", "remove", "-y", "slopcode"],
+      zypper: ["zypper", "--non-interactive", "rm", "slopcode"],
       dnf: ["dnf", "remove", "-y", "slopcode"],
       yum: ["yum", "remove", "-y", "slopcode"],
       apk: ["apk", "del", "slopcode"],
@@ -237,6 +241,12 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
         }
         return $`sudo -n apt-get remove -y slopcode`.env(env)
       }
+      const zypper = () => {
+        if (typeof process.getuid === "function" && process.getuid() === 0) {
+          return $`zypper --non-interactive rm slopcode`
+        }
+        return $`sudo -n zypper --non-interactive rm slopcode`
+      }
       const dnf = () => {
         if (typeof process.getuid === "function" && process.getuid() === 0) {
           return $`dnf remove -y slopcode`
@@ -261,6 +271,12 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
         }
         return $`sudo -n pkg delete -y slopcode`
       }
+      const macports = () => {
+        if (typeof process.getuid === "function" && process.getuid() === 0) {
+          return $`port -N uninstall slopcode`
+        }
+        return $`sudo -n port -N uninstall slopcode`
+      }
       const pacman = () => {
         if (typeof process.getuid === "function" && process.getuid() === 0) {
           return $`pacman -R --noconfirm slopcode`
@@ -278,41 +294,49 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
           ? await $`echo Y | choco uninstall slopcode -y -r`.quiet().nothrow()
           : method === "apt"
             ? await apt().quiet().nothrow()
-            : method === "dnf"
-              ? await dnf().quiet().nothrow()
-              : method === "yum"
-                ? await yum().quiet().nothrow()
-                : method === "apk"
-                  ? await apk().quiet().nothrow()
-                  : method === "pkg"
-                    ? await pkg().quiet().nothrow()
-                    : method === "pacman"
-                      ? await pacman().quiet().nothrow()
-                      : method === "snap"
-                        ? await snap().quiet().nothrow()
-                        : method === "yarn" && yarn?.mode === "berry" && yarn.root
-                          ? await $`yarn remove slopcode`.cwd(yarn.root).quiet().nothrow()
-                          : await $`${cmd}`.quiet().nothrow()
+            : method === "zypper"
+              ? await zypper().quiet().nothrow()
+              : method === "dnf"
+                ? await dnf().quiet().nothrow()
+                : method === "yum"
+                  ? await yum().quiet().nothrow()
+                  : method === "apk"
+                    ? await apk().quiet().nothrow()
+                    : method === "pkg"
+                      ? await pkg().quiet().nothrow()
+                      : method === "macports"
+                        ? await macports().quiet().nothrow()
+                        : method === "pacman"
+                          ? await pacman().quiet().nothrow()
+                          : method === "snap"
+                            ? await snap().quiet().nothrow()
+                            : method === "yarn" && yarn?.mode === "berry" && yarn.root
+                              ? await $`yarn remove slopcode`.cwd(yarn.root).quiet().nothrow()
+                              : await $`${cmd}`.quiet().nothrow()
       if (result.exitCode !== 0) {
         spinner.stop(`Package manager uninstall failed: exit code ${result.exitCode}`, 1)
         const manual =
           method === "apt"
             ? "sudo apt-get remove -y slopcode"
-            : method === "dnf"
-              ? "sudo dnf remove -y slopcode"
-              : method === "yum"
-                ? "sudo yum remove -y slopcode"
-                : method === "apk"
-                  ? "sudo apk del slopcode"
-                  : method === "pkg"
-                    ? "sudo pkg delete -y slopcode"
-                    : method === "pacman"
-                      ? "sudo pacman -R --noconfirm slopcode"
-                      : method === "snap"
-                        ? "sudo snap remove slopcode"
-                        : method === "yarn" && yarn?.mode === "berry" && yarn.root
-                          ? `cd "${yarn.root}" && yarn remove slopcode`
-                          : cmd.join(" ")
+            : method === "zypper"
+              ? "sudo zypper --non-interactive rm slopcode"
+              : method === "dnf"
+                ? "sudo dnf remove -y slopcode"
+                : method === "yum"
+                  ? "sudo yum remove -y slopcode"
+                  : method === "apk"
+                    ? "sudo apk del slopcode"
+                    : method === "pkg"
+                      ? "sudo pkg delete -y slopcode"
+                      : method === "macports"
+                        ? "sudo port -N uninstall slopcode"
+                        : method === "pacman"
+                          ? "sudo pacman -R --noconfirm slopcode"
+                          : method === "snap"
+                            ? "sudo snap remove slopcode"
+                            : method === "yarn" && yarn?.mode === "berry" && yarn.root
+                              ? `cd "${yarn.root}" && yarn remove slopcode`
+                              : cmd.join(" ")
         const stderr = result.stderr.toString("utf8").toLowerCase()
         if (
           method === "choco" &&
@@ -320,7 +344,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
         ) {
           prompts.log.warn(`You may need to run '${cmd.join(" ")}' from an elevated command shell`)
         } else if (
-          (method === "apt" || method === "dnf" || method === "yum") &&
+          (method === "apt" || method === "zypper" || method === "dnf" || method === "yum") &&
           [
             "a password is required",
             "not in the sudoers",
@@ -330,6 +354,9 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
             "superuser privileges",
             "run under the root user",
             "need to be root",
+            "run this command as root",
+            "root privileges are required",
+            "you must be root",
           ].some((item) => stderr.includes(item))
         ) {
           prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)
@@ -358,6 +385,20 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
             "insufficient privileges",
             "not enough privileges",
             "must be root",
+          ].some((item) => stderr.includes(item))
+        ) {
+          prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)
+        } else if (
+          method === "macports" &&
+          [
+            "a password is required",
+            "not in the sudoers",
+            "permission denied",
+            "no tty present",
+            "command not found",
+            "insufficient privileges",
+            "must be run as root",
+            "are not allowed to write",
           ].some((item) => stderr.includes(item))
         ) {
           prompts.log.warn(`You may need to run '${manual}' from a privileged shell`)

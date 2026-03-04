@@ -86,6 +86,14 @@ export namespace Installation {
     return noEpoch.replace(/_[0-9]+$/, "")
   }
 
+  const portVersion = (info: string) => {
+    const value = info.match(/@([0-9][A-Za-z0-9._:+~-]*)/)?.[1]
+    if (!value) {
+      return
+    }
+    return value.replace(/_[0-9]+$/, "")
+  }
+
   const aptNeedsPrivilege = (stderr: string) => {
     const text = stderr.toLowerCase()
     return (
@@ -103,7 +111,25 @@ export namespace Installation {
       aptNeedsPrivilege(stderr) ||
       text.includes("superuser privileges") ||
       text.includes("run under the root user") ||
-      text.includes("need to be root")
+      text.includes("need to be root") ||
+      text.includes("run this command as root") ||
+      text.includes("root privileges are required")
+    )
+  }
+
+  const zypperNeedsPrivilege = (stderr: string) => {
+    const text = stderr.toLowerCase()
+    return rpmNeedsPrivilege(stderr) || text.includes("you must be root")
+  }
+
+  const macportsNeedsPrivilege = (stderr: string) => {
+    const text = stderr.toLowerCase()
+    return (
+      aptNeedsPrivilege(stderr) ||
+      text.includes("insufficient privileges") ||
+      text.includes("must be run as root") ||
+      text.includes("are not allowed to write") ||
+      text.includes("permission denied")
     )
   }
 
@@ -163,6 +189,13 @@ export namespace Installation {
     return $`sudo -n apt-get install -y --only-upgrade ${pkg}`.env(env)
   }
 
+  const zypperUpgradeCommand = (pkg: string) => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      return $`zypper --non-interactive update ${pkg}`
+    }
+    return $`sudo -n zypper --non-interactive update ${pkg}`
+  }
+
   const dnfUpgradeCommand = (pkg: string) => {
     if (typeof process.getuid === "function" && process.getuid() === 0) {
       return $`dnf upgrade -y ${pkg}`
@@ -189,6 +222,13 @@ export namespace Installation {
       return $`pkg upgrade -y ${pkg}`
     }
     return $`sudo -n pkg upgrade -y ${pkg}`
+  }
+
+  const macportsUpgradeCommand = (pkg: string) => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      return $`port -N upgrade ${pkg}`
+    }
+    return $`sudo -n port -N upgrade ${pkg}`
   }
 
   const pacmanUpgradeCommand = (pkg: string) => {
@@ -400,8 +440,16 @@ export namespace Installation {
         command: () => $`brew list --formula ${pkg}`.throws(false).quiet().text(),
       },
       {
+        name: "macports" as const,
+        command: () => $`port installed ${pkg}`.throws(false).quiet().text(),
+      },
+      {
         name: "apt" as const,
         command: () => $`dpkg-query -W -f='\${Package}' ${pkg}`.throws(false).quiet().text(),
+      },
+      {
+        name: "zypper" as const,
+        command: () => $`zypper search --installed-only --match-exact ${pkg}`.throws(false).quiet().text(),
       },
       {
         name: "dnf" as const,
@@ -543,6 +591,9 @@ export namespace Installation {
         cmd = aptUpgradeCommand(targetPkg)
         break
       }
+      case "zypper":
+        cmd = zypperUpgradeCommand(pkg)
+        break
       case "dnf":
         cmd = dnfUpgradeCommand(pkg)
         break
@@ -554,6 +605,9 @@ export namespace Installation {
         break
       case "pkg":
         cmd = pkgUpgradeCommand(pkg)
+        break
+      case "macports":
+        cmd = macportsUpgradeCommand(pkg)
         break
       case "pacman":
         cmd = pacmanUpgradeCommand(pkg)
@@ -584,17 +638,21 @@ export namespace Installation {
           ? "not running from an elevated command shell"
           : method === "apt" && aptNeedsPrivilege(stderrText)
             ? "not running from a privileged shell"
-            : (method === "dnf" || method === "yum") && rpmNeedsPrivilege(stderrText)
+            : method === "zypper" && zypperNeedsPrivilege(stderrText)
               ? "not running from a privileged shell"
-              : method === "apk" && apkNeedsPrivilege(stderrText)
+              : (method === "dnf" || method === "yum") && rpmNeedsPrivilege(stderrText)
                 ? "not running from a privileged shell"
-                : method === "pkg" && pkgNeedsPrivilege(stderrText)
+                : method === "apk" && apkNeedsPrivilege(stderrText)
                   ? "not running from a privileged shell"
-                  : method === "pacman" && pacmanNeedsPrivilege(stderrText)
+                  : method === "pkg" && pkgNeedsPrivilege(stderrText)
                     ? "not running from a privileged shell"
-                    : method === "snap" && snapNeedsPrivilege(stderrText)
+                    : method === "macports" && macportsNeedsPrivilege(stderrText)
                       ? "not running from a privileged shell"
-                      : output
+                      : method === "pacman" && pacmanNeedsPrivilege(stderrText)
+                        ? "not running from a privileged shell"
+                        : method === "snap" && snapNeedsPrivilege(stderrText)
+                          ? "not running from a privileged shell"
+                          : output
       throw new UpgradeFailedError({
         stderr: stderr,
       })
@@ -632,12 +690,38 @@ export namespace Installation {
         .then((data: any) => data.versions.stable)
     }
 
+    if (detectedMethod === "macports") {
+      const info = await $`port info ${pkg}`.throws(false).quiet().text()
+      const version = portVersion(info)
+      if (!version) {
+        return VERSION
+      }
+      const latest = aptNormalizedVersion(version)
+      if (!latest) {
+        return VERSION
+      }
+      return latest
+    }
+
     if (detectedMethod === "apt") {
       const candidate = aptCandidate(await aptPolicy())
       if (!candidate) {
         return VERSION
       }
       const latest = aptNormalizedVersion(candidate)
+      if (!latest) {
+        return VERSION
+      }
+      return latest
+    }
+
+    if (detectedMethod === "zypper") {
+      const info = await $`zypper info ${pkg}`.throws(false).quiet().text()
+      const version = rpmVersion(info)
+      if (!version) {
+        return VERSION
+      }
+      const latest = aptNormalizedVersion(version)
       if (!latest) {
         return VERSION
       }

@@ -14,7 +14,9 @@ const tools = [
   "pnpm",
   "bun",
   "brew",
+  "port",
   "dpkg-query",
+  "zypper",
   "dnf",
   "yum",
   "apk",
@@ -97,9 +99,29 @@ async function installTools(dir: string) {
     "      exit 0",
     "    fi",
     "    ;;",
+    "  port)",
+    '    if [ "$1" = "installed" ]; then',
+    '      echo "${SLOPCODE_TEST_PORT_INSTALLED:-}"',
+    "      exit 0",
+    "    fi",
+    '    if [ "$1" = "info" ]; then',
+    '      echo "${SLOPCODE_TEST_PORT_INFO:-}"',
+    "      exit 0",
+    "    fi",
+    "    ;;",
     "  dpkg-query)",
     '    echo "${SLOPCODE_TEST_DPKG_QUERY:-}"',
     "    exit 0",
+    "    ;;",
+    "  zypper)",
+    '    if [ "$1" = "search" ]; then',
+    '      echo "${SLOPCODE_TEST_ZYPPER_SEARCH:-}"',
+    "      exit 0",
+    "    fi",
+    '    if [ "$1" = "info" ]; then',
+    '      echo "${SLOPCODE_TEST_ZYPPER_INFO:-}"',
+    "      exit 0",
+    "    fi",
     "    ;;",
     "  dnf)",
     '    if [ "$1" = "list" ] && [ "$2" = "--installed" ]; then',
@@ -275,6 +297,24 @@ describe("installation package manager behaviors", () => {
     expect(run.result?.value).toBe("yarn")
   })
 
+  test("detects zypper installs", async () => {
+    const run = await runCase("method", {
+      npm_config_user_agent: "",
+      SLOPCODE_TEST_ZYPPER_SEARCH: "i | slopcode | package | 0.1.15-1 | x86_64",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("zypper")
+  })
+
+  test("detects macports installs", async () => {
+    const run = await runCase("method", {
+      npm_config_user_agent: "",
+      SLOPCODE_TEST_PORT_INSTALLED: "The following ports are currently installed:\n  slopcode @0.1.15_0 (active)",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("macports")
+  })
+
   test("detects dnf installs", async () => {
     const run = await runCase("method", {
       npm_config_user_agent: "",
@@ -309,6 +349,24 @@ describe("installation package manager behaviors", () => {
     })
     expect(run.exitCode).toBe(0)
     expect(run.result?.value).toBe("pkg")
+  })
+  test("parses latest zypper version", async () => {
+    const run = await runCase("latest", {
+      METHOD: "zypper",
+      SLOPCODE_TEST_ZYPPER_INFO:
+        "Repository      : slopcode\nName            : slopcode\nVersion         : 0.1.26\nRelease         : 2.1",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("0.1.26")
+  })
+
+  test("parses latest macports version", async () => {
+    const run = await runCase("latest", {
+      METHOD: "macports",
+      SLOPCODE_TEST_PORT_INFO: "slopcode @0.1.27_1 (devel)\nVariants:             universal",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(run.result?.value).toBe("0.1.27")
   })
 
   test("detects pacman installs", async () => {
@@ -405,6 +463,36 @@ describe("installation package manager behaviors", () => {
     expect(run.exitCode).toBe(0)
     expect(run.logs.some((item) => item === `yarn|${project}|up slopcode@0.9.1`)).toBe(true)
     await fs.rm(project, { recursive: true, force: true })
+  })
+
+  test("runs zypper upgrade command", async () => {
+    const run = await runCase("upgrade", {
+      METHOD: "zypper",
+      TARGET: "0.9.2",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(
+      run.logs.some(
+        (item) =>
+          (item.startsWith("zypper|") && item.endsWith("|--non-interactive update slopcode")) ||
+          (item.startsWith("sudo|") && item.includes("zypper --non-interactive update slopcode")),
+      ),
+    ).toBe(true)
+  })
+
+  test("runs macports upgrade command", async () => {
+    const run = await runCase("upgrade", {
+      METHOD: "macports",
+      TARGET: "0.9.2",
+    })
+    expect(run.exitCode).toBe(0)
+    expect(
+      run.logs.some(
+        (item) =>
+          (item.startsWith("port|") && item.endsWith("|-N upgrade slopcode")) ||
+          (item.startsWith("sudo|") && item.includes("port -N upgrade slopcode")),
+      ),
+    ).toBe(true)
   })
 
   test("runs dnf upgrade command", async () => {

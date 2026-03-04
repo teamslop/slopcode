@@ -56,8 +56,10 @@ choco install slopcode             # Windows
 brew install teamslop/slopcode/slopcode # macOS and Linux (recommended, always up to date)
 brew install slopcode              # macOS and Linux (official brew formula, updated less)
 curl -fsSL https://teamslop.github.io/apt-slopcode/install.sh | sudo bash # Debian/Ubuntu (apt repository)
+sudo zypper install slopcode       # openSUSE (RPM repository)
 sudo pacman -S slopcode            # Arch Linux (Stable)
 paru -S slopcode-bin               # Arch Linux (Latest from AUR)
+sudo port install slopcode         # macOS (MacPorts)
 mise use -g slopcode               # Any OS
 nix profile install github:teamslop/slopcode#slopcode # Any OS (persistent install)
 nix run github:teamslop/slopcode#slopcode             # One-off run

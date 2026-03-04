@@ -300,8 +300,10 @@ jobs:
           SLOPCODE_ENFORCE_APT: "true"
           SLOPCODE_ENFORCE_RPM: ${{ vars.SLOPCODE_ENFORCE_RPM || 'false' }}
           SLOPCODE_ENFORCE_APK: ${{ vars.SLOPCODE_ENFORCE_APK || 'false' }}
+          SLOPCODE_ENFORCE_MACPORTS: ${{ vars.SLOPCODE_ENFORCE_MACPORTS || 'false' }}
           SLOPCODE_DISABLE_RPM: ${{ vars.SLOPCODE_DISABLE_RPM || 'false' }}
           SLOPCODE_DISABLE_APK: ${{ vars.SLOPCODE_DISABLE_APK || 'false' }}
+          SLOPCODE_DISABLE_MACPORTS: ${{ vars.SLOPCODE_DISABLE_MACPORTS || 'false' }}
           # Homebrew core PR sync (non-blocking)
           HOMEBREW_CORE_TOKEN: ${{ secrets.HOMEBREW_CORE_TOKEN || steps.committer.outputs.token }}
           HOMEBREW_CORE_FORK_REPO: ${{ vars.HOMEBREW_CORE_FORK_REPO || '' }}
@@ -338,6 +340,13 @@ jobs:
           APK_REPO_BRANCH: ${{ vars.APK_REPO_BRANCH || 'main' }}
           APK_REPO_BASE_URL: ${{ vars.APK_REPO_BASE_URL || 'https://teamslop.github.io/apk-slopcode' }}
           APK_REPO_IMAGE: ${{ vars.APK_REPO_IMAGE || 'alpine:3.20' }}
+          # MacPorts sync
+          MACPORTS_TOKEN: ${{ secrets.MACPORTS_TOKEN || steps.committer.outputs.token }}
+          MACPORTS_FORK_REPO: ${{ vars.MACPORTS_FORK_REPO || '' }}
+          MACPORTS_UPSTREAM_REPO: ${{ vars.MACPORTS_UPSTREAM_REPO || 'macports/macports-ports' }}
+          MACPORTS_BASE_BRANCH: ${{ vars.MACPORTS_BASE_BRANCH || '' }}
+          MACPORTS_PORT_PATH: ${{ vars.MACPORTS_PORT_PATH || 'devel/slopcode/Portfile' }}
+          MACPORTS_BRANCH_PREFIX: ${{ vars.MACPORTS_BRANCH_PREFIX || 'slopcode-bump-' }}
           SLOPCODE_VERSION: ${{ needs.version.outputs.version }}
           SLOPCODE_RELEASE: ${{ needs.version.outputs.release }}
           GITHUB_TOKEN: ${{ steps.committer.outputs.token }}
