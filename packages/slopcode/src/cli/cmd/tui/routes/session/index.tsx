@@ -493,6 +493,11 @@ export function Session() {
         return
       }
 
+      if (keybind.match("agent_cycle", evt)) {
+        setHistoryMode(false)
+        return
+      }
+
       if (keybind.match("history_previous", evt)) {
         scrollToPrompt("prev")
         evt.preventDefault()
