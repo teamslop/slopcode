@@ -144,7 +144,9 @@ const run = async () => {
   const assetPath = path.join(tmp, assetName)
   const releaseUrl = `https://github.com/${source}/releases/download/${tag}/${assetName}`
   const download = async (left: number): Promise<void> => {
-    const run = await $`gh release download ${tag} --repo ${source} --dir ${tmp} --pattern ${assetName}`.env(env).nothrow()
+    const run = await $`gh release download ${tag} --repo ${source} --dir ${tmp} --pattern ${assetName}`
+      .env(env)
+      .nothrow()
     if (run.exitCode === 0 && (await Bun.file(assetPath).exists())) {
       return
     }
@@ -157,8 +159,14 @@ const run = async () => {
   }
 
   await download(wait)
-  const sha256 = new Bun.CryptoHasher("sha256").update(await Bun.file(assetPath).arrayBuffer()).digest("hex").toUpperCase()
-  const releaseInfo = await $`gh release view ${tag} --repo ${source} --json createdAt,publishedAt`.env(env).quiet().text()
+  const sha256 = new Bun.CryptoHasher("sha256")
+    .update(await Bun.file(assetPath).arrayBuffer())
+    .digest("hex")
+    .toUpperCase()
+  const releaseInfo = await $`gh release view ${tag} --repo ${source} --json createdAt,publishedAt`
+    .env(env)
+    .quiet()
+    .text()
   const parsed = JSON.parse(releaseInfo) as {
     createdAt?: string
     publishedAt?: string
