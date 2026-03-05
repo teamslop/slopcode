@@ -138,8 +138,8 @@ installs_libs       no
 license             MIT
 maintainers         nomaintainer
 
-description         The open source AI coding agent.
-long_description    SlopCode is the open source AI coding agent focused on terminal workflows.
+description         The open source AI slopcoding agent.
+long_description    SlopCode is the open source AI slopcoding agent focused on terminal workflows.
 homepage            https://slopcode.dev
 master_sites        https://github.com/teamslop/slopcode/releases/download/v${version}
 

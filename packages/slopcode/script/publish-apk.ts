@@ -108,7 +108,7 @@ const run = async () => {
     "pkgname=slopcode",
     `pkgver=${version}`,
     "pkgrel=0",
-    'pkgdesc="The open source AI coding agent focused on terminal workflows."',
+    'pkgdesc="The open source AI slopcoding agent focused on terminal workflows."',
     'url="https://slopcode.dev"',
     'arch="x86_64"',
     'license="MIT"',
