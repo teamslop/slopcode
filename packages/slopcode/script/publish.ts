@@ -60,7 +60,7 @@ if (!readme) {
 }
 
 const metadata = {
-  description: "The open source AI coding agent.",
+  description: "The open source AI slopcoding agent.",
   homepage: "https://slopcode.dev",
   repository: {
     type: "git",

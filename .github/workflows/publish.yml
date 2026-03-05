@@ -66,46 +66,9 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
       repo: ${{ steps.version.outputs.repo }}
 
-  build-cli:
-    needs: version
-    runs-on: ubuntu-latest
-    if: github.repository == 'teamslop/slopcode' && needs.version.outputs.version != ''
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-tags: true
-
-      - uses: ./.github/actions/setup-bun
-
-      - name: Setup git committer
-        id: committer
-        uses: ./.github/actions/setup-git-committer
-        with:
-          slopcode-app-id: ${{ vars.SLOPCODE_APP_ID }}
-          slopcode-app-secret: ${{ secrets.SLOPCODE_APP_SECRET }}
-
-      - name: Build
-        id: build
-        run: |
-          ./packages/slopcode/script/build.ts
-        env:
-          SLOPCODE_VERSION: ${{ needs.version.outputs.version }}
-          SLOPCODE_RELEASE: ${{ needs.version.outputs.release }}
-          GH_REPO: ${{ needs.version.outputs.repo }}
-          GH_TOKEN: ${{ steps.committer.outputs.token }}
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: slopcode-cli
-          path: packages/slopcode/dist
-
-    outputs:
-      version: ${{ needs.version.outputs.version }}
-
   build-tauri:
     if: false # Non-npm publishing channel disabled
     needs:
-      - build-cli
       - version
     continue-on-error: false
     strategy:
@@ -243,7 +206,6 @@ jobs:
   publish:
     needs:
       - version
-      - build-cli
     runs-on: ubuntu-latest
     if: needs.version.outputs.version != ''
     steps:
@@ -292,11 +254,16 @@ jobs:
           slopcode-app-id: ${{ vars.SLOPCODE_APP_ID }}
           slopcode-app-secret: ${{ secrets.SLOPCODE_APP_SECRET }}
 
-      - uses: actions/download-artifact@v4
+      - name: Download CLI dist bundle
         if: steps.guard.outputs.ready == 'true'
-        with:
-          name: slopcode-cli
-          path: packages/slopcode/dist
+        run: |
+          rm -rf packages/slopcode/dist
+          mkdir -p packages/slopcode/dist
+          gh release download ${{ needs.version.outputs.tag }} --pattern "slopcode-cli-dist.tar.gz" --dir packages/slopcode/dist --repo ${{ needs.version.outputs.repo }}
+          tar -xzf packages/slopcode/dist/slopcode-cli-dist.tar.gz -C packages/slopcode/dist
+          rm packages/slopcode/dist/slopcode-cli-dist.tar.gz
+        env:
+          GH_TOKEN: ${{ steps.committer.outputs.token }}
 
       - name: Install apt repository tooling
         if: steps.guard.outputs.ready == 'true'
