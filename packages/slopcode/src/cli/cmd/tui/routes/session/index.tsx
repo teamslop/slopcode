@@ -322,10 +322,6 @@ export function Session() {
   })
 
   const follow = createMemo(() => !history() || target() === "prompt")
-  const busy = createMemo(() => {
-    const status = sync.data.session_status?.[route.sessionID]
-    return status ? status.type !== "idle" : false
-  })
 
   createEffect(async () => {
     await sync.session
@@ -397,7 +393,7 @@ export function Session() {
     setHistory(value)
     setHistoryPart(undefined)
     setHistoryPrompt(undefined)
-    setTarget(value ? "timeline" : "prompt")
+    setTarget("prompt")
 
     if (value) return
 
@@ -504,30 +500,19 @@ export function Session() {
       }
 
       if (keybind.match("history_next", evt)) {
-        if (!scrollToPrompt("next")) focusPrompt()
+        scrollToPrompt("next")
         evt.preventDefault()
         return
       }
 
       if (evt.name === "left") {
-        if (target() === "prompt") {
-          if (!focusLatestHistoryTrace()) focusPromptByID(currentPromptID())
-          evt.preventDefault()
-          return
-        }
-
-        if (!moveHistoryTrace("prev")) focusPromptByID(currentPromptID())
+        moveHistoryTrace("prev")
         evt.preventDefault()
         return
       }
 
       if (evt.name === "right") {
-        if (target() === "prompt") {
-          evt.preventDefault()
-          return
-        }
-
-        if (!moveHistoryTrace("next") && !busy()) focusPrompt()
+        moveHistoryTrace("next")
         evt.preventDefault()
         return
       }
@@ -598,14 +583,30 @@ export function Session() {
   }
 
   const scrollToPrompt = (direction: "next" | "prev") => {
+    const prompts = promptIDs()
+    if (prompts.length === 0) return false
+
+    if (target() === "prompt") {
+      if (direction === "next") return false
+      return focusPromptByID(prompts.at(-1))
+    }
+
     const selected = historyPart()
     if (selected) {
       const trace = historyTraceList().find((item) => item.partID === selected)
-      return focusPromptByID(trace?.promptID)
-    }
+      if (!trace) {
+        setHistoryPart(undefined)
+        return false
+      }
 
-    const prompts = promptIDs()
-    if (prompts.length === 0) return false
+      if (direction === "prev") return focusPromptByID(trace.promptID)
+
+      const index = prompts.findIndex((item) => item === trace.promptID)
+      if (index < 0) return false
+      const next = prompts[index + 1]
+      if (next) return focusPromptByID(next)
+      return focusPrompt()
+    }
 
     const current = currentPromptID()
     if (!current) return false
@@ -613,9 +614,15 @@ export function Session() {
     const index = prompts.findIndex((item) => item === current)
     if (index < 0) return false
 
-    const target = direction === "next" ? prompts[index + 1] : prompts[index - 1]
-    if (!target) return false
-    return focusPromptByID(target)
+    if (direction === "prev") {
+      const prev = prompts[index - 1]
+      if (prev) return focusPromptByID(prev)
+      return focusPromptByID(current)
+    }
+
+    const next = prompts[index + 1]
+    if (next) return focusPromptByID(next)
+    return focusPrompt()
   }
 
   const historyTraces = (promptID: string): HistoryTrace[] => {
@@ -729,68 +736,70 @@ export function Session() {
     return true
   }
 
-  const focusLatestHistoryTrace = () => {
-    const latest = historyTraceList().at(-1)
-    if (!latest) return false
-    return focusHistoryTrace(latest)
+  const historyNodes = () => {
+    return promptIDs().flatMap((promptID, promptIndex) => {
+      const traces = historyTraces(promptID)
+      return [
+        {
+          key: `${promptIndex + 1}.0`,
+          kind: "prompt" as const,
+          promptID,
+        },
+        ...traces.map((trace, traceIndex) => ({
+          key: `${promptIndex + 1}.${traceIndex + 1}`,
+          kind: "trace" as const,
+          promptID,
+          trace,
+        })),
+      ]
+    })
+  }
+
+  const selectedHistoryNode = () => {
+    const nodes = historyNodes()
+    const part = historyPart()
+    if (part) {
+      return nodes.find((node) => node.kind === "trace" && node.trace.partID === part)
+    }
+
+    const prompt = historyPrompt()
+    if (!prompt) return undefined
+    return nodes.find((node) => node.kind === "prompt" && node.promptID === prompt)
+  }
+
+  const focusHistoryNode = (node?: ReturnType<typeof historyNodes>[number]) => {
+    if (!node) return false
+    if (node.kind === "prompt") return focusPromptByID(node.promptID)
+    return focusHistoryTrace(node.trace)
   }
 
   const moveHistoryTrace = (direction: "next" | "prev") => {
-    const traces = historyTraceList()
-    const promptID = currentPromptID()
-    if (traces.length === 0) {
-      return focusPromptByID(promptID)
+    const nodes = historyNodes()
+    if (nodes.length === 0) return false
+
+    if (target() === "prompt") {
+      if (direction === "next") return false
+      return focusHistoryNode(nodes.at(-1))
     }
 
-    const selectedID = historyPart()
-    if (selectedID) {
-      const trace = traces.find((item) => item.partID === selectedID)
-      if (trace) {
-        const group = traces.filter((item) => item.promptID === trace.promptID)
-        const index = group.findIndex((item) => item.partID === selectedID)
-        if (index < 0) return false
-
-        if (direction === "next") {
-          const next = group[index + 1]
-          if (next) return focusHistoryTrace(next)
-
-          const prompts = promptIDs()
-          const promptIndex = prompts.findIndex((item) => item === trace.promptID)
-          if (promptIndex < 0) return false
-
-          const nextPrompt = prompts[promptIndex + 1]
-          if (!nextPrompt) return false
-          return focusPromptByID(nextPrompt)
-        }
-
-        const prev = group[index - 1]
-        if (prev) return focusHistoryTrace(prev)
-        return focusPromptByID(trace.promptID)
-      }
-
-      setHistoryPart(undefined)
+    const selected = selectedHistoryNode()
+    if (!selected) {
+      const edge = direction === "next" ? nodes[0] : nodes.at(-1)
+      return focusHistoryNode(edge)
     }
 
-    if (!promptID) {
-      const edge = direction === "next" ? traces[0] : traces.at(-1)
-      if (!edge) return false
-      return focusHistoryTrace(edge)
+    const index = nodes.findIndex((node) => node.key === selected.key)
+    if (index < 0) return false
+
+    if (direction === "prev") {
+      const prev = nodes[index - 1]
+      if (prev) return focusHistoryNode(prev)
+      return focusHistoryNode(nodes[0])
     }
 
-    if (direction === "next") {
-      const first = traces.find((item) => item.promptID === promptID)
-      if (first) return focusHistoryTrace(first)
-      return focusPromptByID(promptID)
-    }
-
-    const prompts = promptIDs()
-    const index = prompts.findIndex((item) => item === promptID)
-    if (index <= 0) return focusPromptByID(promptID)
-
-    const prevPrompt = prompts[index - 1]
-    const prev = [...traces].reverse().find((item) => item.promptID === prevPrompt)
-    if (prev) return focusHistoryTrace(prev)
-    return focusPromptByID(promptID)
+    const next = nodes[index + 1]
+    if (next) return focusHistoryNode(next)
+    return focusPrompt()
   }
 
   const historyAction = () => {
