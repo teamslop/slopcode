@@ -2071,9 +2071,12 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
     <Show when={props.part.text.trim()}>
       <box
         id={"text-" + props.part.id}
-        paddingLeft={3}
+        paddingLeft={2}
         marginTop={1}
         flexShrink={0}
+        border={["left"]}
+        customBorderChars={SplitBorder.customBorderChars}
+        borderColor={selected() ? theme.textMuted : theme.background}
         backgroundColor={selected() ? theme.backgroundElement : undefined}
       >
         <Switch>
