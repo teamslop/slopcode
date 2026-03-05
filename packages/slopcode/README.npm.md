@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/slopcode?style=flat-square)](https://www.npmjs.com/package/slopcode)
 [![npm downloads](https://img.shields.io/npm/dm/slopcode?style=flat-square)](https://www.npmjs.com/package/slopcode)
 
-SlopCode is the open source AI coding agent focused on terminal workflows.
+SlopCode is the open source AI slopcoding agent focused on terminal workflows.
 
 ## Install
 

@@ -252,8 +252,8 @@ const debBuild = async (src: string, arch: "amd64" | "arm64") => {
       `Architecture: ${arch}`,
       "Maintainer: SlopCode Team <support@slopcode.dev>",
       "Depends: libc6, libstdc++6",
-      "Description: The open source AI coding agent",
-      " SlopCode is an open source AI coding agent focused on terminal workflows.",
+      "Description: The open source AI slopcoding agent",
+      " SlopCode is an open source AI slopcoding agent focused on terminal workflows.",
       "",
     ].join("\n"),
   )
