@@ -287,6 +287,8 @@ if (Script.release) {
     await $`zip -r ../../${key}.zip *`.cwd(`dist/${key}/bin`)
   }
 
+  await $`tar -czf slopcode-cli-dist.tar.gz ${Object.keys(binaries)}`.cwd("dist")
+
   if (process.platform === "linux") {
     const dpkgDeb = (await $`bash -lc "command -v dpkg-deb"`.quiet().nothrow().text()).trim()
     if (!dpkgDeb) {
