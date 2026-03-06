@@ -254,8 +254,17 @@ jobs:
           slopcode-app-id: ${{ vars.SLOPCODE_APP_ID }}
           slopcode-app-secret: ${{ secrets.SLOPCODE_APP_SECRET }}
 
+      - name: Build CLI dist for preview channel
+        if: steps.guard.outputs.ready == 'true' && needs.version.outputs.release == ''
+        run: |
+          ./packages/slopcode/script/build.ts
+        env:
+          SLOPCODE_VERSION: ${{ needs.version.outputs.version }}
+          GH_REPO: ${{ needs.version.outputs.repo }}
+          GH_TOKEN: ${{ steps.committer.outputs.token }}
+
       - name: Download CLI dist bundle
-        if: steps.guard.outputs.ready == 'true'
+        if: steps.guard.outputs.ready == 'true' && needs.version.outputs.release != ''
         run: |
           rm -rf packages/slopcode/dist
           mkdir -p packages/slopcode/dist
