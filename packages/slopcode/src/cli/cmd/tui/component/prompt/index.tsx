@@ -1,4 +1,4 @@
-import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent, t, dim, fg } from "@opentui/core"
+import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent } from "@opentui/core"
 import { createEffect, createMemo, type JSX, onMount, createSignal, onCleanup, on, Show, Switch, Match } from "solid-js"
 import "opentui-spinner/solid"
 import path from "path"
@@ -150,6 +150,31 @@ export function Prompt(props: PromptProps) {
     extmarkToPartIndex: new Map(),
     interrupt: 0,
     ghost: "",
+  })
+  const [cursor, setCursor] = createSignal({
+    row: 0,
+    col: 0,
+    offset: 0,
+  })
+
+  function syncCursor() {
+    if (!input || input.isDestroyed) return
+    const visual = input.visualCursor
+    setCursor({
+      row: visual.visualRow,
+      col: visual.visualCol,
+      offset: visual.offset,
+    })
+  }
+
+  const inlineGhost = createMemo(() => {
+    if (!store.ghost) return ""
+    if (store.mode !== "normal") return ""
+    if (props.disabled) return ""
+    if (props.historyMode && props.historyTarget === "timeline") return ""
+    if (autocomplete?.visible || !input?.focused) return ""
+    if (cursor().offset !== store.prompt.input.length) return ""
+    return store.ghost
   })
 
   createEffect(
@@ -950,6 +975,10 @@ export function Prompt(props: PromptProps) {
                 setStore("prompt", "input", value)
                 autocomplete.onInput(value)
                 syncExtmarksWithPromptParts()
+                syncCursor()
+              }}
+              onCursorChange={() => {
+                syncCursor()
               }}
               keyBindings={textareaKeybindings()}
               onKeyDown={async (e) => {
@@ -1006,7 +1035,14 @@ export function Prompt(props: PromptProps) {
                   }
                 }
                 if (store.mode === "normal" && !autocomplete.visible && store.ghost) {
-                  if (e.name === "tab") {
+                  if (
+                    e.name === "right" &&
+                    !e.ctrl &&
+                    !e.meta &&
+                    !e.option &&
+                    !e.shift &&
+                    input.cursorOffset === input.plainText.length
+                  ) {
                     if (acceptGhost()) {
                       e.preventDefault()
                       return
@@ -1123,11 +1159,13 @@ export function Prompt(props: PromptProps) {
                   promptPartTypeId = input.extmarks.registerType("prompt-part")
                 }
                 props.ref?.(ref)
+                syncCursor()
                 setTimeout(() => {
                   // setTimeout is a workaround and needs to be addressed properly
                   if (!input || input.isDestroyed) return
                   const hidden = props.disabled || (props.historyMode && props.historyTarget === "timeline")
                   input.cursorColor = hidden ? theme.backgroundElement : theme.text
+                  syncCursor()
                 }, 0)
               }}
               onMouseDown={(r: MouseEvent) => {
@@ -1138,6 +1176,13 @@ export function Prompt(props: PromptProps) {
               cursorColor={theme.text}
               syntaxStyle={syntax()}
             />
+            <Show when={inlineGhost()}>
+              {(ghost) => (
+                <box position="absolute" top={cursor().row} left={cursor().col} zIndex={1}>
+                  <text fg={theme.textMuted}>{ghost()}</text>
+                </box>
+              )}
+            </Show>
             <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1}>
               <text fg={highlight()}>
                 {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
@@ -1153,9 +1198,6 @@ export function Prompt(props: PromptProps) {
                     <text>
                       <span style={{ fg: theme.warning, bold: true }}>{local.model.variant.current()}</span>
                     </text>
-                  </Show>
-                  <Show when={store.ghost}>
-                    <text fg={theme.textMuted}>· tab {Locale.truncateMiddle(store.ghost, 36)}</text>
                   </Show>
                 </box>
               </Show>
