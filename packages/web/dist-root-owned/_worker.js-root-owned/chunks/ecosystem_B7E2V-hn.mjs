@@ -1,9 +1,10 @@
-globalThis.process ??= {}; globalThis.process.env ??= {};
+globalThis.process ??= {}
+globalThis.process.env ??= {}
 async function getMod() {
-						return import('./ecosystem_BOqEHTma.mjs');
-					}
-					const collectedLinks = [];
-					const collectedStyles = [];
-					const defaultMod = { __astroPropagation: true, getMod, collectedLinks, collectedStyles, collectedScripts: [] };
+  return import("./ecosystem_BOqEHTma.mjs")
+}
+const collectedLinks = []
+const collectedStyles = []
+const defaultMod = { __astroPropagation: true, getMod, collectedLinks, collectedStyles, collectedScripts: [] }
 
-export { defaultMod as default };
+export { defaultMod as default }

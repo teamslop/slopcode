@@ -1,5 +1,6 @@
-globalThis.process ??= {}; globalThis.process.env ??= {};
-import { b as baseService } from './_astro_assets_W4d7vZBs.mjs';
+globalThis.process ??= {}
+globalThis.process.env ??= {}
+import { b as baseService } from "./_astro_assets_W4d7vZBs.mjs"
 
 const noopService = {
   ...baseService,
@@ -7,10 +8,10 @@ const noopService = {
   async transform(inputBuffer, transformOptions) {
     return {
       data: inputBuffer,
-      format: transformOptions.format
-    };
-  }
-};
-var noop_default = noopService;
+      format: transformOptions.format,
+    }
+  },
+}
+var noop_default = noopService
 
-export { noop_default as default };
+export { noop_default as default }

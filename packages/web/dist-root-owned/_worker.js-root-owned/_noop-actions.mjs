@@ -1,4 +1,5 @@
-globalThis.process ??= {}; globalThis.process.env ??= {};
-const server = {};
+globalThis.process ??= {}
+globalThis.process.env ??= {}
+const server = {}
 
-export { server };
+export { server }

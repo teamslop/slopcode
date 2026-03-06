@@ -986,230 +986,226 @@ export function Prompt(props: PromptProps) {
           >
             <box position="relative">
               <textarea
-              placeholder={placeholderText()}
-              textColor={keybind.leader ? theme.textMuted : theme.text}
-              focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
-              minHeight={1}
-              maxHeight={6}
-              onContentChange={() => {
-                clearGhost()
-                const value = input.plainText
-                setStore("prompt", "input", value)
-                autocomplete.onInput(value)
-                syncExtmarksWithPromptParts()
-                syncCursor()
-              }}
-              onCursorChange={() => {
-                syncCursor()
-              }}
-              keyBindings={textareaKeybindings()}
-              onKeyDown={async (e) => {
-                if (props.disabled) {
-                  e.preventDefault()
-                  return
-                }
-                // Handle clipboard paste (Ctrl+V) - check for images first on Windows
-                // This is needed because Windows terminal doesn't properly send image data
-                // through bracketed paste, so we need to intercept the keypress and
-                // directly read from clipboard before the terminal handles it
-                if (keybind.match("input_paste", e)) {
-                  const content = await Clipboard.read()
-                  if (content?.mime.startsWith("image/")) {
+                placeholder={placeholderText()}
+                textColor={keybind.leader ? theme.textMuted : theme.text}
+                focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
+                minHeight={1}
+                maxHeight={6}
+                onContentChange={() => {
+                  clearGhost()
+                  const value = input.plainText
+                  setStore("prompt", "input", value)
+                  autocomplete.onInput(value)
+                  syncExtmarksWithPromptParts()
+                  syncCursor()
+                }}
+                onCursorChange={() => {
+                  syncCursor()
+                }}
+                keyBindings={textareaKeybindings()}
+                onKeyDown={async (e) => {
+                  if (props.disabled) {
                     e.preventDefault()
-                    await pasteImage({
-                      filename: "clipboard",
-                      mime: content.mime,
-                      content: content.data,
+                    return
+                  }
+                  // Handle clipboard paste (Ctrl+V) - check for images first on Windows
+                  // This is needed because Windows terminal doesn't properly send image data
+                  // through bracketed paste, so we need to intercept the keypress and
+                  // directly read from clipboard before the terminal handles it
+                  if (keybind.match("input_paste", e)) {
+                    const content = await Clipboard.read()
+                    if (content?.mime.startsWith("image/")) {
+                      e.preventDefault()
+                      await pasteImage({
+                        filename: "clipboard",
+                        mime: content.mime,
+                        content: content.data,
+                      })
+                      return
+                    }
+                    // If no image, let the default paste behavior continue
+                  }
+                  if (keybind.match("input_clear", e) && store.prompt.input !== "") {
+                    input.clear()
+                    input.extmarks.clear()
+                    setStore("prompt", {
+                      input: "",
+                      parts: [],
                     })
+                    setStore("extmarkToPartIndex", new Map())
                     return
                   }
-                  // If no image, let the default paste behavior continue
-                }
-                if (keybind.match("input_clear", e) && store.prompt.input !== "") {
-                  input.clear()
-                  input.extmarks.clear()
-                  setStore("prompt", {
-                    input: "",
-                    parts: [],
-                  })
-                  setStore("extmarkToPartIndex", new Map())
-                  return
-                }
-                if (keybind.match("app_exit", e)) {
-                  if (store.prompt.input === "") {
-                    await exit()
-                    // Don't preventDefault - let textarea potentially handle the event
-                    e.preventDefault()
-                    return
-                  }
-                }
-                if (e.name === "!" && input.visualCursor.offset === 0) {
-                  setStore("placeholder", Math.floor(Math.random() * SHELL_PLACEHOLDERS.length))
-                  setStore("mode", "shell")
-                  e.preventDefault()
-                  return
-                }
-                if (store.mode === "shell") {
-                  if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
-                    setStore("mode", "normal")
-                    e.preventDefault()
-                    return
-                  }
-                }
-                if (store.mode === "normal" && !autocomplete.visible && store.ghost) {
-                  if (
-                    e.name === "right" &&
-                    !e.ctrl &&
-                    !e.meta &&
-                    !e.option &&
-                    !e.shift &&
-                    input.cursorOffset === input.plainText.length
-                  ) {
-                    if (acceptGhost()) {
+                  if (keybind.match("app_exit", e)) {
+                    if (store.prompt.input === "") {
+                      await exit()
+                      // Don't preventDefault - let textarea potentially handle the event
                       e.preventDefault()
                       return
                     }
                   }
-                  if (e.name === "escape") {
-                    clearGhost()
+                  if (e.name === "!" && input.visualCursor.offset === 0) {
+                    setStore("placeholder", Math.floor(Math.random() * SHELL_PLACEHOLDERS.length))
+                    setStore("mode", "shell")
                     e.preventDefault()
                     return
                   }
-                }
-                if (store.mode === "normal") autocomplete.onKeyDown(e)
-                if (!autocomplete.visible) {
-                  if (
-                    !props.historyMode &&
-                    ((keybind.match("history_previous", e) && input.cursorOffset === 0) ||
-                      (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length))
-                  ) {
-                    const direction = keybind.match("history_previous", e) ? -1 : 1
-                    const item = history.move(direction, {
-                      ...store.prompt,
-                      mode: store.mode,
-                    })
-
-                    if (item) {
-                      input.setText(item.input)
-                      setStore("prompt", item)
-                      setStore("mode", item.mode ?? "normal")
-                      restoreExtmarksFromParts(item.parts)
+                  if (store.mode === "shell") {
+                    if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
+                      setStore("mode", "normal")
                       e.preventDefault()
-                      if (direction === -1) input.cursorOffset = 0
-                      if (direction === 1) input.cursorOffset = input.plainText.length
+                      return
                     }
+                  }
+                  if (store.mode === "normal" && !autocomplete.visible && store.ghost) {
+                    if (
+                      e.name === "right" &&
+                      !e.ctrl &&
+                      !e.meta &&
+                      !e.option &&
+                      !e.shift &&
+                      input.cursorOffset === input.plainText.length
+                    ) {
+                      if (acceptGhost()) {
+                        e.preventDefault()
+                        return
+                      }
+                    }
+                    if (e.name === "escape") {
+                      clearGhost()
+                      e.preventDefault()
+                      return
+                    }
+                  }
+                  if (store.mode === "normal") autocomplete.onKeyDown(e)
+                  if (!autocomplete.visible) {
+                    if (
+                      !props.historyMode &&
+                      ((keybind.match("history_previous", e) && input.cursorOffset === 0) ||
+                        (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length))
+                    ) {
+                      const direction = keybind.match("history_previous", e) ? -1 : 1
+                      const item = history.move(direction, {
+                        ...store.prompt,
+                        mode: store.mode,
+                      })
+
+                      if (item) {
+                        input.setText(item.input)
+                        setStore("prompt", item)
+                        setStore("mode", item.mode ?? "normal")
+                        restoreExtmarksFromParts(item.parts)
+                        e.preventDefault()
+                        if (direction === -1) input.cursorOffset = 0
+                        if (direction === 1) input.cursorOffset = input.plainText.length
+                      }
+                      return
+                    }
+
+                    if (keybind.match("history_previous", e) && input.visualCursor.visualRow === 0)
+                      input.cursorOffset = 0
+                    if (keybind.match("history_next", e) && input.visualCursor.visualRow === input.height - 1)
+                      input.cursorOffset = input.plainText.length
+                  }
+                }}
+                onSubmit={submit}
+                onPaste={async (event: PasteEvent) => {
+                  if (props.disabled) {
+                    event.preventDefault()
                     return
                   }
 
-                  if (keybind.match("history_previous", e) && input.visualCursor.visualRow === 0) input.cursorOffset = 0
-                  if (keybind.match("history_next", e) && input.visualCursor.visualRow === input.height - 1)
-                    input.cursorOffset = input.plainText.length
-                }
-              }}
-              onSubmit={submit}
-              onPaste={async (event: PasteEvent) => {
-                if (props.disabled) {
-                  event.preventDefault()
-                  return
-                }
+                  // Normalize line endings at the boundary
+                  // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
+                  // Replace CRLF first, then any remaining CR
+                  const normalizedText = event.text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+                  const pastedContent = normalizedText.trim()
+                  if (!pastedContent) {
+                    command.trigger("prompt.paste")
+                    return
+                  }
 
-                // Normalize line endings at the boundary
-                // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
-                // Replace CRLF first, then any remaining CR
-                const normalizedText = event.text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-                const pastedContent = normalizedText.trim()
-                if (!pastedContent) {
-                  command.trigger("prompt.paste")
-                  return
-                }
-
-                // trim ' from the beginning and end of the pasted content. just
-                // ' and nothing else
-                const filepath = pastedContent.replace(/^'+|'+$/g, "").replace(/\\ /g, " ")
-                const isUrl = /^(https?):\/\//.test(filepath)
-                if (!isUrl) {
-                  try {
-                    const mime = Filesystem.mimeType(filepath)
-                    const filename = path.basename(filepath)
-                    // Handle SVG as raw text content, not as base64 image
-                    if (mime === "image/svg+xml") {
-                      event.preventDefault()
-                      const content = await Filesystem.readText(filepath).catch(() => {})
-                      if (content) {
-                        pasteText(content, `[SVG: ${filename ?? "image"}]`)
-                        return
+                  // trim ' from the beginning and end of the pasted content. just
+                  // ' and nothing else
+                  const filepath = pastedContent.replace(/^'+|'+$/g, "").replace(/\\ /g, " ")
+                  const isUrl = /^(https?):\/\//.test(filepath)
+                  if (!isUrl) {
+                    try {
+                      const mime = Filesystem.mimeType(filepath)
+                      const filename = path.basename(filepath)
+                      // Handle SVG as raw text content, not as base64 image
+                      if (mime === "image/svg+xml") {
+                        event.preventDefault()
+                        const content = await Filesystem.readText(filepath).catch(() => {})
+                        if (content) {
+                          pasteText(content, `[SVG: ${filename ?? "image"}]`)
+                          return
+                        }
                       }
-                    }
-                    if (mime.startsWith("image/")) {
-                      event.preventDefault()
-                      const content = await Filesystem.readArrayBuffer(filepath)
-                        .then((buffer) => Buffer.from(buffer).toString("base64"))
-                        .catch(() => {})
-                      if (content) {
-                        await pasteImage({
-                          filename,
-                          mime,
-                          content,
-                        })
-                        return
+                      if (mime.startsWith("image/")) {
+                        event.preventDefault()
+                        const content = await Filesystem.readArrayBuffer(filepath)
+                          .then((buffer) => Buffer.from(buffer).toString("base64"))
+                          .catch(() => {})
+                        if (content) {
+                          await pasteImage({
+                            filename,
+                            mime,
+                            content,
+                          })
+                          return
+                        }
                       }
-                    }
-                  } catch {}
-                }
+                    } catch {}
+                  }
 
-                const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
-                if (
-                  (lineCount >= 3 || pastedContent.length > 150) &&
-                  !sync.data.config.experimental?.disable_paste_summary
-                ) {
-                  event.preventDefault()
-                  pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
-                  return
-                }
+                  const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
+                  if (
+                    (lineCount >= 3 || pastedContent.length > 150) &&
+                    !sync.data.config.experimental?.disable_paste_summary
+                  ) {
+                    event.preventDefault()
+                    pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
+                    return
+                  }
 
-                // Force layout update and render for the pasted content
-                setTimeout(() => {
-                  // setTimeout is a workaround and needs to be addressed properly
-                  if (!input || input.isDestroyed) return
-                  input.getLayoutNode().markDirty()
-                  renderer.requestRender()
-                }, 0)
-              }}
-              ref={(r: TextareaRenderable) => {
-                input = r
-                if (promptPartTypeId === 0) {
-                  promptPartTypeId = input.extmarks.registerType("prompt-part")
-                }
-                props.ref?.(ref)
-                syncCursor()
-                setTimeout(() => {
-                  // setTimeout is a workaround and needs to be addressed properly
-                  if (!input || input.isDestroyed) return
-                  const hidden = props.disabled || (props.historyMode && props.historyTarget === "timeline")
-                  input.cursorColor = hidden ? theme.backgroundElement : theme.text
+                  // Force layout update and render for the pasted content
+                  setTimeout(() => {
+                    // setTimeout is a workaround and needs to be addressed properly
+                    if (!input || input.isDestroyed) return
+                    input.getLayoutNode().markDirty()
+                    renderer.requestRender()
+                  }, 0)
+                }}
+                ref={(r: TextareaRenderable) => {
+                  input = r
+                  if (promptPartTypeId === 0) {
+                    promptPartTypeId = input.extmarks.registerType("prompt-part")
+                  }
+                  props.ref?.(ref)
                   syncCursor()
-                }, 0)
-              }}
-              onMouseDown={(r: MouseEvent) => {
-                props.onFocus?.()
-                r.target?.focus()
-              }}
-              focusedBackgroundColor={theme.backgroundElement}
-              cursorColor={theme.text}
-              syntaxStyle={syntax()}
-            />
-            <Show when={inlineGhost()}>
-              {(ghost) => (
-                <box
-                  position="absolute"
-                  top={inlineGhostPosition().top}
-                  left={inlineGhostPosition().left}
-                  zIndex={1}
-                >
-                  <text fg={theme.textMuted}>{ghost()}</text>
-                </box>
-              )}
-            </Show>
+                  setTimeout(() => {
+                    // setTimeout is a workaround and needs to be addressed properly
+                    if (!input || input.isDestroyed) return
+                    const hidden = props.disabled || (props.historyMode && props.historyTarget === "timeline")
+                    input.cursorColor = hidden ? theme.backgroundElement : theme.text
+                    syncCursor()
+                  }, 0)
+                }}
+                onMouseDown={(r: MouseEvent) => {
+                  props.onFocus?.()
+                  r.target?.focus()
+                }}
+                focusedBackgroundColor={theme.backgroundElement}
+                cursorColor={theme.text}
+                syntaxStyle={syntax()}
+              />
+              <Show when={inlineGhost()}>
+                {(ghost) => (
+                  <box position="absolute" top={inlineGhostPosition().top} left={inlineGhostPosition().left} zIndex={1}>
+                    <text fg={theme.textMuted}>{ghost()}</text>
+                  </box>
+                )}
+              </Show>
             </box>
             <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1}>
               <text fg={highlight()}>
