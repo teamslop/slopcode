@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { Message } from "@opencode-ai/sdk/v2/client"
-import { findAssistantMessages } from "@opencode-ai/ui/find-assistant-messages"
+import type { Message } from "@slopcode-ai/sdk/v2/client"
+import { findAssistantMessages } from "@slopcode-ai/ui/find-assistant-messages"
 
 function user(id: string): Message {
   return {

@@ -1,5 +1,5 @@
 import { createResource, Suspense, ErrorBoundary, Show } from "solid-js"
-import { Dialog } from "@opencode-ai/ui/dialog"
+import { Dialog } from "@slopcode-ai/ui/dialog"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { fetchReleases } from "@/api/releases"
