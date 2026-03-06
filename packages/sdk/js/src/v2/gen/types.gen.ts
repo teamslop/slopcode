@@ -1494,7 +1494,7 @@ export type Config = {
      */
     max_output_tokens?: number
     /**
-     * Maximum completion characters returned to the client (default: 200)
+     * Maximum completion characters returned to the client (default: 20)
      */
     max_completion_chars?: number
     /**
