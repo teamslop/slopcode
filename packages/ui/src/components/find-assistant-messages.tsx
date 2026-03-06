@@ -1,4 +1,4 @@
-import type { AssistantMessage, Message as MessageType } from "@opencode-ai/sdk/v2/client"
+import type { AssistantMessage, Message as MessageType } from "@slopcode-ai/sdk/v2/client"
 
 /**
  * Find assistant messages that are replies to a given user message.

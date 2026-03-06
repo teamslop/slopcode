@@ -7,7 +7,7 @@ import { useDialog } from "@tui/ui/dialog"
 import { createDialogProviderOptions, DialogProvider } from "./dialog-provider"
 import { useKeybind } from "../context/keybind"
 import * as fuzzysort from "fuzzysort"
-import type { Provider } from "@opencode-ai/sdk/v2"
+import type { Provider } from "@slopcode-ai/sdk/v2"
 
 function pickLatest(models: [string, Provider["models"][string]][]) {
   const picks: Record<string, [string, Provider["models"][string]]> = {}

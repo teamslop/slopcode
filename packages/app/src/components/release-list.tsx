@@ -1,8 +1,8 @@
 import { Component } from "solid-js"
-import { List } from "@opencode-ai/ui/list"
-import { Markdown } from "@opencode-ai/ui/markdown"
-import { Button } from "@opencode-ai/ui/button"
-import { Tag } from "@opencode-ai/ui/tag"
+import { List } from "@slopcode-ai/ui/list"
+import { Markdown } from "@slopcode-ai/ui/markdown"
+import { Button } from "@slopcode-ai/ui/button"
+import { Tag } from "@slopcode-ai/ui/tag"
 import { useLanguage } from "@/context/language"
 
 type Release = {
