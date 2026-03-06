@@ -684,6 +684,12 @@ function getSyntaxRules(theme: Theme) {
       },
     },
     {
+      scope: ["extmark.ghost"],
+      style: {
+        foreground: theme.textMuted,
+      },
+    },
+    {
       scope: ["comment"],
       style: {
         foreground: theme.syntaxComment,

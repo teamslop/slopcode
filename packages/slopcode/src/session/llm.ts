@@ -39,6 +39,7 @@ export namespace LLM {
     tools: Record<string, Tool>
     retries?: number
     toolChoice?: "auto" | "required" | "none"
+    maxOutputTokens?: number
   }
 
   export type StreamOutput = StreamTextResult<ToolSet, unknown>
@@ -145,7 +146,12 @@ export namespace LLM {
     )
 
     const maxOutputTokens =
-      isCodex || provider.id.includes("github-copilot") ? undefined : ProviderTransform.maxOutputTokens(input.model)
+      isCodex || provider.id.includes("github-copilot")
+        ? undefined
+        : Math.min(
+            input.maxOutputTokens ?? ProviderTransform.maxOutputTokens(input.model),
+            ProviderTransform.OUTPUT_TOKEN_MAX,
+          )
 
     const tools = await resolveTools(input)
 

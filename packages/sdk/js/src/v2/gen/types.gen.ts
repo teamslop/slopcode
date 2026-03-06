@@ -1472,6 +1472,42 @@ export type Config = {
      */
     reserved?: number
   }
+  autocomplete?: {
+    /**
+     * Enable model-powered prompt autocomplete (default: true)
+     */
+    enabled?: boolean
+    /**
+     * Debounce delay in milliseconds before requesting autocomplete (default: 120)
+     */
+    debounce_ms?: number
+    /**
+     * Minimum prefix characters required to request autocomplete (default: 6)
+     */
+    min_prefix_chars?: number
+    /**
+     * Timeout in milliseconds for autocomplete requests (default: 2000)
+     */
+    timeout_ms?: number
+    /**
+     * Maximum output tokens for autocomplete generation (default: 64)
+     */
+    max_output_tokens?: number
+    /**
+     * Maximum completion characters returned to the client (default: 200)
+     */
+    max_completion_chars?: number
+    /**
+     * Autocomplete model routing strategy (default: family_fast)
+     */
+    model_strategy?: "same_exact" | "family_fast" | "custom_map"
+    /**
+     * Custom model map from provider/model to provider/model for autocomplete routing
+     */
+    model_map?: {
+      [key: string]: string
+    }
+  }
   experimental?: {
     disable_paste_summary?: boolean
     /**
@@ -3446,6 +3482,55 @@ export type PartUpdateResponses = {
 }
 
 export type PartUpdateResponse = PartUpdateResponses[keyof PartUpdateResponses]
+
+export type SessionAutocompleteData = {
+  body?: {
+    model: {
+      providerID: string
+      modelID: string
+    }
+    agent?: string
+    variant?: string
+    mode?: "normal" | "shell"
+    prefix: string
+    suffix?: string
+  }
+  path: {
+    /**
+     * Session ID
+     */
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{sessionID}/autocomplete"
+}
+
+export type SessionAutocompleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionAutocompleteError = SessionAutocompleteErrors[keyof SessionAutocompleteErrors]
+
+export type SessionAutocompleteResponses = {
+  /**
+   * Autocomplete response
+   */
+  200: {
+    completion: string
+    model: string
+  }
+}
+
+export type SessionAutocompleteResponse = SessionAutocompleteResponses[keyof SessionAutocompleteResponses]
 
 export type SessionPromptAsyncData = {
   body?: {

@@ -6,19 +6,88 @@ import { Session } from "../../session"
 import { MessageV2 } from "../../session/message-v2"
 import { SessionPrompt } from "../../session/prompt"
 import { SessionCompaction } from "../../session/compaction"
+import { LLM } from "@/session/llm"
 import { SessionRevert } from "../../session/revert"
 import { SessionStatus } from "@/session/status"
 import { SessionSummary } from "@/session/summary"
 import { Todo } from "../../session/todo"
 import { Agent } from "../../agent/agent"
+import { Provider } from "../../provider/provider"
 import { Snapshot } from "@/snapshot"
 import { Log } from "../../util/log"
 import { PermissionNext } from "@/permission/next"
 import { errors } from "../error"
 import { lazy } from "../../util/lazy"
+import { Identifier } from "@/id/id"
 import { SessionProxyMiddleware } from "../../control-plane/session-proxy-middleware"
+import { Config } from "@/config/config"
 
 const log = Log.create({ service: "server" })
+
+const AutocompleteInput = z.object({
+  model: z.object({
+    providerID: z.string(),
+    modelID: z.string(),
+  }),
+  agent: z.string().optional(),
+  variant: z.string().optional(),
+  mode: z.enum(["normal", "shell"]).optional(),
+  prefix: z.string(),
+  suffix: z.string().optional(),
+})
+
+async function resolveAutocompleteModel(input: {
+  selected: { providerID: string; modelID: string }
+  strategy: "same_exact" | "family_fast" | "custom_map"
+  map: Record<string, string>
+}) {
+  if (input.strategy === "custom_map") {
+    const mapped = input.map[`${input.selected.providerID}/${input.selected.modelID}`]
+    if (mapped) {
+      const parsed = Provider.parseModel(mapped)
+      return Provider.getModel(parsed.providerID, parsed.modelID)
+    }
+  }
+
+  if (input.strategy === "same_exact") {
+    return Provider.getModel(input.selected.providerID, input.selected.modelID)
+  }
+
+  const selected = await Provider.getModel(input.selected.providerID, input.selected.modelID)
+  const provider = await Provider.getProvider(selected.providerID)
+  if (!provider) return selected
+
+  const family = selected.family?.trim().toLowerCase()
+  const candidates = Object.values(provider.models).filter((item) => {
+    if (item.id === selected.id) return false
+    if (!family) return false
+    return item.family?.trim().toLowerCase() === family
+  })
+
+  if (candidates.length === 0) {
+    const small = await Provider.getSmallModel(selected.providerID)
+    return small ?? selected
+  }
+
+  const score = (id: string) => {
+    const text = id.toLowerCase()
+    if (text.includes("nano")) return 0
+    if (text.includes("mini")) return 1
+    if (text.includes("haiku")) return 2
+    if (text.includes("flash")) return 3
+    if (text.includes("small")) return 4
+    if (text.includes("lite")) return 5
+    return 6
+  }
+
+  candidates.sort((a, b) => {
+    const bySpeed = score(a.id) - score(b.id)
+    if (bySpeed !== 0) return bySpeed
+    return a.limit.output - b.limit.output
+  })
+
+  return candidates[0] ?? selected
+}
 
 export const SessionRoutes = lazy(() =>
   new Hono()
@@ -733,6 +802,131 @@ export const SessionRoutes = lazy(() =>
         }
         const part = await Session.updatePart(body)
         return c.json(part)
+      },
+    )
+    .post(
+      "/:sessionID/autocomplete",
+      describeRoute({
+        summary: "Get prompt autocomplete",
+        description: "Generate a low-latency model-powered completion for the current prompt input.",
+        operationId: "session.autocomplete",
+        responses: {
+          200: {
+            description: "Autocomplete response",
+            content: {
+              "application/json": {
+                schema: resolver(
+                  z.object({
+                    completion: z.string(),
+                    model: z.string(),
+                  }),
+                ),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: z.string().meta({ description: "Session ID" }),
+        }),
+      ),
+      validator("json", AutocompleteInput),
+      async (c) => {
+        const sessionID = c.req.valid("param").sessionID
+        await Session.get(sessionID)
+
+        const body = c.req.valid("json")
+        const cfg = await Config.get()
+        const autocomplete = cfg.autocomplete ?? {}
+        if (autocomplete.enabled === false) {
+          return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
+        }
+
+        const minPrefix = autocomplete.min_prefix_chars ?? 6
+        if (body.prefix.trim().length < minPrefix) {
+          return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
+        }
+
+        const strategy = autocomplete.model_strategy ?? "family_fast"
+        const model = await resolveAutocompleteModel({
+          selected: body.model,
+          strategy,
+          map: autocomplete.model_map ?? {},
+        })
+
+        const timeout = autocomplete.timeout_ms ?? 2000
+        const maxOutputTokens = autocomplete.max_output_tokens ?? 64
+        const maxChars = autocomplete.max_completion_chars ?? 200
+
+        const abort = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(timeout)])
+        const user: MessageV2.User = {
+          id: Identifier.ascending("message"),
+          role: "user",
+          sessionID,
+          time: { created: Date.now() },
+          agent: body.agent ?? "build",
+          model: body.model,
+          variant: body.variant,
+        }
+
+        const mode = body.mode === "shell" ? "shell command" : "prompt"
+        const suffix = body.suffix ? `\n<SUFFIX>\n${body.suffix}\n</SUFFIX>` : ""
+        const prompt = [
+          `Continue the user's partial ${mode}.`,
+          "Return ONLY the continuation text.",
+          "Do not repeat existing prefix text.",
+          "Do not add markdown fences, quotes, or explanations.",
+          `Keep it short (max ${maxChars} chars).`,
+          "",
+          "<PREFIX>",
+          body.prefix,
+          "</PREFIX>",
+          suffix,
+        ]
+          .filter(Boolean)
+          .join("\n")
+
+        let completion = ""
+        try {
+          const stream = await LLM.stream({
+            user,
+            sessionID,
+            model,
+            agent: await Agent.get(body.agent ?? (await Agent.defaultAgent())),
+            system: ["You are a fast inline autocomplete engine."],
+            abort,
+            messages: [
+              {
+                role: "user",
+                content: prompt,
+              },
+            ],
+            tools: {},
+            toolChoice: "none",
+            small: true,
+            maxOutputTokens,
+          })
+
+          for await (const chunk of stream.textStream) {
+            completion += chunk
+            if (completion.length >= maxChars) break
+          }
+        } catch {
+          return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
+        }
+
+        const normalized = completion
+          .replace(/^\s+/g, "")
+          .replace(/\r\n?/g, "\n")
+          .replace(/\n{2,}/g, "\n")
+          .replace(/\s+$/g, "")
+          .slice(0, maxChars)
+
+        const next = normalized.startsWith(body.prefix) ? normalized.slice(body.prefix.length) : normalized
+        return c.json({ completion: next, model: `${model.providerID}/${model.id}` })
       },
     )
     .post(
