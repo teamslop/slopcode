@@ -1199,7 +1199,7 @@ export namespace Config {
             .int()
             .positive()
             .optional()
-            .describe("Maximum completion characters returned to the client (default: 200)"),
+            .describe("Maximum completion characters returned to the client (default: 20)"),
           model_strategy: z
             .enum(["same_exact", "family_fast", "custom_map"])
             .optional()

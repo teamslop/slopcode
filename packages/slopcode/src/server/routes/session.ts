@@ -859,7 +859,7 @@ export const SessionRoutes = lazy(() =>
 
         const timeout = autocomplete.timeout_ms ?? 2000
         const maxOutputTokens = autocomplete.max_output_tokens ?? 64
-        const maxChars = autocomplete.max_completion_chars ?? 200
+        const maxChars = autocomplete.max_completion_chars ?? 20
 
         const abort = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(timeout)])
         const user: MessageV2.User = {
