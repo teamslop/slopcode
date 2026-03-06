@@ -13,6 +13,7 @@ import { Identifier } from "@/id/id"
 import { createStore, produce } from "solid-js/store"
 import { useKeybind } from "@tui/context/keybind"
 import { usePromptHistory, type PromptInfo } from "./history"
+import { ghostCursor, ghostVisible } from "./ghost.ts"
 import { usePromptStash } from "./stash"
 import { DialogStash } from "../dialog-stash"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
@@ -167,23 +168,33 @@ export function Prompt(props: PromptProps) {
     })
   }
 
+  const ghostPoint = createMemo(() => ghostCursor(input, cursor()))
+
   const inlineGhost = createMemo(() => {
-    if (!store.ghost) return ""
-    if (store.mode !== "normal") return ""
-    if (props.disabled) return ""
-    if (props.historyMode && props.historyTarget === "timeline") return ""
-    if (autocomplete?.visible || !input?.focused) return ""
-    if (cursor().offset !== store.prompt.input.length) return ""
+    if (
+      !ghostVisible({
+        ghost: store.ghost,
+        mode: store.mode,
+        disabled: props.disabled,
+        historyMode: props.historyMode,
+        historyTarget: props.historyTarget,
+        autocompleteVisible: !!autocomplete?.visible,
+        focused: !!input?.focused,
+        cursorOffset: ghostPoint().offset,
+        inputLength: store.prompt.input.length,
+      })
+    ) {
+      return ""
+    }
+
     return store.ghost
   })
 
   const inlineGhostPosition = createMemo(() => {
-    const field = input
-    if (!field || field.isDestroyed) return { top: 0, left: 0 }
-    const parent = field.parent
+    const point = ghostPoint()
     return {
-      top: field.y - (parent?.y ?? 0) + cursor().row,
-      left: field.x - (parent?.x ?? 0) + cursor().col,
+      top: point.row,
+      left: point.col,
     }
   })
 
@@ -973,7 +984,8 @@ export function Prompt(props: PromptProps) {
             backgroundColor={theme.backgroundElement}
             flexGrow={1}
           >
-            <textarea
+            <box position="relative">
+              <textarea
               placeholder={placeholderText()}
               textColor={keybind.leader ? theme.textMuted : theme.text}
               focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
@@ -1198,6 +1210,7 @@ export function Prompt(props: PromptProps) {
                 </box>
               )}
             </Show>
+            </box>
             <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1}>
               <text fg={highlight()}>
                 {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
