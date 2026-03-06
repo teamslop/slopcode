@@ -177,6 +177,16 @@ export function Prompt(props: PromptProps) {
     return store.ghost
   })
 
+  const inlineGhostPosition = createMemo(() => {
+    const field = input
+    if (!field || field.isDestroyed) return { top: 0, left: 0 }
+    const parent = field.parent
+    return {
+      top: field.y - (parent?.y ?? 0) + cursor().row,
+      left: field.x - (parent?.x ?? 0) + cursor().col,
+    }
+  })
+
   createEffect(
     on(
       () => props.sessionID,
@@ -1178,7 +1188,12 @@ export function Prompt(props: PromptProps) {
             />
             <Show when={inlineGhost()}>
               {(ghost) => (
-                <box position="absolute" top={cursor().row} left={cursor().col} zIndex={1}>
+                <box
+                  position="absolute"
+                  top={inlineGhostPosition().top}
+                  left={inlineGhostPosition().left}
+                  zIndex={1}
+                >
                   <text fg={theme.textMuted}>{ghost()}</text>
                 </box>
               )}
