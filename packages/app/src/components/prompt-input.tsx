@@ -113,6 +113,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   let fileInputRef: HTMLInputElement | undefined
   let scrollRef!: HTMLDivElement
   let slashPopoverRef!: HTMLDivElement
+  let ghostTimer: ReturnType<typeof setTimeout> | undefined
+  let ghostRequest = 0
 
   const mirror = { input: false }
   const inset = 44
@@ -244,6 +246,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     draggingType: "image" | "@mention" | null
     mode: "normal" | "shell"
     applyingHistory: boolean
+    ghost: string
   }>({
     popover: null,
     historyIndex: -1,
@@ -252,6 +255,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     draggingType: null,
     mode: "normal",
     applyingHistory: false,
+    ghost: "",
   })
 
   const commentCount = createMemo(() => {
@@ -394,6 +398,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const pick = () => fileInputRef?.click()
 
   const setMode = (mode: "normal" | "shell") => {
+    clearGhost()
     setStore("mode", mode)
     setStore("popover", null)
     requestAnimationFrame(() => editorRef?.focus())
@@ -430,6 +435,17 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   ])
 
   const closePopover = () => setStore("popover", null)
+  const clearGhost = () => {
+    setStore("ghost", "")
+    removeGhostNode()
+  }
+
+  const acceptGhost = () => {
+    if (!store.ghost) return false
+    addPart({ type: "text", content: store.ghost, start: 0, end: 0 })
+    clearGhost()
+    return true
+  }
 
   const resetHistoryNavigation = (force = false) => {
     if (!force && (store.historyIndex < 0 || store.applyingHistory)) return
@@ -483,8 +499,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const [composing, setComposing] = createSignal(false)
   const isImeComposing = (event: KeyboardEvent) => event.isComposing || composing() || event.keyCode === 229
 
+  onCleanup(() => {
+    if (ghostTimer) clearTimeout(ghostTimer)
+  })
+
   const handleBlur = () => {
     closePopover()
+    clearGhost()
     setComposing(false)
   }
 
@@ -649,6 +670,30 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     }
   }
 
+  const removeGhostNode = () => {
+    const node = editorRef.querySelector('[data-ghost="true"]')
+    if (node) node.remove()
+  }
+
+  const renderGhostNode = () => {
+    removeGhostNode()
+    if (!store.ghost || store.popover || store.mode !== "normal") return
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0 || !selection.isCollapsed || !editorRef.contains(selection.anchorNode))
+      return
+    const cursor = getCursorPosition(editorRef)
+    const textLength = promptLength(prompt.current().filter((part) => part.type !== "image"))
+    if (cursor !== textLength) return
+
+    const node = document.createElement("span")
+    node.dataset.ghost = "true"
+    node.setAttribute("contenteditable", "false")
+    node.style.color = "var(--color-text-weak)"
+    node.style.pointerEvents = "none"
+    node.textContent = store.ghost
+    editorRef.appendChild(node)
+  }
+
   createEffect(
     on(
       () => sync.data.command,
@@ -709,6 +754,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     ),
   )
 
+  createEffect(() => {
+    store.ghost
+    store.popover
+    store.mode
+    prompt.current()
+    requestAnimationFrame(renderGhostNode)
+  })
+
   const parseFromDOM = (): Prompt => {
     const parts: Prompt = []
     let position = 0
@@ -756,6 +809,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       if (node.nodeType !== Node.ELEMENT_NODE) return
 
       const el = node as HTMLElement
+      if (el.dataset.ghost === "true") {
+        return
+      }
       if (el.dataset.type === "file") {
         flushText()
         pushFile(el)
@@ -792,6 +848,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
 
   const handleInput = () => {
+    clearGhost()
     const rawParts = parseFromDOM()
     const images = imageAttachments()
     const cursorPosition = getCursorPosition(editorRef)
@@ -838,6 +895,77 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     prompt.set([...rawParts, ...images], cursorPosition)
     queueScroll()
   }
+
+  createEffect(() => {
+    const config = sync.data.config.autocomplete
+
+    if (config?.enabled === false) {
+      clearGhost()
+      return
+    }
+
+    const id = params.id
+    if (!id || store.mode !== "normal" || store.popover || !isFocused()) {
+      clearGhost()
+      return
+    }
+
+    const current = prompt.current()
+    if (current.some((part) => part.type !== "text")) {
+      clearGhost()
+      return
+    }
+
+    const text = current
+      .filter((part): part is Extract<ContentPart, { type: "text" }> => part.type === "text")
+      .map((part) => part.content)
+      .join("")
+    const selection = window.getSelection()
+    if (
+      !selection ||
+      selection.rangeCount === 0 ||
+      !selection.isCollapsed ||
+      !editorRef.contains(selection.anchorNode)
+    ) {
+      clearGhost()
+      return
+    }
+
+    const cursor = getCursorPosition(editorRef)
+    if (cursor !== text.length || text.trim().length < (config?.min_prefix_chars ?? 6)) {
+      clearGhost()
+      return
+    }
+
+    if (ghostTimer) clearTimeout(ghostTimer)
+    const requestID = ++ghostRequest
+    ghostTimer = setTimeout(async () => {
+      const currentModel = local.model.current()
+      const currentAgent = local.agent.current()
+      if (!currentModel || !currentAgent) return
+      const response = await sdk.client.session
+        .autocomplete({
+          sessionID: id,
+          model: {
+            providerID: currentModel.provider.id,
+            modelID: currentModel.id,
+          },
+          agent: currentAgent.name,
+          variant: local.model.variant.current(),
+          mode: "normal",
+          prefix: text,
+        })
+        .catch(() => undefined)
+      if (!response?.data) return
+      if (requestID !== ghostRequest) return
+      const completion = response.data.completion
+      if (!completion || /\n/.test(completion)) {
+        clearGhost()
+        return
+      }
+      setStore("ghost", completion)
+    }, config?.debounce_ms ?? 120)
+  })
 
   const addPart = (part: ContentPart) => {
     if (part.type === "image") return false
@@ -1014,6 +1142,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     }
 
     if (event.key === "Escape") {
+      if (store.ghost) {
+        clearGhost()
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+
       if (store.popover) {
         closePopover()
         event.preventDefault()
@@ -1062,6 +1197,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
     if (event.key === "Enter" && isImeComposing(event)) {
       return
+    }
+
+    if (event.key === "Tab" && !store.popover && store.ghost) {
+      if (acceptGhost()) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
     }
 
     const ctrl = event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey
@@ -1121,6 +1264,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
     // Note: Shift+Enter is handled earlier, before IME check
     if (event.key === "Enter" && !event.shiftKey) {
+      clearGhost()
       handleSubmit(event)
     }
   }

@@ -139,6 +139,7 @@ export function Prompt(props: PromptProps) {
     extmarkToPartIndex: Map<number, number>
     interrupt: number
     placeholder: number
+    ghost: string
   }>({
     placeholder: Math.floor(Math.random() * PLACEHOLDERS.length),
     prompt: {
@@ -148,6 +149,7 @@ export function Prompt(props: PromptProps) {
     mode: "normal",
     extmarkToPartIndex: new Map(),
     interrupt: 0,
+    ghost: "",
   })
 
   createEffect(
@@ -482,6 +484,86 @@ export function Prompt(props: PromptProps) {
     )
   }
 
+  let ghostTimer: Timer | undefined
+  let ghostRequest = 0
+
+  function clearGhost() {
+    setStore("ghost", "")
+  }
+
+  function acceptGhost() {
+    if (!store.ghost) return false
+    input.insertText(store.ghost)
+    clearGhost()
+    return true
+  }
+
+  createEffect(() => {
+    const config = sync.data.config.autocomplete
+    if (config?.enabled === false) {
+      clearGhost()
+      return
+    }
+
+    const sessionID = props.sessionID
+    if (!sessionID || store.mode !== "normal") {
+      clearGhost()
+      return
+    }
+
+    if (autocomplete?.visible || !input?.focused) {
+      clearGhost()
+      return
+    }
+
+    const text = store.prompt.input
+    const cursor = input.cursorOffset
+    if (!text || cursor !== text.length) {
+      clearGhost()
+      return
+    }
+
+    if (store.prompt.parts.some((part) => part.type !== "text")) {
+      clearGhost()
+      return
+    }
+
+    const prefix = text
+    if (prefix.trim().length < (config?.min_prefix_chars ?? 6)) {
+      clearGhost()
+      return
+    }
+
+    if (ghostTimer) clearTimeout(ghostTimer)
+    const requestID = ++ghostRequest
+    ghostTimer = setTimeout(async () => {
+      const selected = local.model.current()
+      if (!selected) return
+      const response = await sdk.client.session
+        .autocomplete({
+          sessionID,
+          model: selected,
+          agent: local.agent.current().name,
+          variant: local.model.variant.current(),
+          mode: "normal",
+          prefix,
+        })
+        .catch(() => undefined)
+      if (!response?.data) return
+      if (requestID !== ghostRequest) return
+      const completion = response.data.completion
+      if (!completion || /\n/.test(completion)) {
+        clearGhost()
+        return
+      }
+      setStore("ghost", completion)
+    }, config?.debounce_ms ?? 120)
+  })
+
+  onCleanup(() => {
+    if (ghostTimer) clearTimeout(ghostTimer)
+  })
+
   command.register(() => [
     {
       title: "Stash prompt",
@@ -539,6 +621,7 @@ export function Prompt(props: PromptProps) {
 
   async function submit() {
     if (props.disabled) return
+    clearGhost()
     if (autocomplete?.visible) return
     if (!store.prompt.input) return
     const trimmed = store.prompt.input.trim()
@@ -862,6 +945,7 @@ export function Prompt(props: PromptProps) {
               minHeight={1}
               maxHeight={6}
               onContentChange={() => {
+                clearGhost()
                 const value = input.plainText
                 setStore("prompt", "input", value)
                 autocomplete.onInput(value)
@@ -917,6 +1001,19 @@ export function Prompt(props: PromptProps) {
                 if (store.mode === "shell") {
                   if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
                     setStore("mode", "normal")
+                    e.preventDefault()
+                    return
+                  }
+                }
+                if (store.mode === "normal" && !autocomplete.visible && store.ghost) {
+                  if (e.name === "tab") {
+                    if (acceptGhost()) {
+                      e.preventDefault()
+                      return
+                    }
+                  }
+                  if (e.name === "escape") {
+                    clearGhost()
                     e.preventDefault()
                     return
                   }
@@ -1056,6 +1153,9 @@ export function Prompt(props: PromptProps) {
                     <text>
                       <span style={{ fg: theme.warning, bold: true }}>{local.model.variant.current()}</span>
                     </text>
+                  </Show>
+                  <Show when={store.ghost}>
+                    <text fg={theme.textMuted}>· tab {Locale.truncateMiddle(store.ghost, 36)}</text>
                   </Show>
                 </box>
               </Show>

@@ -105,6 +105,8 @@ import type {
   QuestionReplyResponses,
   SessionAbortErrors,
   SessionAbortResponses,
+  SessionAutocompleteErrors,
+  SessionAutocompleteResponses,
   SessionChildrenErrors,
   SessionChildrenResponses,
   SessionCommandErrors,
@@ -1740,6 +1742,58 @@ export class Session2 extends HeyApiClient {
       ...options,
       ...params,
     })
+  }
+
+  /**
+   * Get prompt autocomplete
+   *
+   * Generate a low-latency model-powered completion for the current prompt input.
+   */
+  public autocomplete<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      model?: {
+        providerID: string
+        modelID: string
+      }
+      agent?: string
+      variant?: string
+      mode?: "normal" | "shell"
+      prefix?: string
+      suffix?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "body", key: "model" },
+            { in: "body", key: "agent" },
+            { in: "body", key: "variant" },
+            { in: "body", key: "mode" },
+            { in: "body", key: "prefix" },
+            { in: "body", key: "suffix" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionAutocompleteResponses, SessionAutocompleteErrors, ThrowOnError>(
+      {
+        url: "/session/{sessionID}/autocomplete",
+        ...options,
+        ...params,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+          ...params.headers,
+        },
+      },
+    )
   }
 
   /**

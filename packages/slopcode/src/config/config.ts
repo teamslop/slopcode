@@ -1167,6 +1167,49 @@ export namespace Config {
             .describe("Token buffer for compaction. Leaves enough window to avoid overflow during compaction."),
         })
         .optional(),
+      autocomplete: z
+        .object({
+          enabled: z.boolean().optional().describe("Enable model-powered prompt autocomplete (default: true)"),
+          debounce_ms: z
+            .number()
+            .int()
+            .min(0)
+            .optional()
+            .describe("Debounce delay in milliseconds before requesting autocomplete (default: 120)"),
+          min_prefix_chars: z
+            .number()
+            .int()
+            .min(0)
+            .optional()
+            .describe("Minimum prefix characters required to request autocomplete (default: 6)"),
+          timeout_ms: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Timeout in milliseconds for autocomplete requests (default: 2000)"),
+          max_output_tokens: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Maximum output tokens for autocomplete generation (default: 64)"),
+          max_completion_chars: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Maximum completion characters returned to the client (default: 200)"),
+          model_strategy: z
+            .enum(["same_exact", "family_fast", "custom_map"])
+            .optional()
+            .describe("Autocomplete model routing strategy (default: family_fast)"),
+          model_map: z
+            .record(z.string(), z.string())
+            .optional()
+            .describe("Custom model map from provider/model to provider/model for autocomplete routing"),
+        })
+        .optional(),
       experimental: z
         .object({
           disable_paste_summary: z.boolean().optional(),
