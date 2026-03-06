@@ -269,9 +269,9 @@ jobs:
           SLOPCODE_ENFORCE_APK: ${{ vars.SLOPCODE_ENFORCE_APK || 'false' }}
           SLOPCODE_ENFORCE_MACPORTS: ${{ vars.SLOPCODE_ENFORCE_MACPORTS || 'false' }}
           SLOPCODE_DISABLE_APT: "true"
-          SLOPCODE_DISABLE_RPM: ${{ vars.SLOPCODE_DISABLE_RPM || 'false' }}
-          SLOPCODE_DISABLE_APK: ${{ vars.SLOPCODE_DISABLE_APK || 'false' }}
-          SLOPCODE_DISABLE_MACPORTS: ${{ vars.SLOPCODE_DISABLE_MACPORTS || 'false' }}
+          SLOPCODE_DISABLE_RPM: "true"
+          SLOPCODE_DISABLE_APK: "true"
+          SLOPCODE_DISABLE_MACPORTS: "true"
           # Homebrew core PR sync (non-blocking)
           HOMEBREW_CORE_TOKEN: ${{ secrets.HOMEBREW_CORE_TOKEN || steps.committer.outputs.token }}
           HOMEBREW_CORE_FORK_REPO: ${{ vars.HOMEBREW_CORE_FORK_REPO || '' }}
