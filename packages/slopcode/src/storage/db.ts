@@ -13,6 +13,7 @@ import path from "path"
 import { readFileSync, readdirSync, existsSync } from "fs"
 import * as schema from "./schema"
 import { Installation } from "../installation"
+import { Flag } from "../flag/flag"
 
 declare const SLOPCODE_MIGRATIONS: { sql: string; timestamp: number }[] | undefined
 
@@ -28,7 +29,9 @@ const log = Log.create({ service: "db" })
 export namespace Database {
   export const Path = (() => {
     const channel = Installation.CHANNEL
-    if (channel === "latest" || channel === "beta") return path.join(Global.Path.data, "slopcode.db")
+    if (channel === "latest" || channel === "beta" || Flag.SLOPCODE_DISABLE_CHANNEL_DB) {
+      return path.join(Global.Path.data, "slopcode.db")
+    }
     const safe = channel.replace(/[^a-zA-Z0-9._-]/g, "-")
     return path.join(Global.Path.data, `slopcode-${safe}.db`)
   })()
@@ -102,6 +105,11 @@ export namespace Database {
         count: entries.length,
         mode: typeof SLOPCODE_MIGRATIONS !== "undefined" ? "bundled" : "dev",
       })
+      if (Flag.SLOPCODE_SKIP_MIGRATIONS) {
+        for (const item of entries) {
+          item.sql = "select 1;"
+        }
+      }
       migrate(db, entries)
     }
 

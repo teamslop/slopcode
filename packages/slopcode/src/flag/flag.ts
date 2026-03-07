@@ -55,6 +55,10 @@ export namespace Flag {
   export const SLOPCODE_EXPERIMENTAL_MARKDOWN = truthy("SLOPCODE_EXPERIMENTAL_MARKDOWN")
   export const SLOPCODE_MODELS_URL = process.env["SLOPCODE_MODELS_URL"]
   export const SLOPCODE_MODELS_PATH = process.env["SLOPCODE_MODELS_PATH"]
+  export const SLOPCODE_DISABLE_CHANNEL_DB =
+    truthy("SLOPCODE_DISABLE_CHANNEL_DB") || truthy("OPENCODE_DISABLE_CHANNEL_DB")
+  export const SLOPCODE_SKIP_MIGRATIONS =
+    truthy("SLOPCODE_SKIP_MIGRATIONS") || truthy("OPENCODE_SKIP_MIGRATIONS")
 
   function number(key: string) {
     const value = process.env[key]
