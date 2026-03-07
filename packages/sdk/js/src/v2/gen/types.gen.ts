@@ -1478,11 +1478,11 @@ export type Config = {
      */
     enabled?: boolean
     /**
-     * Debounce delay in milliseconds before requesting autocomplete (default: 120)
+     * Debounce delay in milliseconds before requesting autocomplete (default: 180)
      */
     debounce_ms?: number
     /**
-     * Minimum prefix characters required to request autocomplete (default: 6)
+     * Minimum prefix characters required to request autocomplete (default: 12)
      */
     min_prefix_chars?: number
     /**
@@ -1490,15 +1490,15 @@ export type Config = {
      */
     timeout_ms?: number
     /**
-     * Maximum output tokens for autocomplete generation (default: 64)
+     * Maximum output tokens for autocomplete generation (default: 48)
      */
     max_output_tokens?: number
     /**
-     * Maximum completion characters returned to the client (default: 20)
+     * Maximum completion characters returned to the client (default: 96)
      */
     max_completion_chars?: number
     /**
-     * Autocomplete model routing strategy (default: family_fast)
+     * Autocomplete model routing strategy (default: same_exact)
      */
     model_strategy?: "same_exact" | "family_fast" | "custom_map"
     /**

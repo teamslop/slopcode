@@ -10020,13 +10020,13 @@
                 "type": "boolean"
               },
               "debounce_ms": {
-                "description": "Debounce delay in milliseconds before requesting autocomplete (default: 120)",
+                "description": "Debounce delay in milliseconds before requesting autocomplete (default: 180)",
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 9007199254740991
               },
               "min_prefix_chars": {
-                "description": "Minimum prefix characters required to request autocomplete (default: 6)",
+                "description": "Minimum prefix characters required to request autocomplete (default: 12)",
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 9007199254740991
@@ -10038,19 +10038,19 @@
                 "maximum": 9007199254740991
               },
               "max_output_tokens": {
-                "description": "Maximum output tokens for autocomplete generation (default: 64)",
+                "description": "Maximum output tokens for autocomplete generation (default: 48)",
                 "type": "integer",
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
               "max_completion_chars": {
-                "description": "Maximum completion characters returned to the client (default: 20)",
+                "description": "Maximum completion characters returned to the client (default: 96)",
                 "type": "integer",
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
               "model_strategy": {
-                "description": "Autocomplete model routing strategy (default: family_fast)",
+                "description": "Autocomplete model routing strategy (default: same_exact)",
                 "type": "string",
                 "enum": ["same_exact", "family_fast", "custom_map"]
               },
