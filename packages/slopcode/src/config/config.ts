@@ -1175,13 +1175,13 @@ export namespace Config {
             .int()
             .min(0)
             .optional()
-            .describe("Debounce delay in milliseconds before requesting autocomplete (default: 120)"),
+            .describe("Debounce delay in milliseconds before requesting autocomplete (default: 180)"),
           min_prefix_chars: z
             .number()
             .int()
             .min(0)
             .optional()
-            .describe("Minimum prefix characters required to request autocomplete (default: 6)"),
+            .describe("Minimum prefix characters required to request autocomplete (default: 12)"),
           timeout_ms: z
             .number()
             .int()
@@ -1193,17 +1193,17 @@ export namespace Config {
             .int()
             .positive()
             .optional()
-            .describe("Maximum output tokens for autocomplete generation (default: 64)"),
+            .describe("Maximum output tokens for autocomplete generation (default: 48)"),
           max_completion_chars: z
             .number()
             .int()
             .positive()
             .optional()
-            .describe("Maximum completion characters returned to the client (default: 200)"),
+            .describe("Maximum completion characters returned to the client (default: 96)"),
           model_strategy: z
             .enum(["same_exact", "family_fast", "custom_map"])
             .optional()
-            .describe("Autocomplete model routing strategy (default: family_fast)"),
+            .describe("Autocomplete model routing strategy (default: same_exact)"),
           model_map: z
             .record(z.string(), z.string())
             .optional()

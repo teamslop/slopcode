@@ -26,6 +26,7 @@ import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
 import { Locale } from "@/util/locale"
 import { formatDuration } from "@/util/format"
+import { ghostRemainder } from "./ghost.ts"
 import { createColors, createFrames } from "../../ui/spinner.ts"
 import { useDialog } from "@tui/ui/dialog"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
@@ -486,9 +487,16 @@ export function Prompt(props: PromptProps) {
 
   let ghostTimer: Timer | undefined
   let ghostRequest = 0
+  const [ghostSuggestion, setGhostSuggestion] = createSignal("")
 
   function clearGhost() {
-    setStore("ghost", "")
+    ghostRequest += 1
+    if (ghostTimer) {
+      clearTimeout(ghostTimer)
+      ghostTimer = undefined
+    }
+    if (ghostSuggestion()) setGhostSuggestion("")
+    if (store.ghost) setStore("ghost", "")
   }
 
   function acceptGhost() {
@@ -523,13 +531,30 @@ export function Prompt(props: PromptProps) {
       return
     }
 
+    if (!text.trim()) {
+      clearGhost()
+      return
+    }
+
     if (store.prompt.parts.some((part) => part.type !== "text")) {
       clearGhost()
       return
     }
 
+    const suggestion = ghostSuggestion()
+    if (suggestion) {
+      const remaining = ghostRemainder(text, suggestion)
+      if (remaining !== undefined) {
+        if (store.ghost !== remaining) setStore("ghost", remaining)
+        if (!remaining) setGhostSuggestion("")
+        return
+      }
+      setGhostSuggestion("")
+      if (store.ghost) setStore("ghost", "")
+    }
+
     const prefix = text
-    if (prefix.trim().length < (config?.min_prefix_chars ?? 6)) {
+    if (prefix.trim().length < (config?.min_prefix_chars ?? 12)) {
       clearGhost()
       return
     }
@@ -553,11 +578,13 @@ export function Prompt(props: PromptProps) {
       if (requestID !== ghostRequest) return
       const completion = response.data.completion
       if (!completion || /\n/.test(completion)) {
-        clearGhost()
+        setGhostSuggestion("")
+        if (store.ghost) setStore("ghost", "")
         return
       }
+      setGhostSuggestion(prefix + completion)
       setStore("ghost", completion)
-    }, config?.debounce_ms ?? 120)
+    }, config?.debounce_ms ?? 180)
   })
 
   onCleanup(() => {
@@ -945,7 +972,6 @@ export function Prompt(props: PromptProps) {
               minHeight={1}
               maxHeight={6}
               onContentChange={() => {
-                clearGhost()
                 const value = input.plainText
                 setStore("prompt", "input", value)
                 autocomplete.onInput(value)
