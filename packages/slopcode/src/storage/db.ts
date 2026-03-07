@@ -12,6 +12,7 @@ import z from "zod"
 import path from "path"
 import { readFileSync, readdirSync, existsSync } from "fs"
 import * as schema from "./schema"
+import { Installation } from "../installation"
 
 declare const SLOPCODE_MIGRATIONS: { sql: string; timestamp: number }[] | undefined
 
@@ -25,8 +26,15 @@ export const NotFoundError = NamedError.create(
 const log = Log.create({ service: "db" })
 
 export namespace Database {
-  export const Path = path.join(Global.Path.data, "slopcode.db")
+  export const Path = (() => {
+    const channel = Installation.CHANNEL
+    if (channel === "latest" || channel === "beta") return path.join(Global.Path.data, "slopcode.db")
+    const safe = channel.replace(/[^a-zA-Z0-9._-]/g, "-")
+    return path.join(Global.Path.data, `slopcode-${safe}.db`)
+  })()
+
   type Schema = typeof schema
+
   export type Transaction = SQLiteTransaction<"sync", void, Schema>
 
   type Client = SQLiteBunDatabase<Schema>
@@ -70,9 +78,9 @@ export namespace Database {
   }
 
   export const Client = lazy(() => {
-    log.info("opening database", { path: path.join(Global.Path.data, "slopcode.db") })
+    log.info("opening database", { path: Database.Path })
 
-    const sqlite = new BunDatabase(path.join(Global.Path.data, "slopcode.db"), { create: true })
+    const sqlite = new BunDatabase(Database.Path, { create: true })
     state.sqlite = sqlite
 
     sqlite.run("PRAGMA journal_mode = WAL")
