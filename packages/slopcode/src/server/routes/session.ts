@@ -21,6 +21,7 @@ import { lazy } from "../../util/lazy"
 import { Identifier } from "@/id/id"
 import { SessionProxyMiddleware } from "../../control-plane/session-proxy-middleware"
 import { Config } from "@/config/config"
+import { SessionAutocomplete } from "@/session/autocomplete"
 
 const log = Log.create({ service: "server" })
 
@@ -197,6 +198,7 @@ export const SessionRoutes = lazy(() =>
         const sessionID = c.req.valid("param").sessionID
         log.info("SEARCH", { url: c.req.url })
         const session = await Session.get(sessionID)
+        SessionAutocomplete.begin(sessionID)
         return c.json(session)
       },
     )
@@ -283,6 +285,7 @@ export const SessionRoutes = lazy(() =>
       async (c) => {
         const body = c.req.valid("json") ?? {}
         const session = await Session.create(body)
+        SessionAutocomplete.begin(session.id)
         return c.json(session)
       },
     )
@@ -847,19 +850,18 @@ export const SessionRoutes = lazy(() =>
         await Session.get(sessionID)
 
         const body = c.req.valid("json")
-        const cfg = await Config.get()
+        const [cfg, messages, related] = await Promise.all([
+          Config.get(),
+          Session.messages({ sessionID }),
+          SessionAutocomplete.warm(sessionID).catch(() => ""),
+        ])
         const autocomplete = cfg.autocomplete ?? {}
         if (autocomplete.enabled === false) {
           return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
         }
 
-        const trimmed = body.prefix.trim()
-        if (!trimmed) {
-          return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
-        }
-
         const minPrefix = autocomplete.min_prefix_chars ?? 12
-        if (trimmed.length < minPrefix) {
+        if (!SessionAutocomplete.request(body.prefix, minPrefix)) {
           return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
         }
 
@@ -873,6 +875,7 @@ export const SessionRoutes = lazy(() =>
         const timeout = autocomplete.timeout_ms ?? 2000
         const maxOutputTokens = autocomplete.max_output_tokens ?? 48
         const maxChars = autocomplete.max_completion_chars ?? 96
+        const context = SessionAutocomplete.context({ messages, related })
 
         const abort = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(timeout)])
         const user: MessageV2.User = {
@@ -893,6 +896,8 @@ export const SessionRoutes = lazy(() =>
           "If confidence is low or multiple continuations are plausible, return an empty string.",
           "Prefer precise continuation of the current token, phrase, or command.",
           "Do not repeat existing prefix text.",
+          "Include a leading space when the continuation starts a new token.",
+          "Do not add a leading space when continuing the current token.",
           "Do not add markdown fences, quotes, or explanations.",
           `Keep it short (max ${maxChars} chars).`,
           "",
@@ -911,7 +916,9 @@ export const SessionRoutes = lazy(() =>
             sessionID,
             model,
             agent: await Agent.get(body.agent ?? (await Agent.defaultAgent())),
-            system: ["You are a fast inline autocomplete engine."],
+            system: ["You are a fast inline autocomplete engine.", context.prompt, context.system].filter(
+              (item): item is string => !!item,
+            ),
             abort,
             messages: [
               {
@@ -934,14 +941,13 @@ export const SessionRoutes = lazy(() =>
         }
 
         const normalized = completion
-          .replace(/^\s+/g, "")
           .replace(/\r\n?/g, "\n")
           .replace(/\n{2,}/g, "\n")
           .replace(/\s+$/g, "")
           .slice(0, maxChars)
 
-        const single = normalized.split("\n")[0]?.trimEnd() ?? ""
-        const next = stripPrefix(single, body.prefix).trimEnd()
+        const single = normalized.split("\n")[0] ?? ""
+        const next = SessionAutocomplete.spacing(body.prefix, stripPrefix(single, body.prefix).replace(/\s+$/g, ""))
         if (!next) {
           return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
         }

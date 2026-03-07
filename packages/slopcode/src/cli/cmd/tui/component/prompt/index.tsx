@@ -576,7 +576,7 @@ export function Prompt(props: PromptProps) {
       return
     }
 
-    if (!text.trim()) {
+    if (!/\S/.test(text)) {
       clearGhost()
       return
     }
@@ -599,7 +599,7 @@ export function Prompt(props: PromptProps) {
     }
 
     const prefix = text
-    if (prefix.trim().length < (config?.min_prefix_chars ?? 12)) {
+    if (prefix.length < (config?.min_prefix_chars ?? 12)) {
       clearGhost()
       return
     }
