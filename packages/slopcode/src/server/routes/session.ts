@@ -89,6 +89,14 @@ async function resolveAutocompleteModel(input: {
   return candidates[0] ?? selected
 }
 
+function stripPrefix(input: string, prefix: string) {
+  if (!prefix) return input
+  if (input.toLocaleLowerCase().startsWith(prefix.toLocaleLowerCase())) {
+    return input.slice(prefix.length)
+  }
+  return input
+}
+
 export const SessionRoutes = lazy(() =>
   new Hono()
     .use(SessionProxyMiddleware)
@@ -845,12 +853,17 @@ export const SessionRoutes = lazy(() =>
           return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
         }
 
-        const minPrefix = autocomplete.min_prefix_chars ?? 6
-        if (body.prefix.trim().length < minPrefix) {
+        const trimmed = body.prefix.trim()
+        if (!trimmed) {
           return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
         }
 
-        const strategy = autocomplete.model_strategy ?? "family_fast"
+        const minPrefix = autocomplete.min_prefix_chars ?? 12
+        if (trimmed.length < minPrefix) {
+          return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
+        }
+
+        const strategy = autocomplete.model_strategy ?? "same_exact"
         const model = await resolveAutocompleteModel({
           selected: body.model,
           strategy,
@@ -858,8 +871,8 @@ export const SessionRoutes = lazy(() =>
         })
 
         const timeout = autocomplete.timeout_ms ?? 2000
-        const maxOutputTokens = autocomplete.max_output_tokens ?? 64
-        const maxChars = autocomplete.max_completion_chars ?? 20
+        const maxOutputTokens = autocomplete.max_output_tokens ?? 48
+        const maxChars = autocomplete.max_completion_chars ?? 96
 
         const abort = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(timeout)])
         const user: MessageV2.User = {
@@ -877,6 +890,8 @@ export const SessionRoutes = lazy(() =>
         const prompt = [
           `Continue the user's partial ${mode}.`,
           "Return ONLY the continuation text.",
+          "If confidence is low or multiple continuations are plausible, return an empty string.",
+          "Prefer precise continuation of the current token, phrase, or command.",
           "Do not repeat existing prefix text.",
           "Do not add markdown fences, quotes, or explanations.",
           `Keep it short (max ${maxChars} chars).`,
@@ -925,7 +940,11 @@ export const SessionRoutes = lazy(() =>
           .replace(/\s+$/g, "")
           .slice(0, maxChars)
 
-        const next = normalized.startsWith(body.prefix) ? normalized.slice(body.prefix.length) : normalized
+        const single = normalized.split("\n")[0]?.trimEnd() ?? ""
+        const next = stripPrefix(single, body.prefix).trimEnd()
+        if (!next) {
+          return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
+        }
         return c.json({ completion: next, model: `${model.providerID}/${model.id}` })
       },
     )

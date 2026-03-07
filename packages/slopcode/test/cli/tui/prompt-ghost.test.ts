@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { ghostCursor, ghostVisible } from "../../../src/cli/cmd/tui/component/prompt/ghost"
+import { ghostCursor, ghostVisible, ghostRemainder } from "../../../src/cli/cmd/tui/component/prompt/ghost"
 
 describe("prompt ghost", () => {
   test("uses live visual cursor when available", () => {
@@ -106,5 +106,21 @@ describe("prompt ghost", () => {
     })
 
     expect(visible).toBe(false)
+  })
+
+  test("matches case-insensitive prefixes", () => {
+    expect(ghostRemainder("heL", "Hello")).toBe("lo")
+  })
+
+  test("returns empty remainder for exact case-insensitive matches", () => {
+    expect(ghostRemainder("HELLO", "hello")).toBe("")
+  })
+
+  test("returns undefined for mismatches", () => {
+    expect(ghostRemainder("help", "hello")).toBeUndefined()
+  })
+
+  test("returns undefined for empty input", () => {
+    expect(ghostRemainder("", "hello")).toBeUndefined()
   })
 })
