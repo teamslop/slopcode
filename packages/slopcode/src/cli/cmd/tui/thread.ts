@@ -96,22 +96,27 @@ export const TuiThreadCommand = cmd({
         return
       }
 
-      // Resolve relative paths against PWD to preserve behavior when using --cwd flag
-      const baseCwd = process.env.PWD ?? process.cwd()
-      const cwd = args.project ? path.resolve(baseCwd, args.project) : process.cwd()
+      // Resolve relative --project paths from PWD, then use the real cwd after
+      // chdir so the thread and worker share the same directory key.
+      const root = Filesystem.resolve(process.env.PWD ?? process.cwd())
+      const next = args.project
+        ? Filesystem.resolve(path.isAbsolute(args.project) ? args.project : path.join(root, args.project))
+        : Filesystem.resolve(process.cwd())
       const localWorker = new URL("./worker.ts", import.meta.url)
       const distWorker = new URL("./cli/cmd/tui/worker.js", import.meta.url)
       const workerPath = await iife(async () => {
         if (typeof SLOPCODE_WORKER_PATH !== "undefined") return SLOPCODE_WORKER_PATH
         if (await Filesystem.exists(fileURLToPath(distWorker))) return distWorker
         return localWorker
-      })
+      })()
       try {
-        process.chdir(cwd)
-      } catch (e) {
-        UI.error("Failed to change directory to " + cwd)
+        process.chdir(next)
+      } catch {
+        UI.error("Failed to change directory to " + next)
         return
       }
+      const cwd = Filesystem.resolve(process.cwd())
+
 
       const worker = new Worker(workerPath, {
         env: Object.fromEntries(
