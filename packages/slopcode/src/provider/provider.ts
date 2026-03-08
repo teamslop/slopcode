@@ -1266,12 +1266,6 @@ export namespace Provider {
       }
     }
 
-    // Check if slopcode provider is available before using it
-    const slopcodeProvider = await state().then((state) => state.providers["slopcode"])
-    if (slopcodeProvider && slopcodeProvider.models["gpt-5-nano"]) {
-      return getModel("slopcode", "gpt-5-nano")
-    }
-
     return undefined
   }
 
