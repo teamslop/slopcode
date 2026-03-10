@@ -21,6 +21,7 @@ import { lazy } from "../../util/lazy"
 import { Identifier } from "@/id/id"
 import { SessionProxyMiddleware } from "../../control-plane/session-proxy-middleware"
 import { Config } from "@/config/config"
+import { AUTOCOMPLETE_FAST_MODEL_BY_PROVIDER } from "./autocomplete-fast-map"
 
 const log = Log.create({ service: "server" })
 
@@ -36,57 +37,112 @@ const AutocompleteInput = z.object({
   suffix: z.string().optional(),
 })
 
-async function resolveAutocompleteModel(input: {
-  selected: { providerID: string; modelID: string }
-  strategy: "same_exact" | "family_fast" | "custom_map"
-  map: Record<string, string>
-}) {
-  if (input.strategy === "custom_map") {
-    const mapped = input.map[`${input.selected.providerID}/${input.selected.modelID}`]
-    if (mapped) {
-      const parsed = Provider.parseModel(mapped)
-      return Provider.getModel(parsed.providerID, parsed.modelID)
-    }
+const FAST_MATCH = [
+  /\bnano\b/i,
+  /\bmicro\b/i,
+  /\bmini\b/i,
+  /\bhaiku\b/i,
+  /\bflash\b/i,
+  /\bsmall\b/i,
+  /\blite\b/i,
+  /\binstant\b/i,
+  /\bturbo\b/i,
+  /\bfast\b/i,
+  /\bhighspeed\b/i,
+]
+
+const FAST_EXCLUDE =
+  /embedding|whisper|transcrib|rerank|moderation|image-generation|text-to-speech|speech-to-text|tts|stt|asr|realtime|vision|diffusion/i
+
+function isTextModel(model: Provider.Model) {
+  return model.capabilities.input.text && model.capabilities.output.text
+}
+
+function modelBlob(model: Pick<Provider.Model, "id" | "name" | "family">) {
+  return `${model.id} ${model.name} ${model.family ?? ""}`.toLowerCase()
+}
+
+function modelRank(model: Pick<Provider.Model, "id" | "name" | "family">) {
+  const text = modelBlob(model)
+  for (const [index, item] of FAST_MATCH.entries()) {
+    if (item.test(text)) return index
   }
+  return FAST_MATCH.length
+}
 
-  if (input.strategy === "same_exact") {
-    return Provider.getModel(input.selected.providerID, input.selected.modelID)
+function modelDate(date: string) {
+  const value = Date.parse(date.trim())
+  if (!Number.isFinite(value)) return 0
+  return value
+}
+
+async function tryModel(providerID: string, modelID: string) {
+  try {
+    return await Provider.getModel(providerID, modelID)
+  } catch {
+    return
   }
+}
 
-  const selected = await Provider.getModel(input.selected.providerID, input.selected.modelID)
-  const provider = await Provider.getProvider(selected.providerID)
-  if (!provider) return selected
+async function overrideModel(providerID: string, value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return
+  if (!trimmed.includes("/")) return tryModel(providerID, trimmed)
+  const parsed = Provider.parseModel(trimmed)
+  if (parsed.providerID !== providerID) return
+  return tryModel(providerID, parsed.modelID)
+}
 
-  const family = selected.family?.trim().toLowerCase()
-  const candidates = Object.values(provider.models).filter((item) => {
-    if (item.id === selected.id) return false
-    if (!family) return false
-    return item.family?.trim().toLowerCase() === family
-  })
-
-  if (candidates.length === 0) {
-    const small = await Provider.getSmallModel(selected.providerID)
-    return small ?? selected
-  }
-
-  const score = (id: string) => {
-    const text = id.toLowerCase()
-    if (text.includes("nano")) return 0
-    if (text.includes("mini")) return 1
-    if (text.includes("haiku")) return 2
-    if (text.includes("flash")) return 3
-    if (text.includes("small")) return 4
-    if (text.includes("lite")) return 5
-    return 6
-  }
-
-  candidates.sort((a, b) => {
-    const bySpeed = score(a.id) - score(b.id)
+async function heuristicModel(providerID: string) {
+  const provider = await Provider.getProvider(providerID)
+  if (!provider) return
+  const all = Object.values(provider.models).filter(isTextModel)
+  if (all.length === 0) return
+  const filtered = all.filter((item) => !FAST_EXCLUDE.test(modelBlob(item)))
+  const pool = filtered.length > 0 ? filtered : all
+  const fast = pool.filter((item) => modelRank(item) < FAST_MATCH.length)
+  const picks = fast.length > 0 ? fast : pool
+  picks.sort((a, b) => {
+    const byDate = modelDate(b.release_date) - modelDate(a.release_date)
+    if (byDate !== 0) return byDate
+    const bySpeed = modelRank(a) - modelRank(b)
     if (bySpeed !== 0) return bySpeed
-    return a.limit.output - b.limit.output
+    const byReasoning = Number(a.capabilities.reasoning) - Number(b.capabilities.reasoning)
+    if (byReasoning !== 0) return byReasoning
+    const byOutput = a.limit.output - b.limit.output
+    if (byOutput !== 0) return byOutput
+    return a.id.localeCompare(b.id)
   })
+  return picks[0]
+}
 
-  return candidates[0] ?? selected
+export async function resolveAutocompleteModel(input: {
+  selected: { providerID: string; modelID: string }
+  overrides: Record<string, string | null | undefined>
+}) {
+  const selected = await Provider.getModel(input.selected.providerID, input.selected.modelID)
+  const providerID = selected.providerID
+
+  const override = input.overrides[providerID]
+  if (override === null) return selected
+  if (typeof override === "string") {
+    const model = await overrideModel(providerID, override)
+    if (model && isTextModel(model)) return model
+  }
+
+  const mapped = AUTOCOMPLETE_FAST_MODEL_BY_PROVIDER[providerID as keyof typeof AUTOCOMPLETE_FAST_MODEL_BY_PROVIDER]
+  if (mapped) {
+    const model = await tryModel(providerID, mapped)
+    if (model && isTextModel(model)) return model
+  }
+
+  const heuristic = await heuristicModel(providerID)
+  if (heuristic) return heuristic
+
+  const small = await Provider.getSmallModel(providerID)
+  if (small && isTextModel(small)) return small
+
+  return selected
 }
 
 function stripPrefix(input: string, prefix: string) {
@@ -863,11 +919,9 @@ export const SessionRoutes = lazy(() =>
           return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
         }
 
-        const strategy = autocomplete.model_strategy ?? "same_exact"
         const model = await resolveAutocompleteModel({
           selected: body.model,
-          strategy,
-          map: autocomplete.model_map ?? {},
+          overrides: autocomplete.provider_model_overrides ?? {},
         })
 
         const timeout = autocomplete.timeout_ms ?? 2000

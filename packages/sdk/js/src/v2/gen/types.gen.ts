@@ -1478,11 +1478,11 @@ export type Config = {
      */
     enabled?: boolean
     /**
-     * Debounce delay in milliseconds before requesting autocomplete (default: 120)
+     * Debounce delay in milliseconds before requesting autocomplete (default: 180)
      */
     debounce_ms?: number
     /**
-     * Minimum prefix characters required to request autocomplete (default: 6)
+     * Minimum prefix characters required to request autocomplete (default: 12)
      */
     min_prefix_chars?: number
     /**
@@ -1490,19 +1490,25 @@ export type Config = {
      */
     timeout_ms?: number
     /**
-     * Maximum output tokens for autocomplete generation (default: 64)
+     * Maximum output tokens for autocomplete generation (default: 48)
      */
     max_output_tokens?: number
     /**
-     * Maximum completion characters returned to the client (default: 200)
+     * Maximum completion characters returned to the client (default: 96)
      */
     max_completion_chars?: number
     /**
-     * Autocomplete model routing strategy (default: family_fast)
+     * Override autocomplete model per provider. Key is provider ID, value is model ID. Set null to use the selected model for that provider.
+     */
+    provider_model_overrides?: {
+      [key: string]: string | null
+    }
+    /**
+     * @deprecated Legacy autocomplete routing strategy. Ignored by runtime.
      */
     model_strategy?: "same_exact" | "family_fast" | "custom_map"
     /**
-     * Custom model map from provider/model to provider/model for autocomplete routing
+     * @deprecated Legacy autocomplete model map. Ignored by runtime.
      */
     model_map?: {
       [key: string]: string
