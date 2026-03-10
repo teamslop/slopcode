@@ -23,6 +23,7 @@ import { Identifier } from "@/id/id"
 import { SessionProxyMiddleware } from "../../control-plane/session-proxy-middleware"
 import { Config } from "@/config/config"
 import { SessionAutocomplete } from "@/session/autocomplete"
+import { AUTOCOMPLETE_FALLBACK_MODELS_BY_PROVIDER } from "./autocomplete-fast-map"
 
 const log = Log.create({ service: "server" })
 
@@ -38,6 +39,23 @@ const AutocompleteInput = z.object({
   suffix: z.string().optional(),
 })
 
+const FAST_MATCH = [
+  /\bnano\b/i,
+  /\bmicro\b/i,
+  /\bmini\b/i,
+  /\bhaiku\b/i,
+  /\bflash\b/i,
+  /\bsmall\b/i,
+  /\blite\b/i,
+  /\binstant\b/i,
+  /\bturbo\b/i,
+  /\bfast\b/i,
+  /\bhighspeed\b/i,
+]
+
+const FAST_EXCLUDE =
+  /embedding|whisper|transcrib|rerank|moderation|image-generation|text-to-speech|speech-to-text|tts|stt|asr|realtime|vision|diffusion/i
+
 const BAD_MODEL_TTL_MS = 15 * 60 * 1000
 const MODEL_ACCESS_PATTERN =
   /unknown model|invalid model|no such model|model.+(not found|does not exist|not enabled|not available|unavailable|unsupported|not allowed|access|permission|denied|forbidden)|not entitled/i
@@ -46,7 +64,7 @@ const AUTH_ERROR_PATTERN =
 
 type AutocompleteCandidate = {
   model: Provider.Model
-  source: "map" | "family" | "small" | "selected"
+  source: "override" | "map" | "small" | "heuristic" | "selected"
 }
 
 const badAutocompleteModels = new Map<string, number>()
@@ -72,12 +90,8 @@ function clearBadAutocompleteModel(model: Pick<Provider.Model, "providerID" | "i
   badAutocompleteModels.delete(modelKey(model))
 }
 
-async function tryModel(providerID: string, modelID: string) {
-  try {
-    return await Provider.getModel(providerID, modelID)
-  } catch {
-    return
-  }
+export function resetAutocompleteBadModelCache() {
+  badAutocompleteModels.clear()
 }
 
 function isModelAccessError(error: unknown) {
@@ -92,6 +106,68 @@ function isModelAccessError(error: unknown) {
   return MODEL_ACCESS_PATTERN.test(text)
 }
 
+function isTextModel(model: Provider.Model) {
+  return model.capabilities.input.text && model.capabilities.output.text
+}
+
+function modelBlob(model: Pick<Provider.Model, "id" | "name" | "family">) {
+  return `${model.id} ${model.name} ${model.family ?? ""}`.toLowerCase()
+}
+
+function modelRank(model: Pick<Provider.Model, "id" | "name" | "family">) {
+  const text = modelBlob(model)
+  for (let index = 0; index < FAST_MATCH.length; index++) {
+    if (FAST_MATCH[index]!.test(text)) return index
+  }
+  return FAST_MATCH.length
+}
+
+function modelDate(date: string) {
+  const value = Date.parse(date.trim())
+  if (!Number.isFinite(value)) return 0
+  return value
+}
+
+async function tryModel(providerID: string, modelID: string) {
+  try {
+    return await Provider.getModel(providerID, modelID)
+  } catch {
+    return
+  }
+}
+
+async function overrideModel(providerID: string, value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return
+  if (!trimmed.includes("/")) return tryModel(providerID, trimmed)
+  const parsed = Provider.parseModel(trimmed)
+  if (parsed.providerID !== providerID) return
+  return tryModel(providerID, parsed.modelID)
+}
+
+async function heuristicModel(providerID: string) {
+  const provider = await Provider.getProvider(providerID)
+  if (!provider) return
+  const all = (Object.values(provider.models) as Provider.Model[]).filter(isTextModel)
+  if (all.length === 0) return
+  const filtered = all.filter((item) => !FAST_EXCLUDE.test(modelBlob(item)))
+  const pool = filtered.length > 0 ? filtered : all
+  const fast = pool.filter((item) => modelRank(item) < FAST_MATCH.length)
+  const picks = fast.length > 0 ? fast : pool
+  picks.sort((a, b) => {
+    const byDate = modelDate(b.release_date) - modelDate(a.release_date)
+    if (byDate !== 0) return byDate
+    const bySpeed = modelRank(a) - modelRank(b)
+    if (bySpeed !== 0) return bySpeed
+    const byReasoning = Number(a.capabilities.reasoning) - Number(b.capabilities.reasoning)
+    if (byReasoning !== 0) return byReasoning
+    const byOutput = a.limit.output - b.limit.output
+    if (byOutput !== 0) return byOutput
+    return a.id.localeCompare(b.id)
+  })
+  return picks[0]
+}
+
 function pushCandidate(
   list: AutocompleteCandidate[],
   seen: Set<string>,
@@ -99,68 +175,54 @@ function pushCandidate(
   model: Provider.Model | undefined,
 ) {
   if (!model) return
+  if (!isTextModel(model)) return
   const key = modelKey(model)
   if (seen.has(key)) return
-  if (source !== "selected" && isBadAutocompleteModel(model)) return
+  if (["map", "small", "heuristic"].includes(source) && isBadAutocompleteModel(model)) return
   seen.add(key)
   list.push({ model, source })
 }
 
-async function resolveAutocompleteModelCandidates(input: {
+export async function resolveAutocompleteModelCandidates(input: {
   selected: { providerID: string; modelID: string }
-  strategy: "same_exact" | "family_fast" | "custom_map"
-  map: Record<string, string>
+  overrides: Record<string, string | null | undefined>
 }) {
   const selected = await Provider.getModel(input.selected.providerID, input.selected.modelID)
+  const providerID = selected.providerID
   const list: AutocompleteCandidate[] = []
   const seen = new Set<string>()
 
-  if (input.strategy === "same_exact") {
+  const override = input.overrides[providerID]
+  if (override === null) {
     pushCandidate(list, seen, "selected", selected)
     return list
   }
 
-  if (input.strategy === "custom_map") {
-    const mapped = input.map[`${input.selected.providerID}/${input.selected.modelID}`]
-    if (mapped) {
-      const parsed = Provider.parseModel(mapped)
-      pushCandidate(list, seen, "map", await tryModel(parsed.providerID, parsed.modelID))
-    }
-    pushCandidate(list, seen, "selected", selected)
-    return list
+  if (typeof override === "string") {
+    pushCandidate(list, seen, "override", await overrideModel(providerID, override))
   }
 
-  const provider = await Provider.getProvider(selected.providerID)
-  const family = selected.family?.trim().toLowerCase()
-  const candidates = provider
-    ? (Object.values(provider.models) as Provider.Model[]).filter((item) => {
-        if (item.id === selected.id) return false
-        if (!family) return false
-        return item.family?.trim().toLowerCase() === family
-      })
-    : []
-
-  const score = (id: string) => {
-    const text = id.toLowerCase()
-    if (text.includes("nano")) return 0
-    if (text.includes("mini")) return 1
-    if (text.includes("haiku")) return 2
-    if (text.includes("flash")) return 3
-    if (text.includes("small")) return 4
-    if (text.includes("lite")) return 5
-    return 6
+  const mapped =
+    AUTOCOMPLETE_FALLBACK_MODELS_BY_PROVIDER[providerID as keyof typeof AUTOCOMPLETE_FALLBACK_MODELS_BY_PROVIDER]
+  if (mapped) {
+    const models = await Promise.all(mapped.map((item) => tryModel(providerID, item)))
+    models.forEach((model) => pushCandidate(list, seen, "map", model))
   }
 
-  candidates.sort((a, b) => {
-    const bySpeed = score(a.id) - score(b.id)
-    if (bySpeed !== 0) return bySpeed
-    return a.limit.output - b.limit.output
-  })
-
-  candidates.forEach((item) => pushCandidate(list, seen, "family", item))
-  pushCandidate(list, seen, "small", await Provider.getSmallModel(selected.providerID))
+  pushCandidate(list, seen, "small", await Provider.getSmallModel(providerID))
+  pushCandidate(list, seen, "heuristic", await heuristicModel(providerID))
   pushCandidate(list, seen, "selected", selected)
+
   return list
+}
+
+export async function resolveAutocompleteModel(input: {
+  selected: { providerID: string; modelID: string }
+  overrides: Record<string, string | null | undefined>
+}) {
+  const [first] = await resolveAutocompleteModelCandidates(input)
+  if (first) return first.model
+  return Provider.getModel(input.selected.providerID, input.selected.modelID)
 }
 
 function stripPrefix(input: string, prefix: string) {
@@ -938,14 +1000,12 @@ export const SessionRoutes = lazy(() =>
           return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
         }
 
-        const strategy = autocomplete.model_strategy ?? "same_exact"
         const candidates = await resolveAutocompleteModelCandidates({
           selected: body.model,
-          strategy,
-          map: autocomplete.model_map ?? {},
+          overrides: autocomplete.provider_model_overrides ?? {},
         })
 
-        const timeout = autocomplete.timeout_ms ?? 2000
+        const timeout = autocomplete.timeout_ms ?? 4000
         const maxOutputTokens = autocomplete.max_output_tokens ?? 48
         const maxChars = autocomplete.max_completion_chars ?? 96
         const context = SessionAutocomplete.context({ messages, related })

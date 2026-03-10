@@ -1200,14 +1200,20 @@ export namespace Config {
             .positive()
             .optional()
             .describe("Maximum completion characters returned to the client (default: 96)"),
+          provider_model_overrides: z
+            .record(z.string(), z.union([z.string(), z.null()]))
+            .optional()
+            .describe(
+              "Override autocomplete model per provider. Key is provider ID, value is model ID. Set null to use the selected model for that provider.",
+            ),
           model_strategy: z
             .enum(["same_exact", "family_fast", "custom_map"])
             .optional()
-            .describe("Autocomplete model routing strategy (default: same_exact)"),
+            .describe("@deprecated Legacy autocomplete routing strategy. Ignored by runtime."),
           model_map: z
             .record(z.string(), z.string())
             .optional()
-            .describe("Custom model map from provider/model to provider/model for autocomplete routing"),
+            .describe("@deprecated Legacy autocomplete model map. Ignored by runtime."),
         })
         .optional(),
       experimental: z
