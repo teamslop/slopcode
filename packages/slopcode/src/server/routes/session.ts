@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { stream } from "hono/streaming"
 import { describeRoute, validator, resolver } from "hono-openapi"
 import z from "zod"
+import { APICallError } from "ai"
 import { Session } from "../../session"
 import { MessageV2 } from "../../session/message-v2"
 import { SessionPrompt } from "../../session/prompt"
@@ -21,7 +22,7 @@ import { lazy } from "../../util/lazy"
 import { Identifier } from "@/id/id"
 import { SessionProxyMiddleware } from "../../control-plane/session-proxy-middleware"
 import { Config } from "@/config/config"
-import { AUTOCOMPLETE_FAST_MODEL_BY_PROVIDER } from "./autocomplete-fast-map"
+import { AUTOCOMPLETE_FALLBACK_MODELS_BY_PROVIDER } from "./autocomplete-fast-map"
 
 const log = Log.create({ service: "server" })
 
@@ -53,6 +54,55 @@ const FAST_MATCH = [
 
 const FAST_EXCLUDE =
   /embedding|whisper|transcrib|rerank|moderation|image-generation|text-to-speech|speech-to-text|tts|stt|asr|realtime|vision|diffusion/i
+
+const BAD_MODEL_TTL_MS = 15 * 60 * 1000
+const MODEL_ACCESS_PATTERN =
+  /unknown model|invalid model|no such model|model.+(not found|does not exist|not enabled|not available|unavailable|unsupported|not allowed|access|permission|denied|forbidden)|not entitled/i
+const AUTH_ERROR_PATTERN =
+  /invalid[_ ]?api[_ ]?key|incorrect[_ ]?api[_ ]?key|authentication|quota|billing|credit|organization.+not found/i
+
+type AutocompleteCandidate = {
+  model: Provider.Model
+  source: "override" | "map" | "small" | "heuristic" | "selected"
+}
+
+const badAutocompleteModels = new Map<string, number>()
+
+function modelKey(model: Pick<Provider.Model, "providerID" | "id">) {
+  return `${model.providerID}/${model.id}`
+}
+
+function isBadAutocompleteModel(model: Pick<Provider.Model, "providerID" | "id">) {
+  const key = modelKey(model)
+  const expires = badAutocompleteModels.get(key)
+  if (!expires) return false
+  if (expires > Date.now()) return true
+  badAutocompleteModels.delete(key)
+  return false
+}
+
+function markBadAutocompleteModel(model: Pick<Provider.Model, "providerID" | "id">) {
+  badAutocompleteModels.set(modelKey(model), Date.now() + BAD_MODEL_TTL_MS)
+}
+
+function clearBadAutocompleteModel(model: Pick<Provider.Model, "providerID" | "id">) {
+  badAutocompleteModels.delete(modelKey(model))
+}
+
+export function resetAutocompleteBadModelCache() {
+  badAutocompleteModels.clear()
+}
+
+function isModelAccessError(error: unknown) {
+  if (Provider.ModelNotFoundError.isInstance(error)) return true
+  if (!APICallError.isInstance(error)) return false
+  if (error.statusCode === 404) return true
+  if (error.statusCode && ![400, 401, 403].includes(error.statusCode)) return false
+  const text = `${error.message}\n${error.responseBody ?? ""}`.toLowerCase()
+  if (!text.trim()) return false
+  if (error.statusCode === 401 && AUTH_ERROR_PATTERN.test(text)) return false
+  return MODEL_ACCESS_PATTERN.test(text)
+}
 
 function isTextModel(model: Provider.Model) {
   return model.capabilities.input.text && model.capabilities.output.text
@@ -116,33 +166,61 @@ async function heuristicModel(providerID: string) {
   return picks[0]
 }
 
-export async function resolveAutocompleteModel(input: {
+function pushCandidate(
+  list: AutocompleteCandidate[],
+  seen: Set<string>,
+  source: AutocompleteCandidate["source"],
+  model: Provider.Model | undefined,
+) {
+  if (!model) return
+  if (!isTextModel(model)) return
+  const key = modelKey(model)
+  if (seen.has(key)) return
+  if (["map", "small", "heuristic"].includes(source) && isBadAutocompleteModel(model)) return
+  seen.add(key)
+  list.push({ model, source })
+}
+
+export async function resolveAutocompleteModelCandidates(input: {
   selected: { providerID: string; modelID: string }
   overrides: Record<string, string | null | undefined>
 }) {
   const selected = await Provider.getModel(input.selected.providerID, input.selected.modelID)
   const providerID = selected.providerID
+  const list: AutocompleteCandidate[] = []
+  const seen = new Set<string>()
 
   const override = input.overrides[providerID]
-  if (override === null) return selected
+  if (override === null) {
+    pushCandidate(list, seen, "selected", selected)
+    return list
+  }
+
   if (typeof override === "string") {
-    const model = await overrideModel(providerID, override)
-    if (model && isTextModel(model)) return model
+    pushCandidate(list, seen, "override", await overrideModel(providerID, override))
   }
 
-  const mapped = AUTOCOMPLETE_FAST_MODEL_BY_PROVIDER[providerID as keyof typeof AUTOCOMPLETE_FAST_MODEL_BY_PROVIDER]
+  const mapped =
+    AUTOCOMPLETE_FALLBACK_MODELS_BY_PROVIDER[providerID as keyof typeof AUTOCOMPLETE_FALLBACK_MODELS_BY_PROVIDER]
   if (mapped) {
-    const model = await tryModel(providerID, mapped)
-    if (model && isTextModel(model)) return model
+    const models = await Promise.all(mapped.map((item) => tryModel(providerID, item)))
+    models.forEach((model) => pushCandidate(list, seen, "map", model))
   }
 
-  const heuristic = await heuristicModel(providerID)
-  if (heuristic) return heuristic
+  pushCandidate(list, seen, "small", await Provider.getSmallModel(providerID))
+  pushCandidate(list, seen, "heuristic", await heuristicModel(providerID))
+  pushCandidate(list, seen, "selected", selected)
 
-  const small = await Provider.getSmallModel(providerID)
-  if (small && isTextModel(small)) return small
+  return list
+}
 
-  return selected
+export async function resolveAutocompleteModel(input: {
+  selected: { providerID: string; modelID: string }
+  overrides: Record<string, string | null | undefined>
+}) {
+  const [first] = await resolveAutocompleteModelCandidates(input)
+  if (first) return first.model
+  return Provider.getModel(input.selected.providerID, input.selected.modelID)
 }
 
 function stripPrefix(input: string, prefix: string) {
@@ -919,12 +997,12 @@ export const SessionRoutes = lazy(() =>
           return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
         }
 
-        const model = await resolveAutocompleteModel({
+        const candidates = await resolveAutocompleteModelCandidates({
           selected: body.model,
           overrides: autocomplete.provider_model_overrides ?? {},
         })
 
-        const timeout = autocomplete.timeout_ms ?? 2000
+        const timeout = autocomplete.timeout_ms ?? 4000
         const maxOutputTokens = autocomplete.max_output_tokens ?? 48
         const maxChars = autocomplete.max_completion_chars ?? 96
 
@@ -958,48 +1036,68 @@ export const SessionRoutes = lazy(() =>
           .filter(Boolean)
           .join("\n")
 
-        let completion = ""
-        try {
-          const stream = await LLM.stream({
-            user,
-            sessionID,
-            model,
-            agent: await Agent.get(body.agent ?? (await Agent.defaultAgent())),
-            system: ["You are a fast inline autocomplete engine."],
-            abort,
-            messages: [
-              {
-                role: "user",
-                content: prompt,
-              },
-            ],
-            tools: {},
-            toolChoice: "none",
-            small: true,
-            maxOutputTokens,
-          })
+        const agent = await Agent.get(body.agent ?? (await Agent.defaultAgent()))
+        for (const [index, candidate] of candidates.entries()) {
+          const model = candidate.model
+          let completion = ""
+          try {
+            const stream = await LLM.stream({
+              user,
+              sessionID,
+              model,
+              agent,
+              system: ["You are a fast inline autocomplete engine."],
+              abort,
+              messages: [
+                {
+                  role: "user",
+                  content: prompt,
+                },
+              ],
+              tools: {},
+              toolChoice: "none",
+              small: true,
+              maxOutputTokens,
+            })
 
-          for await (const chunk of stream.textStream) {
-            completion += chunk
-            if (completion.length >= maxChars) break
+            for await (const chunk of stream.textStream) {
+              completion += chunk
+              if (completion.length >= maxChars) break
+            }
+          } catch (error) {
+            const access = isModelAccessError(error)
+            if (access && candidate.source !== "selected") {
+              markBadAutocompleteModel(model)
+            }
+            if (access && index < candidates.length - 1) {
+              const nextModel = candidates[index + 1]!.model
+              log.warn("autocomplete fallback", {
+                from: `${model.providerID}/${model.id}`,
+                to: `${nextModel.providerID}/${nextModel.id}`,
+                reason: "model_access",
+              })
+              continue
+            }
+            return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
           }
-        } catch {
-          return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
+
+          clearBadAutocompleteModel(model)
+          const normalized = completion
+            .replace(/^\s+/g, "")
+            .replace(/\r\n?/g, "\n")
+            .replace(/\n{2,}/g, "\n")
+            .replace(/\s+$/g, "")
+            .slice(0, maxChars)
+
+          const single = normalized.split("\n")[0]?.trimEnd() ?? ""
+          const next = stripPrefix(single, body.prefix).trimEnd()
+          if (!next) {
+            return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
+          }
+          return c.json({ completion: next, model: `${model.providerID}/${model.id}` })
         }
 
-        const normalized = completion
-          .replace(/^\s+/g, "")
-          .replace(/\r\n?/g, "\n")
-          .replace(/\n{2,}/g, "\n")
-          .replace(/\s+$/g, "")
-          .slice(0, maxChars)
-
-        const single = normalized.split("\n")[0]?.trimEnd() ?? ""
-        const next = stripPrefix(single, body.prefix).trimEnd()
-        if (!next) {
-          return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
-        }
-        return c.json({ completion: next, model: `${model.providerID}/${model.id}` })
+        return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
       },
     )
     .post(
