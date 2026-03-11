@@ -10049,13 +10049,30 @@
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
+              "provider_model_overrides": {
+                "description": "Override autocomplete model per provider. Key is provider ID, value is model ID. Set null to use the selected model for that provider.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
               "model_strategy": {
-                "description": "Autocomplete model routing strategy (default: same_exact)",
+                "description": "@deprecated Legacy autocomplete routing strategy. Ignored by runtime.",
                 "type": "string",
                 "enum": ["same_exact", "family_fast", "custom_map"]
               },
               "model_map": {
-                "description": "Custom model map from provider/model to provider/model for autocomplete routing",
+                "description": "@deprecated Legacy autocomplete model map. Ignored by runtime.",
                 "type": "object",
                 "propertyNames": {
                   "type": "string"
