@@ -9,11 +9,7 @@ import { tmpdir } from "../fixture/fixture"
 
 Log.init({ print: false })
 
-async function user(input: {
-  sessionID: string
-  text: string
-  system?: string
-}) {
+async function user(input: { sessionID: string; text: string; system?: string }) {
   const info = (await Session.updateMessage({
     id: Identifier.ascending("message"),
     role: "user",
@@ -40,11 +36,7 @@ async function user(input: {
   return info
 }
 
-async function assistant(input: {
-  sessionID: string
-  parentID: string
-  text: string
-}) {
+async function assistant(input: { sessionID: string; parentID: string; text: string }) {
   const info: MessageV2.Assistant = {
     id: Identifier.ascending("message"),
     role: "assistant",

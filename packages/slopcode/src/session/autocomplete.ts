@@ -111,10 +111,7 @@ export namespace SessionAutocomplete {
     return true
   }
 
-  export function context(input: {
-    messages: MessageV2.WithParts[]
-    related: string
-  }) {
+  export function context(input: { messages: MessageV2.WithParts[]; related: string }) {
     const user = prompts(input.messages)
     const assistant = replies(input.messages)
     const system = user.find((item) => !!item.system)?.system
