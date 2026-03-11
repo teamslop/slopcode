@@ -1498,11 +1498,17 @@ export type Config = {
      */
     max_completion_chars?: number
     /**
-     * Autocomplete model routing strategy (default: same_exact)
+     * Override autocomplete model per provider. Key is provider ID, value is model ID. Set null to use the selected model for that provider.
+     */
+    provider_model_overrides?: {
+      [key: string]: string | null
+    }
+    /**
+     * @deprecated Legacy autocomplete routing strategy. Ignored by runtime.
      */
     model_strategy?: "same_exact" | "family_fast" | "custom_map"
     /**
-     * Custom model map from provider/model to provider/model for autocomplete routing
+     * @deprecated Legacy autocomplete model map. Ignored by runtime.
      */
     model_map?: {
       [key: string]: string
