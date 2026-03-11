@@ -2,7 +2,7 @@ import type { BoxRenderable, TextareaRenderable, KeyEvent, ScrollBoxRenderable }
 import { pathToFileURL } from "bun"
 import fuzzysort from "fuzzysort"
 import { firstBy } from "remeda"
-import { createMemo, createResource, createEffect, onMount, onCleanup, Index, Show, createSignal } from "solid-js"
+import { createMemo, createResource, createEffect, onMount, onCleanup, Index, Show, createSignal, For } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useSDK } from "@tui/context/sdk"
 import { useSync } from "@tui/context/sync"
@@ -13,6 +13,7 @@ import { useTerminalDimensions } from "@opentui/solid"
 import { Locale } from "@/util/locale"
 import type { PromptInfo } from "./history"
 import { useFrecency } from "./frecency"
+import { autocompleteLineHeights, autocompleteLineOffsets, autocompleteLines } from "./autocomplete-layout"
 
 function removeLineRange(input: string) {
   const hashIndex = input.lastIndexOf("#")
@@ -421,6 +422,14 @@ export function Autocomplete(props: {
     return result.map((arr) => arr.obj)
   })
 
+  const lines = createMemo(() => {
+    const width = Math.max(8, position().width - 2)
+    return options().map((item) => autocompleteLines(item, width))
+  })
+
+  const heights = createMemo(() => autocompleteLineHeights(lines()))
+  const offsets = createMemo(() => autocompleteLineOffsets(heights()))
+
   createEffect(() => {
     filter()
     setStore("selected", 0)
@@ -438,12 +447,15 @@ export function Autocomplete(props: {
   function moveTo(next: number) {
     setStore("selected", next)
     if (!scroll) return
-    const viewportHeight = Math.min(height(), options().length)
-    const scrollBottom = scroll.scrollTop + viewportHeight
-    if (next < scroll.scrollTop) {
-      scroll.scrollBy(next - scroll.scrollTop)
-    } else if (next + 1 > scrollBottom) {
-      scroll.scrollBy(next + 1 - scrollBottom)
+    const top = offsets()[next] ?? 0
+    const size = heights()[next] ?? 1
+    const bottom = top + size
+    const viewTop = scroll.scrollTop
+    const viewBottom = viewTop + height()
+    if (top < viewTop) {
+      scroll.scrollBy(top - viewTop)
+    } else if (bottom > viewBottom) {
+      scroll.scrollBy(bottom - viewBottom)
     }
   }
 
@@ -598,7 +610,7 @@ export function Autocomplete(props: {
   })
 
   const height = createMemo(() => {
-    const count = options().length || 1
+    const count = heights().reduce((acc, item) => acc + item, 0) || 1
     if (!store.visible) return Math.min(10, count)
     positionTick()
     return Math.min(10, count, Math.max(1, props.anchor().y))
@@ -636,7 +648,7 @@ export function Autocomplete(props: {
               paddingLeft={1}
               paddingRight={1}
               backgroundColor={index === store.selected ? theme.primary : undefined}
-              flexDirection="row"
+              flexDirection="column"
               onMouseMove={() => {
                 setStore("input", "mouse")
               }}
@@ -650,14 +662,22 @@ export function Autocomplete(props: {
               }}
               onMouseUp={() => select()}
             >
-              <text fg={index === store.selected ? selectedForeground(theme) : theme.text} flexShrink={0}>
-                {option().display}
-              </text>
-              <Show when={option().description}>
-                <text fg={index === store.selected ? selectedForeground(theme) : theme.textMuted} wrapMode="none">
-                  {option().description}
-                </text>
-              </Show>
+              <For each={lines()[index] ?? []}>
+                {(line) => (
+                  <text
+                    fg={
+                      index === store.selected
+                        ? selectedForeground(theme)
+                        : line.tone === "description"
+                          ? theme.textMuted
+                          : theme.text
+                    }
+                    wrapMode="none"
+                  >
+                    {line.text}
+                  </text>
+                )}
+              </For>
             </box>
           )}
         </Index>
