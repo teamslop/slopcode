@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { stream } from "hono/streaming"
 import { describeRoute, validator, resolver } from "hono-openapi"
 import z from "zod"
+import { APICallError } from "ai"
 import { Session } from "../../session"
 import { MessageV2 } from "../../session/message-v2"
 import { SessionPrompt } from "../../session/prompt"
@@ -37,38 +38,107 @@ const AutocompleteInput = z.object({
   suffix: z.string().optional(),
 })
 
-async function resolveAutocompleteModel(input: {
+const BAD_MODEL_TTL_MS = 15 * 60 * 1000
+const MODEL_ACCESS_PATTERN =
+  /unknown model|invalid model|no such model|model.+(not found|does not exist|not enabled|not available|unavailable|unsupported|not allowed|access|permission|denied|forbidden)|not entitled/i
+const AUTH_ERROR_PATTERN =
+  /invalid[_ ]?api[_ ]?key|incorrect[_ ]?api[_ ]?key|authentication|quota|billing|credit|organization.+not found/i
+
+type AutocompleteCandidate = {
+  model: Provider.Model
+  source: "map" | "family" | "small" | "selected"
+}
+
+const badAutocompleteModels = new Map<string, number>()
+
+function modelKey(model: Pick<Provider.Model, "providerID" | "id">) {
+  return `${model.providerID}/${model.id}`
+}
+
+function isBadAutocompleteModel(model: Pick<Provider.Model, "providerID" | "id">) {
+  const key = modelKey(model)
+  const expires = badAutocompleteModels.get(key)
+  if (!expires) return false
+  if (expires > Date.now()) return true
+  badAutocompleteModels.delete(key)
+  return false
+}
+
+function markBadAutocompleteModel(model: Pick<Provider.Model, "providerID" | "id">) {
+  badAutocompleteModels.set(modelKey(model), Date.now() + BAD_MODEL_TTL_MS)
+}
+
+function clearBadAutocompleteModel(model: Pick<Provider.Model, "providerID" | "id">) {
+  badAutocompleteModels.delete(modelKey(model))
+}
+
+async function tryModel(providerID: string, modelID: string) {
+  try {
+    return await Provider.getModel(providerID, modelID)
+  } catch {
+    return
+  }
+}
+
+function isModelAccessError(error: unknown) {
+  if (Provider.ModelNotFoundError.isInstance(error)) return true
+  if (!APICallError.isInstance(error)) return false
+  const call = error as APICallError
+  if (call.statusCode === 404) return true
+  if (call.statusCode && ![400, 401, 403].includes(call.statusCode)) return false
+  const text = `${call.message}\n${call.responseBody ?? ""}`.toLowerCase()
+  if (!text.trim()) return false
+  if (call.statusCode === 401 && AUTH_ERROR_PATTERN.test(text)) return false
+  return MODEL_ACCESS_PATTERN.test(text)
+}
+
+function pushCandidate(
+  list: AutocompleteCandidate[],
+  seen: Set<string>,
+  source: AutocompleteCandidate["source"],
+  model: Provider.Model | undefined,
+) {
+  if (!model) return
+  const key = modelKey(model)
+  if (seen.has(key)) return
+  if (source !== "selected" && isBadAutocompleteModel(model)) return
+  seen.add(key)
+  list.push({ model, source })
+}
+
+async function resolveAutocompleteModelCandidates(input: {
   selected: { providerID: string; modelID: string }
   strategy: "same_exact" | "family_fast" | "custom_map"
   map: Record<string, string>
 }) {
+  const selected = await Provider.getModel(input.selected.providerID, input.selected.modelID)
+  const list: AutocompleteCandidate[] = []
+  const seen = new Set<string>()
+
+  if (input.strategy === "same_exact") {
+    pushCandidate(list, seen, "selected", selected)
+    return list
+  }
+
   if (input.strategy === "custom_map") {
     const mapped = input.map[`${input.selected.providerID}/${input.selected.modelID}`]
     if (mapped) {
       const parsed = Provider.parseModel(mapped)
-      return Provider.getModel(parsed.providerID, parsed.modelID)
+      pushCandidate(list, seen, "map", await tryModel(parsed.providerID, parsed.modelID))
     }
+    pushCandidate(list, seen, "selected", selected)
+    return list
   }
 
-  if (input.strategy === "same_exact") {
-    return Provider.getModel(input.selected.providerID, input.selected.modelID)
-  }
-
-  const selected = await Provider.getModel(input.selected.providerID, input.selected.modelID)
   const provider = await Provider.getProvider(selected.providerID)
-  if (!provider) return selected
-
   const family = selected.family?.trim().toLowerCase()
-  const candidates = Object.values(provider.models).filter((item) => {
-    if (item.id === selected.id) return false
-    if (!family) return false
-    return item.family?.trim().toLowerCase() === family
-  })
-
-  if (candidates.length === 0) {
-    const small = await Provider.getSmallModel(selected.providerID)
-    return small ?? selected
-  }
+  const candidates = provider
+    ? (Object.values(provider.models) as Provider.Model[]).filter((item) => {
+        if (item.id === selected.id) return false
+        if (!family) return false
+        return item.family?.trim().toLowerCase() === family
+      })
+    : []
 
   const score = (id: string) => {
     const text = id.toLowerCase()
@@ -87,7 +157,10 @@ async function resolveAutocompleteModel(input: {
     return a.limit.output - b.limit.output
   })
 
-  return candidates[0] ?? selected
+  candidates.forEach((item) => pushCandidate(list, seen, "family", item))
+  pushCandidate(list, seen, "small", await Provider.getSmallModel(selected.providerID))
+  pushCandidate(list, seen, "selected", selected)
+  return list
 }
 
 function stripPrefix(input: string, prefix: string) {
@@ -866,7 +939,7 @@ export const SessionRoutes = lazy(() =>
         }
 
         const strategy = autocomplete.model_strategy ?? "same_exact"
-        const model = await resolveAutocompleteModel({
+        const candidates = await resolveAutocompleteModelCandidates({
           selected: body.model,
           strategy,
           map: autocomplete.model_map ?? {},
@@ -909,49 +982,70 @@ export const SessionRoutes = lazy(() =>
           .filter(Boolean)
           .join("\n")
 
-        let completion = ""
-        try {
-          const stream = await LLM.stream({
-            user,
-            sessionID,
-            model,
-            agent: await Agent.get(body.agent ?? (await Agent.defaultAgent())),
-            system: ["You are a fast inline autocomplete engine.", context.prompt, context.system].filter(
-              (item): item is string => !!item,
-            ),
-            abort,
-            messages: [
-              {
-                role: "user",
-                content: prompt,
-              },
-            ],
-            tools: {},
-            toolChoice: "none",
-            small: true,
-            maxOutputTokens,
-          })
+        const agent = await Agent.get(body.agent ?? (await Agent.defaultAgent()))
+        for (let index = 0; index < candidates.length; index++) {
+          const candidate = candidates[index]!
+          const model = candidate.model
+          let completion = ""
+          try {
+            const stream = await LLM.stream({
+              user,
+              sessionID,
+              model,
+              agent,
+              system: ["You are a fast inline autocomplete engine.", context.prompt, context.system].filter(
+                (item): item is string => !!item,
+              ),
+              abort,
+              messages: [
+                {
+                  role: "user",
+                  content: prompt,
+                },
+              ],
+              tools: {},
+              toolChoice: "none",
+              small: true,
+              maxOutputTokens,
+            })
 
-          for await (const chunk of stream.textStream) {
-            completion += chunk
-            if (completion.length >= maxChars) break
+            for await (const chunk of stream.textStream) {
+              completion += chunk
+              if (completion.length >= maxChars) break
+            }
+          } catch (error) {
+            const access = isModelAccessError(error)
+            if (access && candidate.source !== "selected") {
+              markBadAutocompleteModel(model)
+            }
+            if (access && index < candidates.length - 1) {
+              const nextModel = candidates[index + 1]!.model
+              log.warn("autocomplete fallback", {
+                from: `${model.providerID}/${model.id}`,
+                to: `${nextModel.providerID}/${nextModel.id}`,
+                reason: "model_access",
+              })
+              continue
+            }
+            return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
           }
-        } catch {
-          return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
+
+          clearBadAutocompleteModel(model)
+          const normalized = completion
+            .replace(/\r\n?/g, "\n")
+            .replace(/\n{2,}/g, "\n")
+            .replace(/\s+$/g, "")
+            .slice(0, maxChars)
+
+          const single = normalized.split("\n")[0] ?? ""
+          const next = SessionAutocomplete.spacing(body.prefix, stripPrefix(single, body.prefix).replace(/\s+$/g, ""))
+          if (!next) {
+            return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
+          }
+          return c.json({ completion: next, model: `${model.providerID}/${model.id}` })
         }
 
-        const normalized = completion
-          .replace(/\r\n?/g, "\n")
-          .replace(/\n{2,}/g, "\n")
-          .replace(/\s+$/g, "")
-          .slice(0, maxChars)
-
-        const single = normalized.split("\n")[0] ?? ""
-        const next = SessionAutocomplete.spacing(body.prefix, stripPrefix(single, body.prefix).replace(/\s+$/g, ""))
-        if (!next) {
-          return c.json({ completion: "", model: `${model.providerID}/${model.id}` })
-        }
-        return c.json({ completion: next, model: `${model.providerID}/${model.id}` })
+        return c.json({ completion: "", model: `${body.model.providerID}/${body.model.modelID}` })
       },
     )
     .post(
