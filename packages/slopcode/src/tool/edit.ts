@@ -486,11 +486,13 @@ export const EditTool = Tool.define("edit", {
       rename: params.rename,
     }
 
+    const envAutocorrect = Bun.env.SLOPCODE_HL_AUTOCORRECT === "1" || Bun.env.OPENCODE_HL_AUTOCORRECT === "1"
+
     return executeHashline(
       hashlineParams,
       ctx,
-      config.experimental?.hashline_autocorrect !== false || Bun.env.OPENCODE_HL_AUTOCORRECT === "1",
-      Bun.env.OPENCODE_HL_AUTOCORRECT === "1",
+      config.experimental?.hashline_autocorrect !== false || envAutocorrect,
+      envAutocorrect,
     )
   },
 })

@@ -338,7 +338,7 @@ function throwMismatch(lines: string[], mismatches: Array<{ expected: string; li
     ...(hidden > 0 ? [`- ... and ${hidden} more mismatches`] : []),
   ]
 
-  if (Bun.env.OPENCODE_HL_MISMATCH_DEBUG === "1") {
+  if (Bun.env.SLOPCODE_HL_MISMATCH_DEBUG === "1" || Bun.env.OPENCODE_HL_MISMATCH_DEBUG === "1") {
     const body = unique
       .map((mismatch) => {
         if (mismatch.line < 1 || mismatch.line > lines.length) {
@@ -443,8 +443,9 @@ export function applyHashlineEdits(input: {
   const refs: Array<{ raw: string; line: number; id: string }> = []
   const replaceOps: Array<Extract<HashlineEdit, { type: "replace" }>> = []
   const ops: Splice[] = []
-  const autocorrect = input.autocorrect ?? Bun.env.OPENCODE_HL_AUTOCORRECT === "1"
-  const aggressiveAutocorrect = input.aggressiveAutocorrect ?? Bun.env.OPENCODE_HL_AUTOCORRECT === "1"
+  const envAutocorrect = Bun.env.SLOPCODE_HL_AUTOCORRECT === "1" || Bun.env.OPENCODE_HL_AUTOCORRECT === "1"
+  const autocorrect = input.autocorrect ?? envAutocorrect
+  const aggressiveAutocorrect = input.aggressiveAutocorrect ?? envAutocorrect
   const parseText = (text: TextValue) => {
     const next = toLines(text)
     if (!autocorrect) return next

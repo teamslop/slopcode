@@ -5,6 +5,7 @@ import { batch, onCleanup, onMount } from "solid-js"
 
 export type EventSource = {
   on: (handler: (event: Event) => void) => () => void
+  setDirectory?: (directory?: string) => void
 }
 
 export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
@@ -17,13 +18,21 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
     events?: EventSource
   }) => {
     const abort = new AbortController()
-    const sdk = createSlopcodeClient({
-      baseUrl: props.url,
-      signal: abort.signal,
-      directory: props.directory,
-      fetch: props.fetch,
-      headers: props.headers,
-    })
+    const baseDirectory = props.directory
+    let directory = props.directory
+    let sseAbort: AbortController | undefined
+
+    function createSDK(nextDirectory: string | undefined) {
+      return createSlopcodeClient({
+        baseUrl: props.url,
+        signal: abort.signal,
+        directory: nextDirectory,
+        fetch: props.fetch,
+        headers: props.headers,
+      })
+    }
+
+    let sdk = createSDK(directory)
 
     const emitter = createGlobalEmitter<{
       [key in Event["type"]]: Extract<Event, { type: key }>
@@ -39,7 +48,6 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
       queue = []
       timer = undefined
       last = Date.now()
-      // Batch all event emissions so all store updates result in a single render
       batch(() => {
         for (const event of events) {
           emitter.emit(event.type, event)
@@ -52,8 +60,6 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
       const elapsed = Date.now() - last
 
       if (timer) return
-      // If we just flushed recently (within 16ms), batch this with future events
-      // Otherwise, process immediately to avoid latency
       if (elapsed < 16) {
         timer = setTimeout(flush, 16)
         return
@@ -61,41 +67,73 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
       flush()
     }
 
-    onMount(async () => {
-      // If an event source is provided, use it instead of SSE
+    function startSSE() {
+      sseAbort?.abort()
+      const ctrl = new AbortController()
+      sseAbort = ctrl
+      ;(async () => {
+        while (true) {
+          if (abort.signal.aborted || ctrl.signal.aborted) break
+          const events = await sdk.event
+            .subscribe(
+              {},
+              {
+                signal: ctrl.signal,
+              },
+            )
+            .catch(() => undefined)
+          if (!events) {
+            await Bun.sleep(250)
+            continue
+          }
+
+          for await (const event of events.stream) {
+            if (ctrl.signal.aborted) break
+            handleEvent(event)
+          }
+
+          if (timer) clearTimeout(timer)
+          if (queue.length > 0) flush()
+        }
+      })().catch(() => {})
+    }
+
+    onMount(() => {
       if (props.events) {
         const unsub = props.events.on(handleEvent)
         onCleanup(unsub)
-        return
-      }
-
-      // Fall back to SSE
-      while (true) {
-        if (abort.signal.aborted) break
-        const events = await sdk.event.subscribe(
-          {},
-          {
-            signal: abort.signal,
-          },
-        )
-
-        for await (const event of events.stream) {
-          handleEvent(event)
-        }
-
-        // Flush any remaining events
-        if (timer) clearTimeout(timer)
-        if (queue.length > 0) {
-          flush()
-        }
+      } else {
+        startSSE()
       }
     })
 
     onCleanup(() => {
       abort.abort()
+      sseAbort?.abort()
       if (timer) clearTimeout(timer)
     })
 
-    return { client: sdk, event: emitter, url: props.url }
+    return {
+      get client() {
+        return sdk
+      },
+      get directory() {
+        return directory
+      },
+      get baseDirectory() {
+        return baseDirectory
+      },
+      event: emitter,
+      fetch: props.fetch ?? fetch,
+      setDirectory(next?: string) {
+        const target = next ?? baseDirectory
+        if (target === directory) return
+        directory = target
+        sdk = createSDK(target)
+        props.events?.setDirectory?.(target)
+        if (!props.events) startSSE()
+      },
+      url: props.url,
+    }
   },
 })

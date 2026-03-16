@@ -17,6 +17,7 @@ import type {
   ProviderListResponse,
   ProviderAuthMethod,
   VcsInfo,
+  Workspace,
 } from "@slopcode-ai/sdk/v2"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useSDK } from "@tui/context/sdk"
@@ -74,6 +75,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       formatter: FormatterStatus[]
       vcs: VcsInfo | undefined
       path: Path
+      workspaceList: Workspace[]
     }>({
       provider_next: {
         all: [],
@@ -101,17 +103,28 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       formatter: [],
       vcs: undefined,
       path: { state: "", config: "", worktree: "", directory: "" },
+      workspaceList: [],
     })
 
     const sdk = useSDK()
     const kv = useKV()
     const [autoaccept] = kv.signal<"none" | "edit">("permission_auto_accept", "edit")
 
+    async function syncWorkspaces() {
+      const result = await sdk.client.experimental.workspace.list().catch(() => undefined)
+      if (!result?.data) return
+      setStore("workspaceList", reconcile(result.data))
+    }
+
     sdk.event.listen((e) => {
       const event = e.details
       switch (event.type) {
         case "server.instance.disposed":
           bootstrap()
+          break
+        case "workspace.ready":
+        case "workspace.failed":
+          void syncWorkspaces()
           break
         case "permission.replied": {
           const requests = store.permission[event.properties.sessionID]
@@ -423,6 +436,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             sdk.client.provider.auth().then((x) => setStore("provider_auth", reconcile(x.data ?? {}))),
             sdk.client.vcs.get().then((x) => setStore("vcs", reconcile(x.data))),
             sdk.client.path.get().then((x) => setStore("path", reconcile(x.data!))),
+            syncWorkspaces(),
           ]).then(() => {
             setStore("status", "complete")
           })
@@ -491,6 +505,15 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           )
           fullSyncedSessions.add(sessionID)
         },
+      },
+      workspace: {
+        get(workspaceID: string) {
+          return store.workspaceList.find((workspace) => workspace.id === workspaceID)
+        },
+        byDirectory(directory: string) {
+          return store.workspaceList.find((workspace) => workspace.config.directory === directory)
+        },
+        sync: syncWorkspaces,
       },
       bootstrap,
     }

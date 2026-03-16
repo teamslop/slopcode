@@ -1,11 +1,11 @@
 import type { Platform } from "@/context/platform"
 import { getRelativeTime } from "@/utils/time"
 
-const REPO = "anomalyco/opencode"
+const REPO = "teamslop/slopcode"
 const GITHUB_API_URL = `https://api.github.com/repos/${REPO}/releases`
 const PER_PAGE = 30
 const CACHE_TTL = 1000 * 60 * 30
-const CACHE_KEY = "opencode.releases"
+const CACHE_KEY = "slopcode.releases"
 
 const t: Parameters<typeof getRelativeTime>[1] = (key, params) => {
   if (key === "common.time.justNow") return "just now"
@@ -46,7 +46,7 @@ export async function fetchReleases(platform: Platform): Promise<{ releases: Rel
   const releases = (Array.isArray(res) ? res : []).map((r) => ({
     tag: r.tag_name ?? "Unknown",
     body: (r.body ?? "")
-      .replace(/#(\d+)/g, (_: string, id: string) => `[#${id}](https://github.com/anomalyco/opencode/pull/${id})`)
+      .replace(/#(\d+)/g, (_: string, id: string) => `[#${id}](https://github.com/teamslop/slopcode/pull/${id})`)
       .replace(/@([a-zA-Z0-9_-]+)/g, (_: string, u: string) => `[@${u}](https://github.com/${u})`),
     date: r.published_at ? getRelativeTime(r.published_at, t) : "",
   }))

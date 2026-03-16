@@ -327,6 +327,15 @@ export function Session() {
     return status ? status.type !== "idle" : false
   })
 
+  const toast = useToast()
+  const sdk = useSDK()
+
+  createEffect(() => {
+    const directory = session()?.directory
+    if (!directory) return
+    sdk.setDirectory(directory)
+  })
+
   createEffect(async () => {
     await sync.session
       .sync(route.sessionID)
@@ -342,9 +351,6 @@ export function Session() {
         return navigate({ type: "home" })
       })
   })
-
-  const toast = useToast()
-  const sdk = useSDK()
 
   // Handle initial prompt from fork
   createEffect(() => {

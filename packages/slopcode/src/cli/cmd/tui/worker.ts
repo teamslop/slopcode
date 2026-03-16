@@ -42,9 +42,11 @@ let server: Bun.Server<BunWebSocketData> | undefined
 
 const eventStream = {
   abort: undefined as AbortController | undefined,
+  directory: process.cwd(),
 }
 
 const startEventStream = (directory: string) => {
+  eventStream.directory = directory
   if (eventStream.abort) eventStream.abort.abort()
   const abort = new AbortController()
   eventStream.abort = abort
@@ -134,6 +136,12 @@ export const rpc = {
   async reload() {
     Config.global.reset()
     await Instance.disposeAll()
+  },
+  async setDirectory(input: { directory?: string }) {
+    const next = input.directory?.trim()
+    if (!next) return
+    if (next === eventStream.directory) return
+    startEventStream(next)
   },
   async shutdown() {
     Log.Default.info("worker shutting down")

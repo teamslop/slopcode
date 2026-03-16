@@ -36,8 +36,9 @@ describe("tool.hashline", () => {
   })
 
   test("autocorrect strips copied hashline prefixes when enabled", () => {
-    const old = Bun.env.OPENCODE_HL_AUTOCORRECT
-    Bun.env.OPENCODE_HL_AUTOCORRECT = "1"
+    const oldSlopcode = Bun.env.SLOPCODE_HL_AUTOCORRECT
+    const oldOpencode = Bun.env.OPENCODE_HL_AUTOCORRECT
+    Bun.env.SLOPCODE_HL_AUTOCORRECT = "1"
     try {
       const result = applyHashlineEdits({
         lines: ["a"],
@@ -52,8 +53,10 @@ describe("tool.hashline", () => {
       })
       expect(result.lines).toEqual(["a"])
     } finally {
-      if (old === undefined) delete Bun.env.OPENCODE_HL_AUTOCORRECT
-      else Bun.env.OPENCODE_HL_AUTOCORRECT = old
+      if (oldSlopcode === undefined) delete Bun.env.SLOPCODE_HL_AUTOCORRECT
+      else Bun.env.SLOPCODE_HL_AUTOCORRECT = oldSlopcode
+      if (oldOpencode === undefined) delete Bun.env.OPENCODE_HL_AUTOCORRECT
+      else Bun.env.OPENCODE_HL_AUTOCORRECT = oldOpencode
     }
   })
 
