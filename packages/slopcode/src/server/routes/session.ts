@@ -262,23 +262,35 @@ export const SessionRoutes = lazy(() =>
             .number()
             .optional()
             .meta({ description: "Filter sessions updated on or after this timestamp (milliseconds since epoch)" }),
+          cursor: z.coerce
+            .number()
+            .optional()
+            .meta({ description: "Return sessions updated before this timestamp (milliseconds since epoch)" }),
           search: z.string().optional().meta({ description: "Filter sessions by title (case-insensitive)" }),
           limit: z.coerce.number().optional().meta({ description: "Maximum number of sessions to return" }),
         }),
       ),
       async (c) => {
         const query = c.req.valid("query")
+        const limit = query.limit
         const sessions: Session.Info[] = []
         for await (const session of Session.list({
           directory: query.directory,
           roots: query.roots,
           start: query.start,
+          cursor: query.cursor,
           search: query.search,
-          limit: query.limit,
+          limit: limit ? limit + 1 : undefined,
         })) {
           sessions.push(session)
         }
-        return c.json(sessions)
+        if (!limit) return c.json(sessions)
+        const hasMore = sessions.length > limit
+        const list = hasMore ? sessions.slice(0, limit) : sessions
+        if (hasMore && list.length > 0) {
+          c.header("x-next-cursor", String(list[list.length - 1].time.updated))
+        }
+        return c.json(list)
       },
     )
     .get(
@@ -791,15 +803,24 @@ export const SessionRoutes = lazy(() =>
         "query",
         z.object({
           limit: z.coerce.number().optional(),
+          cursor: z.coerce.number().optional(),
         }),
       ),
       async (c) => {
         const query = c.req.valid("query")
+        const limit = query.limit
         const messages = await Session.messages({
           sessionID: c.req.valid("param").sessionID,
-          limit: query.limit,
+          limit: limit ? limit + 1 : undefined,
+          cursor: query.cursor,
         })
-        return c.json(messages)
+        if (!limit) return c.json(messages)
+        const hasMore = messages.length > limit
+        const list = hasMore ? messages.slice(1) : messages
+        if (hasMore && list.length > 0) {
+          c.header("x-next-cursor", String(list[0].info.time.created))
+        }
+        return c.json(list)
       },
     )
     .get(
