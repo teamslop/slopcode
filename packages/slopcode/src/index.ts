@@ -3,7 +3,7 @@ import { hideBin } from "yargs/helpers"
 import { RunCommand } from "./cli/cmd/run"
 import { GenerateCommand } from "./cli/cmd/generate"
 import { Log } from "./util/log"
-import { AuthCommand } from "./cli/cmd/auth"
+import { AuthCommand, ProvidersCommand } from "./cli/cmd/auth"
 import { AgentCommand } from "./cli/cmd/agent"
 import { UpgradeCommand } from "./cli/cmd/upgrade"
 import { UninstallCommand } from "./cli/cmd/uninstall"
@@ -34,6 +34,8 @@ import path from "path"
 import { Global } from "./global"
 import { JsonMigration } from "./storage/json-migration"
 import { Database } from "./storage/db"
+import { ConsoleCommand } from "./cli/cmd/console"
+import { Flag } from "./flag/flag"
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -192,6 +194,14 @@ let cli = yargs(hideBin(process.argv))
   .command(PrCommand)
   .command(SessionCommand)
   .command(DbCommand)
+
+if (Flag.SLOPCODE_EXPERIMENTAL_CONSOLE) {
+  cli = cli.command(ConsoleCommand)
+}
+
+if (Flag.SLOPCODE_EXPERIMENTAL_PROVIDERS) {
+  cli = cli.command(ProvidersCommand)
+}
 
 if (Installation.isLocal()) {
   cli = cli.command(WorkspaceServeCommand)

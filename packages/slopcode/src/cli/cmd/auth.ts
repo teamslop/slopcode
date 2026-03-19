@@ -21,9 +21,20 @@ type PluginAuth = NonNullable<Hooks["auth"]>
  * Handle plugin-based authentication flow.
  * Returns true if auth was handled, false if it should fall through to default handling.
  */
-async function handlePluginAuth(plugin: { auth: PluginAuth }, provider: string): Promise<boolean> {
+async function handlePluginAuth(plugin: { auth: PluginAuth }, provider: string, methodName?: string): Promise<boolean> {
   let index = 0
-  if (plugin.auth.methods.length > 1) {
+  if (methodName) {
+    const match = plugin.auth.methods.findIndex((x) => x.label.toLowerCase() === methodName.toLowerCase())
+    if (match === -1) {
+      prompts.log.error(
+        `Unknown method "${methodName}" for ${provider}. Available: ${plugin.auth.methods.map((x) => x.label).join(", ")}`,
+      )
+      process.exit(1)
+    }
+    index = match
+  }
+
+  if (!methodName && plugin.auth.methods.length > 1) {
     const method = await prompts.select({
       message: "Login method",
       options: [
@@ -36,6 +47,7 @@ async function handlePluginAuth(plugin: { auth: PluginAuth }, provider: string):
     if (prompts.isCancel(method)) throw new UI.CancelledError()
     index = parseInt(method)
   }
+
   const method = plugin.auth.methods[index]
 
   // Handle prompts for all auth types
@@ -43,9 +55,16 @@ async function handlePluginAuth(plugin: { auth: PluginAuth }, provider: string):
   const inputs: Record<string, string> = {}
   if (method.prompts) {
     for (const prompt of method.prompts) {
-      if (prompt.condition && !prompt.condition(inputs)) {
-        continue
+      const when = ("when" in prompt ? prompt.when : undefined) as
+        | { key: string; op: "eq" | "neq"; value: string }
+        | undefined
+      if (when) {
+        const value = inputs[when.key]
+        if (value === undefined) continue
+        const matches = when.op === "eq" ? value === when.value : value !== when.value
+        if (!matches) continue
       }
+      if (prompt.condition && !prompt.condition(inputs)) continue
       if (prompt.type === "select") {
         const value = await prompts.select({
           message: prompt.message,
@@ -202,6 +221,14 @@ export const AuthCommand = cmd({
   async handler() {},
 })
 
+export const ProvidersCommand = cmd({
+  command: "providers",
+  describe: "manage AI providers and credentials",
+  builder: (yargs) =>
+    yargs.command(AuthListCommand).command(AuthLoginCommand).command(AuthLogoutCommand).demandCommand(),
+  async handler() {},
+})
+
 export const AuthListCommand = cmd({
   command: "list",
   aliases: ["ls"],
@@ -253,10 +280,21 @@ export const AuthLoginCommand = cmd({
   command: "login [url]",
   describe: "log in to a provider",
   builder: (yargs) =>
-    yargs.positional("url", {
-      describe: "slopcode auth provider",
-      type: "string",
-    }),
+    yargs
+      .positional("url", {
+        describe: "slopcode auth provider",
+        type: "string",
+      })
+      .option("provider", {
+        alias: ["p"],
+        describe: "provider id or name to log in to (skips provider selection)",
+        type: "string",
+      })
+      .option("method", {
+        alias: ["m"],
+        describe: "login method label (skips method selection)",
+        type: "string",
+      }),
   async handler(args) {
     await Instance.provide({
       directory: process.cwd(),
@@ -264,7 +302,8 @@ export const AuthLoginCommand = cmd({
         UI.empty()
         prompts.intro("Add credential")
         if (args.url) {
-          const wellknown = await fetch(`${args.url}/.well-known/slopcode`).then((x) => x.json() as any)
+          const url = args.url.replace(/\/+$/, "")
+          const wellknown = await fetch(`${url}/.well-known/slopcode`).then((x) => x.json() as any)
           prompts.log.info(`Running \`${wellknown.auth.command.join(" ")}\``)
           const proc = Process.spawn(wellknown.auth.command, {
             stdout: "pipe",
@@ -280,12 +319,12 @@ export const AuthLoginCommand = cmd({
             prompts.outro("Done")
             return
           }
-          await Auth.set(args.url, {
+          await Auth.set(url, {
             type: "wellknown",
             key: wellknown.auth.env,
             token: token.trim(),
           })
-          prompts.log.success("Logged into " + args.url)
+          prompts.log.success("Logged into " + url)
           prompts.outro("Done")
           return
         }
@@ -322,60 +361,75 @@ export const AuthLoginCommand = cmd({
           enabled,
           providerNames: Object.fromEntries(Object.entries(config.provider ?? {}).map(([id, p]) => [id, p.name])),
         })
-        let provider = await prompts.autocomplete({
-          message: "Select provider",
-          maxItems: 8,
-          options: [
-            ...pipe(
-              providers,
-              values(),
-              sortBy(
-                (x) => priority[x.id] ?? 99,
-                (x) => x.name ?? x.id,
-              ),
-              map((x) => ({
-                label: x.name,
-                value: x.id,
-                hint: {
-                  slopcode: "recommended",
-                  anthropic: "Claude Max or API key",
-                  openai: "ChatGPT Plus/Pro or API key",
-                }[x.id],
-              })),
+        const options = [
+          ...pipe(
+            providers,
+            values(),
+            sortBy(
+              (x) => priority[x.id] ?? 99,
+              (x) => x.name ?? x.id,
             ),
-            ...pluginProviders.map((x) => ({
+            map((x) => ({
               label: x.name,
               value: x.id,
-              hint: "plugin",
+              hint: {
+                slopcode: "recommended",
+                anthropic: "Claude Max or API key",
+                openai: "ChatGPT Plus/Pro or API key",
+              }[x.id],
             })),
-            {
-              value: "other",
-              label: "Other",
-            },
-          ],
-        })
+          ),
+          ...pluginProviders.map((x) => ({
+            label: x.name,
+            value: x.id,
+            hint: "plugin",
+          })),
+        ]
 
-        if (prompts.isCancel(provider)) throw new UI.CancelledError()
+        let provider: string
+        if (args.provider) {
+          const input = args.provider
+          const byID = options.find((x) => x.value === input)
+          const byName = options.find((x) => x.label.toLowerCase() === input.toLowerCase())
+          const match = byID ?? byName
+          if (!match) {
+            prompts.log.error(`Unknown provider "${input}"`)
+            process.exit(1)
+          }
+          provider = match.value
+        } else {
+          const selected = await prompts.autocomplete({
+            message: "Select provider",
+            maxItems: 8,
+            options: [
+              ...options,
+              {
+                value: "other",
+                label: "Other",
+              },
+            ],
+          })
+          if (prompts.isCancel(selected)) throw new UI.CancelledError()
+          provider = selected as string
+        }
 
         const plugin = await Plugin.list().then((x) => x.findLast((x) => x.auth?.provider === provider))
         if (plugin && plugin.auth) {
-          const handled = await handlePluginAuth({ auth: plugin.auth }, provider)
+          const handled = await handlePluginAuth({ auth: plugin.auth }, provider, args.method)
           if (handled) return
         }
 
         if (provider === "other") {
-          provider = await prompts.text({
+          const custom = await prompts.text({
             message: "Enter provider id",
             validate: (x) => (x && x.match(/^[0-9a-z-]+$/) ? undefined : "a-z, 0-9 and hyphens only"),
           })
-          if (prompts.isCancel(provider)) throw new UI.CancelledError()
-          provider = provider.replace(/^@ai-sdk\//, "")
-          if (prompts.isCancel(provider)) throw new UI.CancelledError()
+          if (prompts.isCancel(custom)) throw new UI.CancelledError()
+          provider = custom.replace(/^@ai-sdk\//, "")
 
-          // Check if a plugin provides auth for this custom provider
           const customPlugin = await Plugin.list().then((x) => x.findLast((x) => x.auth?.provider === provider))
           if (customPlugin && customPlugin.auth) {
-            const handled = await handlePluginAuth({ auth: customPlugin.auth }, provider)
+            const handled = await handlePluginAuth({ auth: customPlugin.auth }, provider, args.method)
             if (handled) return
           }
 
