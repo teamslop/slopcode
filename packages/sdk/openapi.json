@@ -1538,6 +1538,14 @@
           },
           {
             "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "number"
+            },
+            "description": "Return sessions updated before this timestamp (milliseconds since epoch)"
+          },
+          {
+            "in": "query",
             "name": "search",
             "schema": {
               "type": "string"
@@ -2528,6 +2536,13 @@
           {
             "in": "query",
             "name": "limit",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
             "schema": {
               "type": "number"
             }

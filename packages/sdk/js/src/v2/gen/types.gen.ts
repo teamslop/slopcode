@@ -2746,6 +2746,10 @@ export type SessionListData = {
      */
     start?: number
     /**
+     * Return sessions updated before this timestamp (milliseconds since epoch)
+     */
+    cursor?: number
+    /**
      * Filter sessions by title (case-insensitive)
      */
     search?: string
@@ -3232,6 +3236,7 @@ export type SessionMessagesData = {
   query?: {
     directory?: string
     limit?: number
+    cursor?: number
   }
   url: "/session/{sessionID}/message"
 }

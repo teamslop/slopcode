@@ -1100,6 +1100,7 @@ export class Session2 extends HeyApiClient {
       directory?: string
       roots?: boolean
       start?: number
+      cursor?: number
       search?: string
       limit?: number
     },
@@ -1113,6 +1114,7 @@ export class Session2 extends HeyApiClient {
             { in: "query", key: "directory" },
             { in: "query", key: "roots" },
             { in: "query", key: "start" },
+            { in: "query", key: "cursor" },
             { in: "query", key: "search" },
             { in: "query", key: "limit" },
           ],
@@ -1596,6 +1598,7 @@ export class Session2 extends HeyApiClient {
       sessionID: string
       directory?: string
       limit?: number
+      cursor?: number
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -1607,6 +1610,7 @@ export class Session2 extends HeyApiClient {
             { in: "path", key: "sessionID" },
             { in: "query", key: "directory" },
             { in: "query", key: "limit" },
+            { in: "query", key: "cursor" },
           ],
         },
       ],
