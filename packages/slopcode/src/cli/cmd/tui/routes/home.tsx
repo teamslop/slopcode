@@ -1,7 +1,8 @@
 import { Prompt, type PromptRef } from "@tui/component/prompt"
-import { createMemo, Match, onMount, Show, Switch } from "solid-js"
+import { createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { useKeybind } from "@tui/context/keybind"
+import { useSessionTabs } from "@tui/context/session-tabs"
 import { Logo } from "../component/logo"
 import { Tips } from "../component/tips"
 import { Locale } from "@/util/locale"
@@ -15,13 +16,14 @@ import { Installation } from "@/installation"
 import { useKV } from "../context/kv"
 import { useCommandDialog } from "../component/dialog-command"
 import { ShortcutHint } from "../ui/shortcut-hint"
+import { SessionStrip } from "./session/session-strip"
 
-// TODO: what is the best way to do this?
-let once = false
+let argsPromptSubmitted = false
 
 export function Home() {
   const sync = useSync()
   const kv = useKV()
+  const tabs = useSessionTabs()
   const { theme } = useTheme()
   const route = useRouteData("home")
   const promptRef = usePromptRef()
@@ -38,7 +40,6 @@ export function Home() {
   const isFirstTimeUser = createMemo(() => sync.data.session.length === 0)
   const tipsHidden = createMemo(() => kv.get("tips_hidden", false))
   const showTips = createMemo(() => {
-    // Don't show tips for first-time users
     if (isFirstTimeUser()) return false
     return !tipsHidden()
   })
@@ -88,20 +89,30 @@ export function Home() {
   let prompt: PromptRef
   const args = useArgs()
   onMount(() => {
-    if (once) return
+    const draft = tabs.draftPrompt()
+    if (draft) {
+      prompt.set(draft)
+      return
+    }
     if (route.initialPrompt) {
       prompt.set(route.initialPrompt)
-      once = true
-    } else if (args.prompt) {
-      prompt.set({ input: args.prompt, parts: [] })
-      once = true
-      prompt.submit()
+      return
     }
+    if (argsPromptSubmitted || !args.prompt) return
+    argsPromptSubmitted = true
+    prompt.set({ input: args.prompt, parts: [] })
+    prompt.submit()
+  })
+  onCleanup(() => {
+    if (!tabs.hasDraft()) return
+    if (!prompt) return
+    tabs.saveDraft(prompt.current)
   })
   const directory = useDirectory()
 
   return (
     <>
+      <SessionStrip />
       <box flexGrow={1} alignItems="center" paddingLeft={2} paddingRight={2}>
         <box flexGrow={1} minHeight={0} />
         <box height={4} minHeight={0} flexShrink={1} />

@@ -4,7 +4,7 @@ import { Clipboard } from "@tui/util/clipboard"
 import { Selection } from "@tui/util/selection"
 import { MouseButton, TextAttributes } from "@opentui/core"
 import { RouteProvider, useRoute } from "@tui/context/route"
-import { SessionTabsProvider } from "@tui/context/session-tabs"
+import { SessionTabsProvider, useSessionTabs } from "@tui/context/session-tabs"
 import { SDKProvider, useSDK } from "@tui/context/sdk"
 import { SyncProvider, useSync } from "@tui/context/sync"
 import { DialogProvider, useDialog } from "@tui/ui/dialog"
@@ -219,6 +219,7 @@ function App() {
   const sync = useSync()
   const exit = useExit()
   const promptRef = usePromptRef()
+  const tabs = useSessionTabs()
 
   useKeyboard((evt) => {
     if (!Flag.SLOPCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
@@ -390,12 +391,8 @@ function App() {
       },
       onSelect: () => {
         const current = promptRef.current
-        // Don't require focus - if there's any text, preserve it
         const currentPrompt = current?.current?.input ? current.current : undefined
-        route.navigate({
-          type: "home",
-          initialPrompt: currentPrompt,
-        })
+        tabs.openDraft(currentPrompt)
         dialog.clear()
       },
     },

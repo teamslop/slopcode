@@ -5,6 +5,7 @@ import path from "path"
 import { Filesystem } from "@/util/filesystem"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
+import { useSessionTabs } from "@tui/context/session-tabs"
 import { EmptyBorder } from "@tui/component/border"
 import { useSDK } from "@tui/context/sdk"
 import { useRoute } from "@tui/context/route"
@@ -72,6 +73,7 @@ export function Prompt(props: PromptProps) {
   const local = useLocal()
   const sdk = useSDK()
   const route = useRoute()
+  const tabs = useSessionTabs()
   const sync = useSync()
   const dialog = useDialog()
   const toast = useToast()
@@ -706,6 +708,7 @@ export function Prompt(props: PromptProps) {
       promptModelWarning()
       return
     }
+    const draft = !props.sessionID && tabs.draftActive()
     const sessionID = props.sessionID
       ? props.sessionID
       : await (async () => {
@@ -817,6 +820,15 @@ export function Prompt(props: PromptProps) {
     // temporary hack to make sure the message is sent
     if (!props.sessionID)
       setTimeout(() => {
+        if (draft) {
+          tabs.promoteDraft(sessionID)
+          route.navigate({
+            type: "session",
+            sessionID,
+            source: "switch",
+          })
+          return
+        }
         route.navigate({
           type: "session",
           sessionID,
