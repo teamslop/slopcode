@@ -1486,7 +1486,7 @@ export type Config = {
      */
     min_prefix_chars?: number
     /**
-     * Timeout in milliseconds for autocomplete requests (default: 2000)
+     * Timeout in milliseconds for autocomplete requests (default: 4000)
      */
     timeout_ms?: number
     /**

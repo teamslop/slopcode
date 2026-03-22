@@ -171,6 +171,55 @@ test("loads legacy global opencode config directory", async () => {
   })
 })
 
+test("writes global updates to slopcode config without mutating legacy opencode config", async () => {
+  await using tmp = await tmpdir({
+    init: async () => {
+      for (const file of ["slopcode.jsonc", "slopcode.json", "config.json", "opencode.json", "opencode.jsonc"]) {
+        await fs.rm(path.join(Global.Path.config, file), { force: true }).catch(() => {})
+      }
+      await fs.mkdir(legacyGlobalConfigDir, { recursive: true })
+      await Filesystem.write(
+        path.join(legacyGlobalConfigDir, "opencode.json"),
+        JSON.stringify({
+          $schema: "https://opencode.ai/config.json",
+          model: "global/legacy",
+          username: "global-legacy-user",
+        }),
+      )
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      Config.global.reset()
+      const legacyPath = path.join(legacyGlobalConfigDir, "opencode.json")
+      const legacyBefore = await Filesystem.readText(legacyPath)
+
+      await Config.updateGlobal({
+        autocomplete: {
+          provider_model_overrides: {
+            openai: "codex-mini-latest",
+          },
+        },
+      })
+
+      const legacyAfter = await Filesystem.readText(legacyPath)
+      expect(legacyAfter).toBe(legacyBefore)
+
+      const modernPath = path.join(Global.Path.config, "slopcode.jsonc")
+      expect(await Filesystem.exists(modernPath)).toBe(true)
+
+      const modern = JSON.parse(await Filesystem.readText(modernPath))
+      expect(modern.autocomplete?.provider_model_overrides?.openai).toBe("codex-mini-latest")
+
+      const global = await Config.getGlobal()
+      expect(global.model).toBe("global/legacy")
+      expect(global.autocomplete?.provider_model_overrides?.openai).toBe("codex-mini-latest")
+    },
+  })
+})
+
 test("ignores legacy tui keys in slopcode config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

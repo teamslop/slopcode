@@ -1187,7 +1187,7 @@ export namespace Config {
             .int()
             .positive()
             .optional()
-            .describe("Timeout in milliseconds for autocomplete requests (default: 2000)"),
+            .describe("Timeout in milliseconds for autocomplete requests (default: 4000)"),
           max_output_tokens: z
             .number()
             .int()
@@ -1383,11 +1383,11 @@ export namespace Config {
   }
 
   function globalConfigFile() {
-    const legacyDir = path.join(path.dirname(Global.Path.config), product.legacy_id)
-    const candidates = [
-      ...product.config.global_files.map((file) => path.join(Global.Path.config, file)),
-      ...product.config.global_files.map((file) => path.join(legacyDir, file)),
-    ]
+    // Legacy OpenCode config is read-only for compatibility.
+    // New writes should always target SlopCode-owned paths.
+    const candidates = product.config.global_files
+      .filter((file) => !file.startsWith(product.legacy_id))
+      .map((file) => path.join(Global.Path.config, file))
     for (const file of candidates) {
       if (existsSync(file)) return file
     }
