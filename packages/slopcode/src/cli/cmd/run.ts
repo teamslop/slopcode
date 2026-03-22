@@ -502,7 +502,7 @@ export const RunCommand = cmd({
                 continue
               }
               UI.empty()
-              UI.println(text)
+              UI.println(await UI.markdown(text))
               UI.empty()
             }
 

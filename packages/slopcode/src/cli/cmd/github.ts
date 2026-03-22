@@ -887,7 +887,7 @@ export const GithubRunCommand = cmd({
 
             if (part.time?.end) {
               UI.empty()
-              UI.println(UI.markdown(text))
+              UI.println(await UI.markdown(text))
               UI.empty()
               text = ""
               return

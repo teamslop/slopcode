@@ -21,7 +21,6 @@ import { selectedForeground, tint, useTheme } from "@tui/context/theme"
 import {
   BoxRenderable,
   ScrollBoxRenderable,
-  addDefaultParsers,
   MacOSScrollAccel,
   type ScrollAcceleration,
   TextAttributes,
@@ -63,7 +62,6 @@ import { DialogSessionRename } from "../../component/dialog-session-rename"
 import { Sidebar } from "./sidebar"
 import { Flag } from "@/flag/flag"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
-import parsers from "../../../../../../parsers-config.ts"
 import { Clipboard } from "../../util/clipboard"
 import { Toast, useToast } from "../../ui/toast"
 import { useKV } from "../../context/kv.tsx"
@@ -79,9 +77,12 @@ import { QuestionPrompt } from "./question"
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
+import { ensureDefaultParsers } from "@/cli/render/parsers"
+import { segmentRichText } from "@/cli/render/segment"
+import { RichSegments } from "@/cli/render/tui"
 import { useTuiConfig } from "../../context/tui-config"
 
-addDefaultParsers(parsers.parsers)
+ensureDefaultParsers()
 
 const CUSTOM_TOOL_PARTS = new Set([
   "bash",
@@ -1892,7 +1893,8 @@ function UserMessage(props: {
   const text = createMemo(() => props.parts.flatMap((x) => (x.type === "text" && !x.synthetic ? [x] : []))[0])
   const files = createMemo(() => props.parts.flatMap((x) => (x.type === "file" ? [x] : [])))
   const sync = useSync()
-  const { theme } = useTheme()
+  const { theme, syntax } = useTheme()
+  const segments = createMemo(() => segmentRichText(text()?.text ?? ""))
   const [hover, setHover] = createSignal(false)
   const queued = createMemo(() => props.pending && props.message.id > props.pending)
   const color = createMemo(() => local.agent.color(props.message.agent))
@@ -1927,7 +1929,7 @@ function UserMessage(props: {
             backgroundColor={hover() ? theme.backgroundElement : theme.backgroundPanel}
             flexShrink={0}
           >
-            <text fg={theme.text}>{text()?.text}</text>
+            <RichSegments conceal={ctx.conceal()} segments={segments()} syntaxStyle={syntax()} text={theme.text} />
             <Show when={files().length}>
               <box flexDirection="row" paddingBottom={metadataVisible() ? 1 : 0} paddingTop={1} gap={1} flexWrap="wrap">
                 <For each={files()}>
@@ -2124,6 +2126,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
   const ctx = use()
   const { theme, syntax } = useTheme()
   const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
+  const segments = createMemo(() => segmentRichText(props.part.text.trim()))
   return (
     <Show when={props.part.text.trim()}>
       <box
@@ -2136,27 +2139,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
         borderColor={selected() ? theme.textMuted : theme.background}
         backgroundColor={selected() ? theme.backgroundElement : undefined}
       >
-        <Switch>
-          <Match when={Flag.SLOPCODE_EXPERIMENTAL_MARKDOWN}>
-            <markdown
-              syntaxStyle={syntax()}
-              streaming={true}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-            />
-          </Match>
-          <Match when={!Flag.SLOPCODE_EXPERIMENTAL_MARKDOWN}>
-            <code
-              filetype="markdown"
-              drawUnstyledText={false}
-              streaming={true}
-              syntaxStyle={syntax()}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.text}
-            />
-          </Match>
-        </Switch>
+        <RichSegments conceal={ctx.conceal()} segments={segments()} syntaxStyle={syntax()} text={theme.text} />
       </box>
     </Show>
   )
@@ -2505,7 +2488,7 @@ function ExpandableOutputTool(props: {
 }
 
 function Bash(props: ToolProps<typeof BashTool>) {
-  const { theme } = useTheme()
+  const { theme, syntax } = useTheme()
   const ctx = use()
   const sync = useSync()
   const isRunning = createMemo(() => props.part.state.status === "running")
@@ -2517,6 +2500,8 @@ function Bash(props: ToolProps<typeof BashTool>) {
     if (expanded() || !overflow()) return output()
     return [...list().slice(0, BASH_EXPAND_LINES), "…"].join("\n")
   })
+  const commandSegments = createMemo(() => segmentRichText(`$ ${props.input.command ?? ""}`))
+  const outputSegments = createMemo(() => segmentRichText(limited()))
 
   const workdirDisplay = createMemo(() => {
     const workdir = props.input.workdir
@@ -2552,10 +2537,20 @@ function Bash(props: ToolProps<typeof BashTool>) {
           spinner={isRunning()}
           onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
         >
-          <box gap={1}>
-            <text fg={theme.text}>$ {props.input.command}</text>
+          <box gap={1} flexDirection="column">
+            <RichSegments
+              conceal={ctx.conceal()}
+              segments={commandSegments()}
+              syntaxStyle={syntax()}
+              text={theme.text}
+            />
             <Show when={output()}>
-              <text fg={theme.text}>{limited()}</text>
+              <RichSegments
+                conceal={ctx.conceal()}
+                segments={outputSegments()}
+                syntaxStyle={syntax()}
+                text={theme.text}
+              />
             </Show>
             <Show when={overflow()}>
               <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
