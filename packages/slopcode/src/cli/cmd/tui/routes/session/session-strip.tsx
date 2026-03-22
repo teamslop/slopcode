@@ -30,7 +30,7 @@ export function SessionStrip() {
   return (
     <Show when={tabs.visible()}>
       <box flexShrink={0} backgroundColor={theme.backgroundPanel} border={["bottom"]} borderColor={theme.border}>
-        <box flexDirection="row" paddingTop={1} paddingBottom={1} paddingLeft={2} paddingRight={2}>
+        <box flexDirection="row" paddingLeft={2} paddingRight={2}>
           <For each={layout().tabs}>
             {(tab, index) => {
               const active = () => tabs.active() === tab.id
