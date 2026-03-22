@@ -1,16 +1,14 @@
 import { render, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { batch, createEffect, createSignal, ErrorBoundary, Match, on, onMount, Switch, untrack } from "solid-js"
 import { Clipboard } from "@tui/util/clipboard"
 import { Selection } from "@tui/util/selection"
 import { MouseButton, TextAttributes } from "@opentui/core"
 import { RouteProvider, useRoute } from "@tui/context/route"
-import { Switch, Match, createEffect, untrack, ErrorBoundary, createSignal, onMount, batch, Show, on } from "solid-js"
-import { win32DisableProcessedInput, win32FlushInputBuffer, win32InstallCtrlCGuard } from "./win32"
-import { Installation } from "@/installation"
-import { Flag } from "@/flag/flag"
-import { DialogProvider, useDialog } from "@tui/ui/dialog"
-import { DialogProvider as DialogProviderList } from "@tui/component/dialog-provider"
+import { SessionTabsProvider } from "@tui/context/session-tabs"
 import { SDKProvider, useSDK } from "@tui/context/sdk"
 import { SyncProvider, useSync } from "@tui/context/sync"
+import { DialogProvider, useDialog } from "@tui/ui/dialog"
+
 import { LocalProvider, useLocal } from "@tui/context/local"
 import { DialogModel, useConnected } from "@tui/component/dialog-model"
 import { DialogModelCompletion } from "@tui/component/dialog-model-completion"
@@ -20,6 +18,7 @@ import { DialogThemeList } from "@tui/component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogAgent } from "@tui/component/dialog-agent"
+import { DialogProvider as DialogProviderList } from "@tui/component/dialog-provider"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
 import { KeybindProvider } from "@tui/context/keybind"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
@@ -40,6 +39,9 @@ import { writeHeapSnapshot } from "v8"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { TuiConfigProvider } from "./context/tui-config"
 import { TuiConfig } from "@/config/tui"
+import { Flag } from "@/flag/flag"
+import { Installation } from "@/installation"
+import { win32DisableProcessedInput, win32FlushInputBuffer, win32InstallCtrlCGuard } from "./win32"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   // can't set raw mode if not a TTY
@@ -150,25 +152,27 @@ export function tui(input: {
                           events={input.events}
                         >
                           <SyncProvider>
-                            <ThemeProvider mode={mode}>
-                              <LocalProvider>
-                                <KeybindProvider>
-                                  <PromptStashProvider>
-                                    <DialogProvider>
-                                      <CommandProvider>
-                                        <FrecencyProvider>
-                                          <PromptHistoryProvider>
-                                            <PromptRefProvider>
-                                              <App />
-                                            </PromptRefProvider>
-                                          </PromptHistoryProvider>
-                                        </FrecencyProvider>
-                                      </CommandProvider>
-                                    </DialogProvider>
-                                  </PromptStashProvider>
-                                </KeybindProvider>
-                              </LocalProvider>
-                            </ThemeProvider>
+                            <SessionTabsProvider>
+                              <ThemeProvider mode={mode}>
+                                <LocalProvider>
+                                  <KeybindProvider>
+                                    <PromptStashProvider>
+                                      <DialogProvider>
+                                        <CommandProvider>
+                                          <FrecencyProvider>
+                                            <PromptHistoryProvider>
+                                              <PromptRefProvider>
+                                                <App />
+                                              </PromptRefProvider>
+                                            </PromptHistoryProvider>
+                                          </FrecencyProvider>
+                                        </CommandProvider>
+                                      </DialogProvider>
+                                    </PromptStashProvider>
+                                  </KeybindProvider>
+                                </LocalProvider>
+                              </ThemeProvider>
+                            </SessionTabsProvider>
                           </SyncProvider>
                         </SDKProvider>
                       </TuiConfigProvider>
@@ -302,6 +306,7 @@ function App() {
         route.navigate({
           type: "session",
           sessionID: args.sessionID,
+          source: "switch",
         })
       }
     })
@@ -319,13 +324,13 @@ function App() {
       if (args.fork) {
         sdk.client.session.fork({ sessionID: match }).then((result) => {
           if (result.data?.id) {
-            route.navigate({ type: "session", sessionID: result.data.id })
+            route.navigate({ type: "session", sessionID: result.data.id, source: "new" })
           } else {
             toast.show({ message: "Failed to fork session", variant: "error" })
           }
         })
       } else {
-        route.navigate({ type: "session", sessionID: match })
+        route.navigate({ type: "session", sessionID: match, source: "switch" })
       }
     }
   })
@@ -339,7 +344,7 @@ function App() {
     forked = true
     sdk.client.session.fork({ sessionID: args.sessionID }).then((result) => {
       if (result.data?.id) {
-        route.navigate({ type: "session", sessionID: result.data.id })
+        route.navigate({ type: "session", sessionID: result.data.id, source: "new" })
       } else {
         toast.show({ message: "Failed to fork session", variant: "error" })
       }
@@ -699,6 +704,7 @@ function App() {
     route.navigate({
       type: "session",
       sessionID: evt.properties.sessionID,
+      source: "switch",
     })
   })
 

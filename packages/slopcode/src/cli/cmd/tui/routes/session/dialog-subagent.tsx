@@ -16,6 +16,7 @@ export function DialogSubagent(props: { sessionID: string }) {
             route.navigate({
               type: "session",
               sessionID: props.sessionID,
+              source: "child",
             })
             dialog.clear()
           },

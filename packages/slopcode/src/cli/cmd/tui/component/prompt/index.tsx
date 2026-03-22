@@ -820,6 +820,7 @@ export function Prompt(props: PromptProps) {
         route.navigate({
           type: "session",
           sessionID,
+          source: "new",
         })
       }, 50)
     input.clear()

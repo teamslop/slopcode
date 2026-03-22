@@ -77,6 +77,7 @@ export function DialogSessionList() {
         route.navigate({
           type: "session",
           sessionID: option.value,
+          source: "switch",
         })
         dialog.clear()
       }}
