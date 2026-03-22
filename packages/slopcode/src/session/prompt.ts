@@ -32,6 +32,7 @@ import { ulid } from "ulid"
 import { spawn } from "child_process"
 import { Command } from "../command"
 import { $, fileURLToPath, pathToFileURL } from "bun"
+import { Config } from "@/config/config"
 import { ConfigMarkdown } from "../config/markdown"
 import { SessionSummary } from "./summary"
 import { NamedError } from "@slopcode-ai/util/error"
@@ -62,18 +63,22 @@ const STRUCTURED_OUTPUT_SYSTEM_PROMPT = `IMPORTANT: The user has requested struc
 export namespace SessionPrompt {
   const log = Log.create({ service: "session.prompt" })
 
+  type Waiter = {
+    resolve(input: MessageV2.WithParts): void
+    reject(reason?: any): void
+  }
+
+  type Entry = {
+    abort: AbortController
+    callbacks: Waiter[]
+    current?: string
+    queued: string[]
+    waiters: Record<string, Waiter[]>
+  }
+
   const state = Instance.state(
     () => {
-      const data: Record<
-        string,
-        {
-          abort: AbortController
-          callbacks: {
-            resolve(input: MessageV2.WithParts): void
-            reject(reason?: any): void
-          }[]
-        }
-      > = {}
+      const data: Record<string, Entry> = {}
       return data
     },
     async (current) => {
@@ -181,7 +186,18 @@ export namespace SessionPrompt {
       return message
     }
 
-    return loop({ sessionID: input.sessionID })
+    const mode = await queueMode()
+    const existing = state()[input.sessionID]
+    if (existing) {
+      if (mode === "serial") {
+        existing.queued.push(message.info.id)
+        return waitForPrompt(input.sessionID, message.info.id)
+      }
+      return waitForLoop(input.sessionID)
+    }
+
+    activate(input.sessionID, message.info.id)
+    return loop({ sessionID: input.sessionID, resume_existing: true })
   })
 
   export async function resolvePromptParts(template: string): Promise<PromptInput["parts"]> {
@@ -235,15 +251,48 @@ export namespace SessionPrompt {
     return parts
   }
 
+  async function queueMode() {
+    return (await Config.get()).queue_mode
+  }
+
+  function ensure(sessionID: string) {
+    const s = state()
+    const match = s[sessionID]
+    if (match) return match
+    const next: Entry = {
+      abort: new AbortController(),
+      callbacks: [],
+      queued: [],
+      waiters: {},
+    }
+    s[sessionID] = next
+    return next
+  }
+
+  function waitForLoop(sessionID: string) {
+    return new Promise<MessageV2.WithParts>((resolve, reject) => {
+      ensure(sessionID).callbacks.push({ resolve, reject })
+    })
+  }
+
+  function waitForPrompt(sessionID: string, messageID: string) {
+    return new Promise<MessageV2.WithParts>((resolve, reject) => {
+      const entry = ensure(sessionID)
+      entry.waiters[messageID] ??= []
+      entry.waiters[messageID].push({ resolve, reject })
+    })
+  }
+
+  function activate(sessionID: string, messageID: string) {
+    const entry = ensure(sessionID)
+    entry.current = messageID
+    return entry.abort.signal
+  }
+
   function start(sessionID: string) {
     const s = state()
     if (s[sessionID]) return
-    const controller = new AbortController()
-    s[sessionID] = {
-      abort: controller,
-      callbacks: [],
-    }
-    return controller.signal
+    return ensure(sessionID).abort.signal
   }
 
   function resume(sessionID: string) {
@@ -261,7 +310,17 @@ export namespace SessionPrompt {
       SessionStatus.set(sessionID, { type: "idle" })
       return
     }
+    const reason = new DOMException("Aborted", "AbortError")
     match.abort.abort()
+    for (const callback of match.callbacks.splice(0)) {
+      callback.reject(reason)
+    }
+    for (const [id, waiters] of Object.entries(match.waiters)) {
+      delete match.waiters[id]
+      for (const waiter of waiters) {
+        waiter.reject(reason)
+      }
+    }
     delete s[sessionID]
     SessionStatus.set(sessionID, { type: "idle" })
     return
@@ -276,13 +335,14 @@ export namespace SessionPrompt {
 
     const abort = resume_existing ? resume(sessionID) : start(sessionID)
     if (!abort) {
-      return new Promise<MessageV2.WithParts>((resolve, reject) => {
-        const callbacks = state()[sessionID].callbacks
-        callbacks.push({ resolve, reject })
-      })
+      return waitForLoop(sessionID)
     }
 
-    using _ = defer(() => cancel(sessionID))
+    const mode = await queueMode()
+    const entry = state()[sessionID]
+    if (entry && !entry.current && entry.queued.length > 0) {
+      entry.current = entry.queued.shift()
+    }
 
     // Structured output state
     // Note: On session resumption, state is reset but outputFormat is preserved
@@ -295,7 +355,7 @@ export namespace SessionPrompt {
       SessionStatus.set(sessionID, { type: "busy" })
       log.info("loop", { step, sessionID })
       if (abort.aborted) break
-      let msgs = await MessageV2.filterCompacted(MessageV2.stream(sessionID))
+      let msgs = filterQueuedMessages(await MessageV2.filterCompacted(MessageV2.stream(sessionID)), state()[sessionID])
 
       let lastUser: MessageV2.User | undefined
       let lastAssistant: MessageV2.Assistant | undefined
@@ -623,7 +683,7 @@ export namespace SessionPrompt {
       }
 
       // Ephemerally wrap queued user messages with a reminder to stay on track
-      if (step > 1 && lastFinished) {
+      if (mode === "injection" && step > 1 && lastFinished) {
         for (const msg of msgs) {
           if (msg.info.role !== "user" || msg.info.id <= lastFinished.id) continue
           for (const part of msg.parts) {
@@ -708,15 +768,36 @@ export namespace SessionPrompt {
       continue
     }
     SessionCompaction.prune({ sessionID })
-    for await (const item of MessageV2.stream(sessionID)) {
-      if (item.info.role === "user") continue
-      const queued = state()[sessionID]?.callbacks ?? []
-      for (const q of queued) {
-        q.resolve(item)
-      }
-      return item
+    const item = await latestAssistant(sessionID)
+    if (!item) throw new Error("Impossible")
+
+    const current = state()[sessionID]
+    if (!current) return item
+
+    for (const callback of current.callbacks.splice(0)) {
+      callback.resolve(item)
     }
-    throw new Error("Impossible")
+
+    if (mode === "serial" && current.current) {
+      const waiters = current.waiters[current.current] ?? []
+      delete current.waiters[current.current]
+      for (const waiter of waiters) {
+        waiter.resolve(item)
+      }
+      current.current = undefined
+
+      if (current.queued.length > 0) {
+        current.current = current.queued.shift()
+        void loop({ sessionID, resume_existing: true }).catch((error) => {
+          log.error("failed to continue queued prompt", { sessionID, error })
+          cancel(sessionID)
+        })
+        return item
+      }
+    }
+
+    cancel(sessionID)
+    return item
   })
 
   async function lastModel(sessionID: string) {
@@ -724,6 +805,19 @@ export namespace SessionPrompt {
       if (item.info.role === "user" && item.info.model) return item.info.model
     }
     return Provider.defaultModel()
+  }
+
+  async function latestAssistant(sessionID: string) {
+    for await (const item of MessageV2.stream(sessionID)) {
+      if (item.info.role === "user") continue
+      return item
+    }
+  }
+
+  function filterQueuedMessages(messages: MessageV2.WithParts[], entry: Entry | undefined) {
+    if (!entry || entry.queued.length === 0) return messages
+    const queued = new Set(entry.queued)
+    return messages.filter((msg) => msg.info.role !== "user" || !queued.has(msg.info.id))
   }
 
   /** @internal Exported for testing */
@@ -1473,12 +1567,11 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     }
 
     using _ = defer(() => {
-      // If no queued callbacks, cancel (the default)
-      const callbacks = state()[input.sessionID]?.callbacks ?? []
-      if (callbacks.length === 0) {
+      const entry = state()[input.sessionID]
+      const hasQueuedWork = !!entry && (entry.callbacks.length > 0 || entry.queued.length > 0)
+      if (!hasQueuedWork) {
         cancel(input.sessionID)
       } else {
-        // Otherwise, trigger the session loop to process queued items
         loop({ sessionID: input.sessionID, resume_existing: true }).catch((error) => {
           log.error("session loop failed to resume after shell command", { sessionID: input.sessionID, error })
         })

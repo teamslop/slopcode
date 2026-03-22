@@ -498,6 +498,22 @@ For example, to ensure that the `edit` and `bash` tools require user approval:
 
 ---
 
+### `queue_mode`
+
+Choose how SlopCode handles follow-up prompts while a run is still active.
+
+```json title="slopcode.json"
+{
+  "$schema": "https://slopcode.dev/config.json",
+  "queue_mode": "serial"
+}
+```
+
+- `serial` - Default mode. Follow-up prompts wait until the current execution fully finishes before starting.
+- `injection` - Preserves the existing behavior. Follow-up prompts are injected into the active execution loop.
+
+---
+
 ### Compaction
 
 You can control context compaction behavior through the `compaction` option.

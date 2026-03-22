@@ -288,6 +288,60 @@ test("parses experimental.hashline_edit and experimental.hashline_autocorrect", 
   })
 })
 
+test("defaults queue_mode to serial and accepts explicit override", async () => {
+  await using defaults = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://slopcode.dev/config.json",
+      })
+    },
+  })
+  await Instance.provide({
+    directory: defaults.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.queue_mode).toBe("serial")
+    },
+  })
+
+  await using injection = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://slopcode.dev/config.json",
+        queue_mode: "injection",
+      })
+    },
+  })
+  await Instance.provide({
+    directory: injection.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.queue_mode).toBe("injection")
+    },
+  })
+})
+
+test("rejects invalid queue_mode", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Filesystem.write(
+        path.join(dir, "slopcode.json"),
+        JSON.stringify({
+          $schema: "https://slopcode.dev/config.json",
+          queue_mode: "parallel",
+        }),
+      )
+    },
+  })
+
+  await expect(
+    Instance.provide({
+      directory: tmp.path,
+      fn: async () => Config.get(),
+    }),
+  ).rejects.toThrow(/ConfigInvalidError/)
+})
+
 test("merges multiple config files with correct precedence", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

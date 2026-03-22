@@ -1,14 +1,72 @@
 import path from "path"
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, mock, spyOn, test } from "bun:test"
 import { fileURLToPath } from "url"
 import { Instance } from "../../src/project/instance"
 import { Session } from "../../src/session"
 import { MessageV2 } from "../../src/session/message-v2"
 import { SessionPrompt } from "../../src/session/prompt"
+import { LLM } from "../../src/session/llm"
 import { Log } from "../../src/util/log"
 import { tmpdir } from "../fixture/fixture"
 
 Log.init({ print: false })
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve
+    reject = nextReject
+  })
+  return { promise, resolve, reject }
+}
+
+function stream(input: { text: string; finishReason: string; wait?: Promise<void> }) {
+  return {
+    fullStream: (async function* () {
+      yield { type: "start" }
+      yield { type: "text-start", id: "txt-0" }
+      if (input.wait) await input.wait
+      if (input.text) {
+        yield { type: "text-delta", id: "txt-0", text: input.text }
+      }
+      yield { type: "text-end", id: "txt-0" }
+      yield {
+        type: "finish-step",
+        finishReason: input.finishReason,
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          reasoningTokens: 0,
+          cachedInputTokens: 0,
+        },
+        providerMetadata: {},
+      }
+      yield { type: "finish" }
+    })(),
+  } as unknown as Awaited<ReturnType<typeof LLM.stream>>
+}
+
+async function eventually(check: () => boolean | Promise<boolean>, timeout = 5000) {
+  const start = Date.now()
+  while (Date.now() - start < timeout) {
+    if (await check()) return
+    await Bun.sleep(20)
+  }
+  throw new Error("condition not met")
+}
+
+function text(result: MessageV2.WithParts) {
+  return result.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("\n")
+}
+
+afterEach(() => {
+  mock.restore()
+})
 
 describe("session.prompt missing file", () => {
   test("does not fail the prompt when a file part is missing", async () => {
@@ -207,5 +265,145 @@ describe("session.prompt agent variant", () => {
       if (prev === undefined) delete process.env.OPENAI_API_KEY
       else process.env.OPENAI_API_KEY = prev
     }
+  })
+})
+
+describe("session.prompt queue mode", () => {
+  test("serial waits to process follow-up prompts until current execution completes", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        queue_mode: "serial",
+        agent: {
+          build: {
+            model: "slopcode/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "Queue Test" })
+        const gate = deferred<void>()
+        const seen: string[] = []
+        let calls = 0
+
+        spyOn(LLM, "stream").mockImplementation(async (input) => {
+          calls++
+          seen.push(JSON.stringify(input.messages))
+          if (calls === 1) {
+            return stream({ text: "working", finishReason: "tool-calls", wait: gate.promise })
+          }
+          if (calls === 2) {
+            return stream({ text: "first done", finishReason: "stop" })
+          }
+          if (calls === 3) {
+            return stream({ text: "second done", finishReason: "stop" })
+          }
+          throw new Error(`unexpected llm call ${calls}`)
+        })
+
+        const first = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "first prompt" }],
+        })
+
+        await eventually(() => calls === 1)
+
+        const second = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "second prompt" }],
+        })
+
+        await eventually(async () => {
+          const messages = await Session.messages({ sessionID: session.id })
+          return messages.filter((msg) => msg.info.role === "user").length === 2
+        })
+
+        gate.resolve()
+
+        const firstResult = await first
+        const secondResult = await second
+
+        expect(calls).toBe(3)
+        expect(seen[1]).not.toContain("second prompt")
+        expect(seen[2]).toContain("second prompt")
+        expect(text(firstResult)).toContain("first done")
+        expect(text(secondResult)).toContain("second done")
+
+        await Session.remove(session.id)
+      },
+    })
+  })
+
+  test("injection preserves current follow-up prompt behavior", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        queue_mode: "injection",
+        agent: {
+          build: {
+            model: "slopcode/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "Queue Test" })
+        const gate = deferred<void>()
+        let calls = 0
+        let injected = ""
+
+        spyOn(LLM, "stream").mockImplementation(async (input) => {
+          calls++
+          if (calls === 1) {
+            return stream({ text: "working", finishReason: "tool-calls", wait: gate.promise })
+          }
+          if (calls === 2) {
+            injected = JSON.stringify(input.messages)
+            return stream({ text: "combined done", finishReason: "stop" })
+          }
+          throw new Error(`unexpected llm call ${calls}`)
+        })
+
+        const first = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "first prompt" }],
+        })
+
+        await eventually(() => calls === 1)
+
+        const second = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "second prompt" }],
+        })
+
+        await eventually(async () => {
+          const messages = await Session.messages({ sessionID: session.id })
+          return messages.filter((msg) => msg.info.role === "user").length === 2
+        })
+
+        gate.resolve()
+
+        const firstResult = await first
+        const secondResult = await second
+
+        expect(calls).toBe(2)
+        expect(injected).toContain("The user sent the following message:")
+        expect(injected).toContain("second prompt")
+        expect(firstResult.info.id).toBe(secondResult.info.id)
+
+        await Session.remove(session.id)
+      },
+    })
   })
 })

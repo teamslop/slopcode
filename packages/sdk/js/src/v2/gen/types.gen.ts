@@ -1458,6 +1458,10 @@ export type Config = {
      */
     url?: string
   }
+  /**
+   * How follow-up prompts are handled while a session is already running (default: serial)
+   */
+  queue_mode?: "serial" | "injection"
   compaction?: {
     /**
      * Enable automatic compaction when context is full (default: true)

@@ -232,6 +232,7 @@ export namespace Config {
       result.compaction = { ...result.compaction, prune: false }
     }
 
+    result.queue_mode ??= "serial"
     result.plugin = deduplicatePlugins(result.plugin ?? [])
 
     return {
@@ -1155,6 +1156,10 @@ export namespace Config {
           url: z.string().optional().describe("Enterprise URL"),
         })
         .optional(),
+      queue_mode: z
+        .enum(["serial", "injection"])
+        .optional()
+        .describe("How follow-up prompts are handled while a session is already running (default: serial)"),
       compaction: z
         .object({
           auto: z.boolean().optional().describe("Enable automatic compaction when context is full (default: true)"),
