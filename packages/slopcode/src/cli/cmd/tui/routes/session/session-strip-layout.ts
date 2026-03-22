@@ -6,17 +6,32 @@ export type SessionStripTab = {
 export type SessionStripLayout = {
   tabs: SessionStripTab[]
   hidden: number
+  underline: string
 }
 
 const SEP = " | "
 const ACTIVE = "* "
+const RULE = "─"
+const JOINT = "⏊"
+const SEP_MARK = (() => {
+  const index = SEP.indexOf("|")
+  return width(index === -1 ? SEP : SEP.slice(0, index))
+})()
 
 function width(text: string) {
   return Bun.stringWidth(text)
 }
 
+function item(tab: SessionStripTab, active: boolean) {
+  return (active ? ACTIVE : "") + tab.title
+}
+
+function parts(tabs: SessionStripTab[], active: string | undefined, hidden: number) {
+  return [...tabs.map((tab) => item(tab, tab.id === active)), ...(hidden > 0 ? [`+${hidden}`] : [])]
+}
+
 function tabWidth(tab: SessionStripTab, active: boolean) {
-  return width((active ? ACTIVE : "") + tab.title)
+  return width(item(tab, active))
 }
 
 function layoutWidth(tabs: SessionStripTab[], active: string | undefined, total: number) {
@@ -38,6 +53,33 @@ function layoutWidth(tabs: SessionStripTab[], active: string | undefined, total:
   }
 }
 
+function joints(tabs: SessionStripTab[], active: string | undefined, hidden: number) {
+  let offset = 0
+  return parts(tabs, active, hidden).flatMap((part, index) => {
+    if (index === 0) {
+      offset += width(part)
+      return []
+    }
+    const point = offset + SEP_MARK
+    offset += width(SEP) + width(part)
+    return [point]
+  })
+}
+
+function underline(width: number, points: number[]) {
+  const set = new Set(points)
+  return Array.from({ length: width }, (_, index) => (set.has(index) ? JOINT : RULE)).join("")
+}
+
+function result(tabs: SessionStripTab[], active: string | undefined, width: number, total: number): SessionStripLayout {
+  const hidden = total - tabs.length
+  return {
+    tabs,
+    hidden,
+    underline: underline(width, joints(tabs, active, hidden)),
+  }
+}
+
 export function layoutSessionStrip(
   tabs: SessionStripTab[],
   input: {
@@ -49,6 +91,7 @@ export function layoutSessionStrip(
     return {
       tabs: [],
       hidden: tabs.length,
+      underline: "",
     }
   }
 
@@ -60,10 +103,7 @@ export function layoutSessionStrip(
       if (layoutWidth(next, input.active, tabs.length).width > input.width) break
       best = next
     }
-    return {
-      tabs: best,
-      hidden: tabs.length - best.length,
-    }
+    return result(best, input.active, input.width, tabs.length)
   }
 
   let best = [tabs[active]]
@@ -82,10 +122,7 @@ export function layoutSessionStrip(
     }
   }
 
-  return {
-    tabs: best,
-    hidden: tabs.length - best.length,
-  }
+  return result(best, input.active, input.width, tabs.length)
 }
 
 export const SessionStripText = {

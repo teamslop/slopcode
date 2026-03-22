@@ -29,7 +29,7 @@ export function SessionStrip() {
 
   return (
     <Show when={tabs.visible()}>
-      <box flexShrink={0} backgroundColor={theme.backgroundPanel} border={["bottom"]} borderColor={theme.border}>
+      <box flexShrink={0} backgroundColor={theme.backgroundPanel}>
         <box flexDirection="row" paddingLeft={2} paddingRight={2}>
           <For each={layout().tabs}>
             {(tab, index) => {
@@ -63,6 +63,11 @@ export function SessionStrip() {
               fg={theme.textMuted}
             >{`${layout().tabs.length > 0 ? SessionStripText.SEP : ""}+${layout().hidden}`}</text>
           </Show>
+        </box>
+        <box paddingLeft={2} paddingRight={2}>
+          <text fg={theme.border} wrapMode="none">
+            {layout().underline}
+          </text>
         </box>
       </box>
     </Show>

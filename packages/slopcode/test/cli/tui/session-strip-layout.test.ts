@@ -15,10 +15,9 @@ describe("session strip layout", () => {
       width: 80,
     })
 
-    expect(result).toEqual({
-      tabs,
-      hidden: 0,
-    })
+    expect(result.tabs).toEqual(tabs)
+    expect(result.hidden).toBe(0)
+    expect(Array.from(result.underline)).toHaveLength(80)
   })
 
   test("keeps the active tab visible when width is tight", () => {
@@ -37,10 +36,8 @@ describe("session strip layout", () => {
       width: 18,
     })
 
-    expect(result).toEqual({
-      tabs: [tabs[0], tabs[1]],
-      hidden: 2,
-    })
+    expect(result.tabs).toEqual([tabs[0], tabs[1]])
+    expect(result.hidden).toBe(2)
   })
 
   test("falls back to a prefix when active is missing", () => {
@@ -49,10 +46,8 @@ describe("session strip layout", () => {
       width: 14,
     })
 
-    expect(result).toEqual({
-      tabs: [tabs[0], tabs[1]],
-      hidden: 2,
-    })
+    expect(result.tabs).toEqual([tabs[0], tabs[1]])
+    expect(result.hidden).toBe(2)
   })
 
   test("returns no tabs when width is zero", () => {
@@ -64,6 +59,55 @@ describe("session strip layout", () => {
     expect(result).toEqual({
       tabs: [],
       hidden: 4,
+      underline: "",
     })
+  })
+
+  test("draws a joint under visible tab separators", () => {
+    const result = layoutSessionStrip(
+      [
+        { id: "a", title: "A" },
+        { id: "b", title: "B" },
+      ],
+      { width: 6 },
+    )
+
+    expect(result.tabs).toEqual([
+      { id: "a", title: "A" },
+      { id: "b", title: "B" },
+    ])
+    expect(result.hidden).toBe(0)
+    expect(Array.from(result.underline)).toEqual(["─", "─", "⏊", "─", "─", "─"])
+  })
+
+  test("keeps joints aligned when the active marker shifts tab text", () => {
+    const result = layoutSessionStrip(
+      [
+        { id: "a", title: "A" },
+        { id: "b", title: "B" },
+      ],
+      { active: "a", width: 8 },
+    )
+
+    expect(result.hidden).toBe(0)
+    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "⏊", "─", "─", "─"])
+  })
+
+  test("adds a joint before the overflow marker", () => {
+    const result = layoutSessionStrip(
+      [
+        { id: "a", title: "A" },
+        { id: "b", title: "B" },
+        { id: "c", title: "Long" },
+      ],
+      { width: 10 },
+    )
+
+    expect(result.tabs).toEqual([
+      { id: "a", title: "A" },
+      { id: "b", title: "B" },
+    ])
+    expect(result.hidden).toBe(1)
+    expect(Array.from(result.underline)).toEqual(["─", "─", "⏊", "─", "─", "─", "⏊", "─", "─", "─"])
   })
 })
