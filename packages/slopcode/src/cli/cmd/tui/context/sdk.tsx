@@ -2,6 +2,7 @@ import { createSlopcodeClient, type Event } from "@slopcode-ai/sdk/v2"
 import { createSimpleContext } from "./helper"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { batch, onCleanup, onMount } from "solid-js"
+import { nextSDKFlushDelay, queueSDKEvent } from "./sdk-event-queue"
 
 export type EventSource = {
   on: (handler: (event: Event) => void) => () => void
@@ -48,17 +49,20 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
     }
 
     const handleEvent = (event: Event) => {
-      queue.push(event)
-      const elapsed = Date.now() - last
+      queueSDKEvent(queue, event)
+      const delay = nextSDKFlushDelay({
+        event,
+        hasTimer: !!timer,
+        elapsed: Date.now() - last,
+      })
 
-      if (timer) return
-      // If we just flushed recently (within 16ms), batch this with future events
-      // Otherwise, process immediately to avoid latency
-      if (elapsed < 16) {
-        timer = setTimeout(flush, 16)
+      if (delay === undefined) return
+      if (timer) clearTimeout(timer)
+      if (delay === 0) {
+        flush()
         return
       }
-      flush()
+      timer = setTimeout(flush, delay)
     }
 
     onMount(async () => {
