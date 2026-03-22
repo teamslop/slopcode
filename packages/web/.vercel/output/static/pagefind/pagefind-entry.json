@@ -1,1 +1,24 @@
-{"version":"1.4.0","languages":{"pt-br":{"hash":"pt-br_b7aefc9d425e4","wasm":"pt-br","page_count":35},"bs":{"hash":"bs_1482d2fcf9","wasm":null,"page_count":35},"ja":{"hash":"ja_13b2ee8b5b","wasm":null,"page_count":35},"da":{"hash":"da_b32c3d21f9","wasm":"da","page_count":35},"th":{"hash":"th_f0707ebfb1","wasm":null,"page_count":35},"zh-tw":{"hash":"zh-tw_7692984568794","wasm":null,"page_count":35},"ru":{"hash":"ru_bcd46f1429","wasm":"ru","page_count":35},"fr":{"hash":"fr_f7d6514838","wasm":"fr","page_count":35},"en":{"hash":"en_49a1d462a9","wasm":"en","page_count":35},"it":{"hash":"it_46b76e6cbb","wasm":"it","page_count":35},"es":{"hash":"es_8155396ced","wasm":"es","page_count":35},"nb":{"hash":"nb_7a6d7ce1b8","wasm":"nb","page_count":35},"de":{"hash":"de_ece078dd41","wasm":"de","page_count":35},"pl":{"hash":"pl_a42c23aca2","wasm":null,"page_count":35},"zh-cn":{"hash":"zh-cn_9d843d6a223ad","wasm":null,"page_count":35},"ar":{"hash":"ar_5fc1cdd99e","wasm":"ar","page_count":35},"ko":{"hash":"ko_a0edc195c7","wasm":null,"page_count":35},"tr":{"hash":"tr_a2474d63f8","wasm":"tr","page_count":35}},"include_characters":["_","‿","⁀","⁔","︳","︴","﹍","﹎","﹏","＿"]}
+{
+  "version": "1.4.0",
+  "languages": {
+    "pt-br": { "hash": "pt-br_b7aefc9d425e4", "wasm": "pt-br", "page_count": 35 },
+    "bs": { "hash": "bs_1482d2fcf9", "wasm": null, "page_count": 35 },
+    "ja": { "hash": "ja_13b2ee8b5b", "wasm": null, "page_count": 35 },
+    "da": { "hash": "da_b32c3d21f9", "wasm": "da", "page_count": 35 },
+    "th": { "hash": "th_f0707ebfb1", "wasm": null, "page_count": 35 },
+    "zh-tw": { "hash": "zh-tw_7692984568794", "wasm": null, "page_count": 35 },
+    "ru": { "hash": "ru_bcd46f1429", "wasm": "ru", "page_count": 35 },
+    "fr": { "hash": "fr_f7d6514838", "wasm": "fr", "page_count": 35 },
+    "en": { "hash": "en_49a1d462a9", "wasm": "en", "page_count": 35 },
+    "it": { "hash": "it_46b76e6cbb", "wasm": "it", "page_count": 35 },
+    "es": { "hash": "es_8155396ced", "wasm": "es", "page_count": 35 },
+    "nb": { "hash": "nb_7a6d7ce1b8", "wasm": "nb", "page_count": 35 },
+    "de": { "hash": "de_ece078dd41", "wasm": "de", "page_count": 35 },
+    "pl": { "hash": "pl_a42c23aca2", "wasm": null, "page_count": 35 },
+    "zh-cn": { "hash": "zh-cn_9d843d6a223ad", "wasm": null, "page_count": 35 },
+    "ar": { "hash": "ar_5fc1cdd99e", "wasm": "ar", "page_count": 35 },
+    "ko": { "hash": "ko_a0edc195c7", "wasm": null, "page_count": 35 },
+    "tr": { "hash": "tr_a2474d63f8", "wasm": "tr", "page_count": 35 }
+  },
+  "include_characters": ["_", "‿", "⁀", "⁔", "︳", "︴", "﹍", "﹎", "﹏", "＿"]
+}
