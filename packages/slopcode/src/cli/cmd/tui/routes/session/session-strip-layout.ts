@@ -9,14 +9,12 @@ export type SessionStripLayout = {
   underline: string
 }
 
-const SEP = " | "
+const SEP_GLYPH = "│"
+const SEP = ` ${SEP_GLYPH} `
 const ACTIVE = "* "
 const RULE = "─"
-const JOINT = "⏊"
-const SEP_MARK = (() => {
-  const index = SEP.indexOf("|")
-  return width(index === -1 ? SEP : SEP.slice(0, index))
-})()
+const JOINT = "┴"
+const SEP_MARK = width(" ")
 
 function width(text: string) {
   return Bun.stringWidth(text)

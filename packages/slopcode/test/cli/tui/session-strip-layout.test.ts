@@ -77,7 +77,7 @@ describe("session strip layout", () => {
       { id: "b", title: "B" },
     ])
     expect(result.hidden).toBe(0)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "⏊", "─", "─", "─"])
+    expect(Array.from(result.underline)).toEqual(["─", "─", "┴", "─", "─", "─"])
   })
 
   test("keeps joints aligned when the active marker shifts tab text", () => {
@@ -90,7 +90,7 @@ describe("session strip layout", () => {
     )
 
     expect(result.hidden).toBe(0)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "⏊", "─", "─", "─"])
+    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "┴", "─", "─", "─"])
   })
 
   test("adds a joint before the overflow marker", () => {
@@ -108,6 +108,6 @@ describe("session strip layout", () => {
       { id: "b", title: "B" },
     ])
     expect(result.hidden).toBe(1)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "⏊", "─", "─", "─", "⏊", "─", "─", "─"])
+    expect(Array.from(result.underline)).toEqual(["─", "─", "┴", "─", "─", "─", "┴", "─", "─", "─"])
   })
 })
