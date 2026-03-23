@@ -3,6 +3,7 @@
 - The default branch in this repo is `dev`.
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
 - Prefer automation: execute requested actions without confirmation unless blocked by missing info or safety/irreversibility.
+- When publishing a release or npm package, update the GitHub release notes as part of the default flow and make sure the changelog is visible on `slopcode.dev` as well. Do not leave releases with placeholder notes; use concise highlights covering the shipped changes.
 
 ## Style Guide
 
