@@ -1,6 +1,9 @@
+export type SessionStripStatus = "none" | "working" | "done"
+
 export type SessionStripTab = {
   id: string
   title: string
+  status?: SessionStripStatus
 }
 
 export type SessionStripLayout = {
@@ -14,6 +17,7 @@ const SEP = ` ${SEP_GLYPH} `
 const ACTIVE = "* "
 const CLOSE = "X"
 const CLOSE_SLOT = ` ${CLOSE}`
+const STATUS_SLOT = "⬝⬝⬝ "
 const RULE = "─"
 const JOINT = "┴"
 const SEP_MARK = width(" ")
@@ -35,7 +39,7 @@ export function sessionStripTabClose(hovered: boolean) {
 }
 
 function tabWidth(tab: SessionStripTab, active: boolean) {
-  return width(item(tab, active) + CLOSE_SLOT)
+  return width(STATUS_SLOT + item(tab, active) + CLOSE_SLOT)
 }
 
 function layoutWidth(tabs: SessionStripTab[], active: string | undefined, total: number) {

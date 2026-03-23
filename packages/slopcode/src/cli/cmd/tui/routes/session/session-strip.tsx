@@ -1,6 +1,7 @@
 import { useTerminalDimensions } from "@opentui/solid"
 import { TextAttributes, type RGBA } from "@opentui/core"
 import { createMemo, createSignal, For, Show } from "solid-js"
+import "opentui-spinner/solid"
 import { useSessionTabs } from "@tui/context/session-tabs"
 import { useTheme } from "@tui/context/theme"
 import { Locale } from "@/util/locale"
@@ -11,6 +12,7 @@ import {
   SessionStripText,
   type SessionStripTab,
 } from "./session-strip-layout"
+import { createColors, createFrames } from "../../ui/spinner.ts"
 
 const MAX_TITLE = 15
 const HORIZONTAL_PADDING = 4
@@ -25,8 +27,10 @@ type SessionStripViewProps = {
     edge: RGBA
     hover: RGBA
     panel: RGBA
+    success: RGBA
     text: RGBA
     muted: RGBA
+    warning: RGBA
   }
   open(id: string): void
   close(id: string): void
@@ -37,6 +41,26 @@ export function SessionStripView(props: SessionStripViewProps) {
   const bg = (id: string) => (hover() === id ? props.colors.hover : props.colors.panel)
   const closeVisible = (id: string) => hover() === id
   const closeFg = (id: string) => (closeVisible(id) ? props.colors.text : props.colors.muted)
+  const spinnerDef = createMemo(() => ({
+    frames: createFrames({
+      color: props.colors.warning,
+      holdEnd: 2,
+      holdStart: 6,
+      inactiveFactor: 0.35,
+      minAlpha: 0.2,
+      style: "blocks",
+      width: 3,
+    }),
+    color: createColors({
+      color: props.colors.warning,
+      holdEnd: 2,
+      holdStart: 6,
+      inactiveFactor: 0.35,
+      minAlpha: 0.2,
+      style: "blocks",
+      width: 3,
+    }),
+  }))
 
   return (
     <box flexShrink={0} flexDirection="column" backgroundColor={props.colors.panel}>
@@ -57,7 +81,19 @@ export function SessionStripView(props: SessionStripViewProps) {
                   onMouseOver={() => setHover(tab.id)}
                   onMouseOut={() => setHover(undefined)}
                 >
-                  <box onMouseUp={() => props.open(tab.id)}>
+                  <box flexDirection="row" onMouseUp={() => props.open(tab.id)}>
+                    <box width={4}>
+                      <Show
+                        when={tab.status === "working"}
+                        fallback={
+                          <text fg={tab.status === "done" ? props.colors.success : props.colors.muted} wrapMode="none">
+                            {tab.status === "done" ? "•" : " "}
+                          </text>
+                        }
+                      >
+                        <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={60} />
+                      </Show>
+                    </box>
                     <text fg={fg()} attributes={active() ? TextAttributes.BOLD : undefined} wrapMode="none">
                       {sessionStripTabLabel(tab, active())}
                     </text>
@@ -103,6 +139,7 @@ export function SessionStrip() {
   const items = createMemo(() =>
     tabs.tabs().map((tab) => ({
       id: tab.id,
+      status: tab.status,
       title: Locale.truncate(tab.title, MAX_TITLE),
     })),
   )
@@ -117,8 +154,10 @@ export function SessionStrip() {
     edge: theme.border,
     hover: theme.backgroundElement,
     panel: theme.backgroundPanel,
+    success: theme.success,
     text: theme.text,
     muted: theme.textMuted,
+    warning: theme.warning,
   }))
 
   return (

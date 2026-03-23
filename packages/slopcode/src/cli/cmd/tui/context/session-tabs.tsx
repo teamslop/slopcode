@@ -79,20 +79,27 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
           return {
             id: tab.id,
             title: "New Session",
+            status: "none" as const,
           }
         }
 
         const session = sync.session.get(tab.id)
+        const current = sync.data.session_status?.[tab.id]
+        const fallback = sync.session.status(tab.id)
+        const working = current ? current.type !== "idle" : fallback === "working" || fallback === "compacting"
+        const done = !working && (sync.data.message[tab.id]?.length ?? 0) > 0
         if (tab.pendingTitle && (!session || SessionApi.isDefaultTitle(session.title))) {
           return {
             id: tab.id,
             title: "New Session",
+            status: done ? ("done" as const) : working ? ("working" as const) : ("none" as const),
           }
         }
 
         return {
           id: tab.id,
           title: session?.title ?? tab.id,
+          status: done ? ("done" as const) : working ? ("working" as const) : ("none" as const),
         }
       }),
     )

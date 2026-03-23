@@ -33,7 +33,7 @@ describe("session strip layout", () => {
   test("prefers a wider left-anchored window on ties", () => {
     const result = layoutSessionStrip(tabs, {
       active: "ses_2",
-      width: 20,
+      width: 28,
     })
 
     expect(result.tabs).toEqual([tabs[0], tabs[1]])
@@ -43,7 +43,7 @@ describe("session strip layout", () => {
   test("falls back to a prefix when active is missing", () => {
     const result = layoutSessionStrip(tabs, {
       active: "ses_missing",
-      width: 18,
+      width: 26,
     })
 
     expect(result.tabs).toEqual([tabs[0], tabs[1]])
@@ -69,7 +69,7 @@ describe("session strip layout", () => {
         { id: "a", title: "A" },
         { id: "b", title: "B" },
       ],
-      { width: 12 },
+      { width: 20 },
     )
 
     expect(result.tabs).toEqual([
@@ -77,7 +77,10 @@ describe("session strip layout", () => {
       { id: "b", title: "B" },
     ])
     expect(result.hidden).toBe(0)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "┴", "─", "─", "─", "─", "─", "┴", "─"])
+    expect(result.underline).toHaveLength(20)
+    expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
+    expect(result.underline[8]).toBe("┴")
+    expect(result.underline[18]).toBe("┴")
   })
 
   test("keeps joints aligned when the active marker shifts tab text", () => {
@@ -86,11 +89,14 @@ describe("session strip layout", () => {
         { id: "a", title: "A" },
         { id: "b", title: "B" },
       ],
-      { active: "a", width: 14 },
+      { active: "a", width: 22 },
     )
 
     expect(result.hidden).toBe(0)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "─", "─", "┴", "─", "─", "─", "─", "─", "┴", "─"])
+    expect(result.underline).toHaveLength(22)
+    expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
+    expect(result.underline[10]).toBe("┴")
+    expect(result.underline[20]).toBe("┴")
   })
 
   test("keeps the last tab closing divider before the overflow marker", () => {
@@ -100,7 +106,7 @@ describe("session strip layout", () => {
         { id: "b", title: "B" },
         { id: "c", title: "Long" },
       ],
-      { width: 14 },
+      { width: 22 },
     )
 
     expect(result.tabs).toEqual([
@@ -108,6 +114,9 @@ describe("session strip layout", () => {
       { id: "b", title: "B" },
     ])
     expect(result.hidden).toBe(1)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "┴", "─", "─", "─", "─", "─", "┴", "─", "─", "─"])
+    expect(result.underline).toHaveLength(22)
+    expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
+    expect(result.underline[8]).toBe("┴")
+    expect(result.underline[18]).toBe("┴")
   })
 })
