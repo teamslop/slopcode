@@ -1278,7 +1278,7 @@ export function Prompt(props: PromptProps) {
                 )}
               </Show>
             </box>
-            <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1}>
+            <box flexDirection="row" flexShrink={0} gap={1}>
               <text fg={highlight()}>
                 {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
               </text>
@@ -1298,32 +1298,6 @@ export function Prompt(props: PromptProps) {
               </Show>
             </box>
           </box>
-        </box>
-        <box
-          height={1}
-          border={["left"]}
-          borderColor={highlight()}
-          customBorderChars={{
-            ...EmptyBorder,
-            vertical: theme.backgroundElement.a !== 0 ? "╹" : " ",
-          }}
-        >
-          <box
-            height={1}
-            border={["bottom"]}
-            borderColor={theme.backgroundElement}
-            customBorderChars={
-              theme.backgroundElement.a !== 0
-                ? {
-                    ...EmptyBorder,
-                    horizontal: "▀",
-                  }
-                : {
-                    ...EmptyBorder,
-                    horizontal: " ",
-                  }
-            }
-          />
         </box>
         <box flexDirection="row" justifyContent="space-between" gap={chipGap()}>
           <Show when={status().type !== "idle"} fallback={<text />}>
@@ -1385,7 +1359,9 @@ export function Prompt(props: PromptProps) {
                     const retryText = () => {
                       const r = retry()
                       if (!r) return ""
-                      const baseMessage = compact() ? Locale.truncate(message() ?? "", tight() ? 18 : 28) : message() ?? ""
+                      const baseMessage = compact()
+                        ? Locale.truncate(message() ?? "", tight() ? 18 : 28)
+                        : (message() ?? "")
                       const truncatedHint = isTruncated() && !compact() ? " (click to expand)" : ""
                       const duration = formatDuration(seconds())
                       const retryInfo = compact()
