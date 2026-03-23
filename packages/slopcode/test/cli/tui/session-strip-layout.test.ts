@@ -196,6 +196,6 @@ describe("session strip layout", () => {
     })
 
     expect(segments.map((segment) => segment.text).join("")).toBe(result.underline)
-    expect(segments.map((segment) => segment.owners)).toEqual([["a"], ["a", "b"], ["b"], ["b"], []])
+    expect(segments.map((segment) => segment.owners)).toEqual([["a"], [], ["b"], [], []])
   })
 })

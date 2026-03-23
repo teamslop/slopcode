@@ -163,10 +163,10 @@ export function SessionStripView(props: SessionStripViewProps) {
           )}
         </Show>
       </box>
-      <box height={1} paddingLeft={2} paddingRight={2}>
+      <box height={1} flexDirection="row" paddingLeft={2} paddingRight={2}>
         <For each={props.underlineSegments}>
           {(segment) => (
-            <box backgroundColor={underlineBg(segment.owners)}>
+            <box flexShrink={0} backgroundColor={underlineBg(segment.owners)}>
               <text fg={props.colors.edge} wrapMode="none">
                 {segment.text}
               </text>

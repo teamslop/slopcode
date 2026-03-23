@@ -136,17 +136,17 @@ export function layoutSessionStripUnderlineSegments(
     ...(layout.before > 0
       ? [
           { width: width(PREV), owners: input.prevOwner ? [input.prevOwner] : [] },
-          { width: width(SEP), owners: [input.prevOwner, layout.tabs[0]?.id].filter((x): x is string => !!x) },
+          { width: width(SEP), owners: [] as string[] },
         ]
       : []),
-    ...layout.tabs.flatMap((tab, index) => [
+    ...layout.tabs.flatMap((tab) => [
       { width: tabWidth(tab, tab.id === input.active), owners: [tab.id] },
-      { width: width(SEP), owners: [tab.id, layout.tabs[index + 1]?.id].filter((x): x is string => !!x) },
+      { width: width(SEP), owners: [] as string[] },
     ]),
     ...(layout.hidden > 0 ? [{ width: width(`+${layout.hidden}`), owners: [] as string[] }] : []),
     ...(layout.after > 0
       ? [
-          { width: width(SEP), owners: input.nextOwner ? [input.nextOwner] : [] },
+          { width: width(SEP), owners: [] as string[] },
           { width: width(NEXT), owners: input.nextOwner ? [input.nextOwner] : [] },
         ]
       : []),
