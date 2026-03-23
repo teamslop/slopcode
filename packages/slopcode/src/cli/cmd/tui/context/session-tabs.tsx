@@ -91,7 +91,8 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
           permission: sync.data.permission,
           question: sync.data.question,
         })
-        const working = !waiting && (current ? current.type !== "idle" : fallback === "working" || fallback === "compacting")
+        const working =
+          !waiting && (current ? current.type !== "idle" : fallback === "working" || fallback === "compacting")
         const count = sync.data.message[tab.id]?.length ?? 0
         const pending = tab.pendingTitle && (!session || SessionApi.isDefaultTitle(session.title))
         const status = tabStatus({ pending, waiting, working, count })
