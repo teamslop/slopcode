@@ -38,6 +38,10 @@ const binaries = await Array.fromAsync(new Bun.Glob("*/package.json").scan({ cwd
         )
       }
 
+      if (item.version !== Script.version) {
+        throw new Error(`Binary artifact version mismatch for ${name}: expected ${Script.version}, got ${item.version}`)
+      }
+
       return {
         dir,
         name,
@@ -48,8 +52,8 @@ const binaries = await Array.fromAsync(new Bun.Glob("*/package.json").scan({ cwd
 )
 const deps = Object.fromEntries(binaries.map((item) => [item.name, item.version]))
 console.log("binaries", deps)
-const version = binaries[0]?.version
-if (!version) {
+const version = Script.version
+if (binaries.length === 0) {
   throw new Error("No binary artifacts found in ./dist")
 }
 const otp = process.env.NPM_OTP?.trim()
