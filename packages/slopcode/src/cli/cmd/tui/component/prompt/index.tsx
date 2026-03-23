@@ -964,13 +964,18 @@ export function Prompt(props: PromptProps) {
   const dimensions = useTerminalDimensions()
   const compact = createMemo(() => dimensions().width < 100)
   const tight = createMemo(() => dimensions().width < 80)
+  const tiny = createMemo(() => dimensions().width < 72)
   const statusWidth = createMemo(() => {
     if (status().type === "idle") return undefined
     if (!compact()) return undefined
-    return Math.max(24, Math.floor(dimensions().width / 2) - 6)
+    return Math.max(20, Math.floor(dimensions().width / 2) - 4)
   })
-  const chipGap = createMemo(() => (tight() ? 1 : 2))
+  const chipGap = createMemo(() => (tight() ? 0 : compact() ? 1 : 2))
   const chipPad = createMemo(() => (compact() ? 0 : 1))
+  const showVariantHint = createMemo(() => !compact())
+  const showAgentHint = createMemo(() => !tight())
+  const showHistoryChip = createMemo(() => props.showHistoryHint !== false && history.has() && !tiny())
+  const showCommandChip = createMemo(() => !tiny())
   const label = (full: string, short: string = full, hideOnTight = false) => {
     if (tight() && hideOnTight) return ""
     if (compact()) return short
@@ -1320,7 +1325,7 @@ export function Prompt(props: PromptProps) {
             }
           />
         </box>
-        <box flexDirection="row" justifyContent="space-between" gap={compact() ? 1 : 2}>
+        <box flexDirection="row" justifyContent="space-between" gap={chipGap()}>
           <Show when={status().type !== "idle"} fallback={<text />}>
             <box
               flexDirection="row"
@@ -1403,7 +1408,7 @@ export function Prompt(props: PromptProps) {
               </box>
               <box
                 paddingLeft={chipPad()}
-                paddingRight={1}
+                paddingRight={chipPad()}
                 onMouseDown={() => input?.focus()}
                 onMouseOver={() => setHover("interrupt")}
                 onMouseOut={() => setHover(undefined)}
@@ -1413,7 +1418,9 @@ export function Prompt(props: PromptProps) {
                 <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
                   esc{" "}
                   <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
-                    {store.interrupt > 0 ? label("again to interrupt", "again") : label("interrupt", "stop")}
+                    {store.interrupt > 0
+                      ? label("again to interrupt", "again", true)
+                      : label("interrupt", "stop", true)}
                   </span>
                 </text>
               </box>
@@ -1425,7 +1432,7 @@ export function Prompt(props: PromptProps) {
                 <Match when={props.historyMode}>
                   <box
                     paddingLeft={chipPad()}
-                    paddingRight={1}
+                    paddingRight={chipPad()}
                     onMouseDown={() => input?.focus()}
                     onMouseOver={() => setHover("history-toggle")}
                     onMouseOut={() => setHover(undefined)}
@@ -1434,13 +1441,13 @@ export function Prompt(props: PromptProps) {
                   >
                     <text fg={theme.text}>
                       {keybind.print("history_mode_toggle")}
-                      {muted("edit mode", "edit")}
+                      {muted("edit mode", "edit", true)}
                     </text>
                   </box>
                   <box flexDirection="row" alignItems="center" gap={compact() ? 0 : 1}>
                     <box
                       paddingLeft={chipPad()}
-                      paddingRight={1}
+                      paddingRight={chipPad()}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history-previous")}
                       onMouseOut={() => setHover(undefined)}
@@ -1451,7 +1458,7 @@ export function Prompt(props: PromptProps) {
                     </box>
                     <box
                       paddingLeft={chipPad()}
-                      paddingRight={1}
+                      paddingRight={chipPad()}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history-next")}
                       onMouseOut={() => setHover(undefined)}
@@ -1460,12 +1467,12 @@ export function Prompt(props: PromptProps) {
                     >
                       <text fg={theme.text}>↓</text>
                     </box>
-                    <text fg={theme.textMuted}>{label("nav. prompt", "prompt")}</text>
+                    <text fg={theme.textMuted}>{label("nav. prompt", "prompt", true)}</text>
                   </box>
                   <box flexDirection="row" alignItems="center" gap={compact() ? 0 : 1}>
                     <box
                       paddingLeft={chipPad()}
-                      paddingRight={1}
+                      paddingRight={chipPad()}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history-left")}
                       onMouseOut={() => setHover(undefined)}
@@ -1476,7 +1483,7 @@ export function Prompt(props: PromptProps) {
                     </box>
                     <box
                       paddingLeft={chipPad()}
-                      paddingRight={1}
+                      paddingRight={chipPad()}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history-right")}
                       onMouseOut={() => setHover(undefined)}
@@ -1485,7 +1492,7 @@ export function Prompt(props: PromptProps) {
                     >
                       <text fg={theme.text}>→</text>
                     </box>
-                    <text fg={theme.textMuted}>{label("nav. trace", "trace")}</text>
+                    <text fg={theme.textMuted}>{label("nav. trace", "trace", true)}</text>
                   </box>
                   <text fg={theme.text}>
                     space
@@ -1493,10 +1500,10 @@ export function Prompt(props: PromptProps) {
                   </text>
                 </Match>
                 <Match when={store.mode === "normal"}>
-                  <Show when={local.model.variant.list().length > 0}>
+                  <Show when={showVariantHint() && local.model.variant.list().length > 0}>
                     <box
                       paddingLeft={chipPad()}
-                      paddingRight={1}
+                      paddingRight={chipPad()}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("variant")}
                       onMouseOut={() => setHover(undefined)}
@@ -1505,28 +1512,30 @@ export function Prompt(props: PromptProps) {
                     >
                       <text fg={theme.text}>
                         {keybind.print("variant_cycle")}
-                        {muted("variants", "var")}
+                        {muted("variants", "var", true)}
                       </text>
                     </box>
                   </Show>
-                  <box
-                    paddingLeft={chipPad()}
-                    paddingRight={1}
-                    onMouseDown={() => input?.focus()}
-                    onMouseOver={() => setHover("agent")}
-                    onMouseOut={() => setHover(undefined)}
-                    onMouseUp={() => run("agent", () => command.trigger("agent.cycle"))}
-                    backgroundColor={chip("agent")}
-                  >
-                    <text fg={theme.text}>
-                      {keybind.print("agent_cycle")}
-                      {muted("agents", "agent")}
-                    </text>
-                  </box>
-                  <Show when={props.showHistoryHint !== false && history.has()}>
+                  <Show when={showAgentHint()}>
                     <box
                       paddingLeft={chipPad()}
-                      paddingRight={1}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("agent")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("agent", () => command.trigger("agent.cycle"))}
+                      backgroundColor={chip("agent")}
+                    >
+                      <text fg={theme.text}>
+                        {keybind.print("agent_cycle")}
+                        {muted("agents", "agent", true)}
+                      </text>
+                    </box>
+                  </Show>
+                  <Show when={showHistoryChip()}>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history")}
                       onMouseOut={() => setHover(undefined)}
@@ -1535,29 +1544,31 @@ export function Prompt(props: PromptProps) {
                     >
                       <text fg={theme.text}>
                         {keybind.print("history_mode_toggle")}
-                        {muted("history", "hist")}
+                        {muted("history", "hist", true)}
                       </text>
                     </box>
                   </Show>
-                  <box
-                    paddingLeft={chipPad()}
-                    paddingRight={1}
-                    onMouseDown={() => input?.focus()}
-                    onMouseOver={() => setHover("command")}
-                    onMouseOut={() => setHover(undefined)}
-                    onMouseUp={() => run("command", () => command.show())}
-                    backgroundColor={chip("command")}
-                  >
-                    <text fg={theme.text}>
-                      {keybind.print("command_list")}
-                      {muted("commands", "cmd")}
-                    </text>
-                  </box>
+                  <Show when={showCommandChip()}>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("command")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("command", () => command.show())}
+                      backgroundColor={chip("command")}
+                    >
+                      <text fg={theme.text}>
+                        {keybind.print("command_list")}
+                        {muted("commands", "cmd", true)}
+                      </text>
+                    </box>
+                  </Show>
                 </Match>
                 <Match when={store.mode === "shell"}>
                   <text fg={theme.text}>
                     esc
-                    {muted("exit shell mode", "shell")}
+                    {muted("exit shell mode", "shell", true)}
                   </text>
                 </Match>
               </Switch>
