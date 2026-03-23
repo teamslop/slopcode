@@ -3,14 +3,17 @@ import { useNavigate, useParams } from "@solidjs/router"
 import { useSync } from "@/context/sync"
 import { useSDK } from "@/context/sdk"
 import { usePrompt } from "@/context/prompt"
+import { useLayout } from "@/context/layout"
+import { applyDirectoryEvent } from "@/context/global-sync/event-reducer"
 import { useDialog } from "@slopcode-ai/ui/context/dialog"
 import { Dialog } from "@slopcode-ai/ui/dialog"
 import { List } from "@slopcode-ai/ui/list"
 import { showToast } from "@slopcode-ai/ui/toast"
 import { extractPromptFromParts } from "@/utils/prompt"
-import type { TextPart as SDKTextPart } from "@slopcode-ai/sdk/v2/client"
+import type { Session, TextPart as SDKTextPart } from "@slopcode-ai/sdk/v2/client"
 import { base64Encode } from "@slopcode-ai/util/encode"
 import { useLanguage } from "@/context/language"
+import { forkTabs } from "./dialog-fork-state"
 
 interface ForkableMessage {
   id: string
@@ -22,12 +25,29 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString(undefined, { timeStyle: "short" })
 }
 
+function insertForkedSession(input: {
+  session: Session
+  store: ReturnType<typeof useSync>["data"]
+  setStore: ReturnType<typeof useSync>["set"]
+  directory: string
+}) {
+  applyDirectoryEvent({
+    event: { type: "session.created", properties: { info: input.session } },
+    store: input.store,
+    setStore: input.setStore,
+    directory: input.directory,
+    push() {},
+    loadLsp() {},
+  })
+}
+
 export const DialogFork: Component = () => {
   const params = useParams()
   const navigate = useNavigate()
   const sync = useSync()
   const sdk = useSDK()
   const prompt = usePrompt()
+  const layout = useLayout()
   const dialog = useDialog()
   const language = useLanguage()
 
@@ -74,6 +94,22 @@ export const DialogFork: Component = () => {
           showToast({ title: language.t("common.requestFailed") })
           return
         }
+
+        insertForkedSession({
+          session: forked.data,
+          store: sync.data,
+          setStore: sync.set,
+          directory: sdk.directory,
+        })
+
+        const current = layout.tabs(`${params.dir ?? ""}/${sessionID}`).tabs()
+        const next = forkTabs(current)
+        if (next.all.length > 0) {
+          const tabs = layout.tabs(`${params.dir ?? ""}/${forked.data.id}`)
+          tabs.setAll(next.all)
+          tabs.setActive(next.active)
+        }
+
         dialog.close()
         navigate(`/${base64Encode(sdk.directory)}/session/${forked.data.id}`)
         requestAnimationFrame(() => {

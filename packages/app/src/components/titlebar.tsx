@@ -45,9 +45,15 @@ export function Titlebar() {
   const location = useLocation()
   const params = useParams()
 
+  const session = createMemo(() => !!params.dir && /\/session(?:\/|$)/.test(location.pathname))
   const mac = createMemo(() => platform.platform === "desktop" && platform.os === "macos")
   const windows = createMemo(() => platform.platform === "desktop" && platform.os === "windows")
   const web = createMemo(() => platform.platform === "web")
+  const sidebar = createMemo(() => {
+    if (session()) return "hidden xl:flex shrink-0 ml-6"
+    if (web()) return "hidden xl:flex shrink-0 ml-14"
+    return "hidden xl:flex shrink-0 ml-2"
+  })
   const zoom = () => platform.webviewZoom?.() ?? 1
   const minHeight = () => (mac() ? `${40 / zoom()}px` : undefined)
 
@@ -163,7 +169,8 @@ export function Titlebar() {
       <div
         classList={{
           "flex items-center min-w-0": true,
-          "pl-2": !mac(),
+          "pl-1": !mac() && session(),
+          "pl-2": !mac() && !session(),
         }}
       >
         <Show when={mac()}>
@@ -193,7 +200,7 @@ export function Titlebar() {
         </Show>
         <div class="flex items-center gap-1 shrink-0">
           <TooltipKeybind
-            class={web() ? "hidden xl:flex shrink-0 ml-14" : "hidden xl:flex shrink-0 ml-2"}
+            class={sidebar()}
             placement="bottom"
             title={language.t("command.sidebar.toggle")}
             keybind={command.keybind("sidebar.toggle")}
@@ -264,24 +271,46 @@ export function Titlebar() {
             </div>
           </div>
         </div>
-        <div id="opencode-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />
+        <div
+          id="opencode-titlebar-left"
+          classList={{
+            "flex items-center min-w-0": true,
+            "gap-3 px-2": !session(),
+            "w-0 gap-0 overflow-hidden px-0": session(),
+          }}
+        />
         <div class="bg-icon-interactive-base text-background-base font-medium px-2 rounded-sm uppercase font-mono">
           BETA
         </div>
       </div>
 
-      <div class="min-w-0 flex items-center justify-center pointer-events-none">
-        <div id="slopcode-titlebar-center" class="pointer-events-auto w-full min-w-0 flex justify-center lg:w-fit" />
+      <div class="min-w-0 w-full flex items-center justify-center pointer-events-none">
+        <div
+          id="slopcode-titlebar-center"
+          classList={{
+            "pointer-events-auto min-w-0 flex justify-center": true,
+            "flex-1 w-full": session(),
+            "w-full lg:w-fit": !session(),
+          }}
+        />
       </div>
 
       <div
         classList={{
           "flex items-center min-w-0 justify-end": true,
-          "pr-2": !windows(),
+          "pr-1": !windows() && session(),
+          "pr-2": !windows() && !session(),
         }}
         onMouseDown={drag}
       >
-        <div id="slopcode-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" />
+        <div
+          id="slopcode-titlebar-right"
+          classList={{
+            "flex items-center shrink-0 justify-end": true,
+            "gap-0.5": session(),
+            "gap-1": !session(),
+          }}
+        />
         <Show when={windows()}>
           <div class="w-6 shrink-0" />
           <div data-tauri-decorum-tb class="flex flex-row" />

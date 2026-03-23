@@ -137,13 +137,20 @@
 
   #review-panel &[data-variant="normal"][data-orientation="horizontal"] {
     background-color: var(--background-stronger);
+    --tabs-review-gap: 16px;
+    --tabs-review-fade: 16px;
+
+    > .sticky {
+      > [data-slot="tabs-leading-fade"] {
+        width: var(--tabs-review-fade);
+        background: linear-gradient(90deg, var(--background-stronger), transparent);
+      }
+    }
 
     [data-slot="tabs-list"] {
       height: var(--tabs-bar-height);
       padding-left: 12px;
       padding-right: 0;
-      --tabs-review-gap: 16px;
-      --tabs-review-fade: 16px;
       gap: var(--tabs-review-gap);
       background-color: var(--background-stronger);
       border-bottom: 1px solid var(--border-weak-base);
