@@ -14,6 +14,7 @@ import {
   promoteDraftTab,
   pruneSessionTabs,
   saveDraftPrompt,
+  tabStatus,
   visitSessionTabs,
   type SessionTabsState,
 } from "./session-tabs-state"
@@ -79,7 +80,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
           return {
             id: tab.id,
             title: "New Session",
-            status: "none" as const,
+            status: tabStatus({ draft: true, working: false, count: 0 }),
           }
         }
 
@@ -87,19 +88,21 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
         const current = sync.data.session_status?.[tab.id]
         const fallback = sync.session.status(tab.id)
         const working = current ? current.type !== "idle" : fallback === "working" || fallback === "compacting"
-        const done = !working && (sync.data.message[tab.id]?.length ?? 0) > 0
-        if (tab.pendingTitle && (!session || SessionApi.isDefaultTitle(session.title))) {
+        const count = sync.data.message[tab.id]?.length ?? 0
+        const pending = tab.pendingTitle && (!session || SessionApi.isDefaultTitle(session.title))
+        const status = tabStatus({ pending, working, count })
+        if (pending) {
           return {
             id: tab.id,
             title: "New Session",
-            status: done ? ("done" as const) : working ? ("working" as const) : ("none" as const),
+            status,
           }
         }
 
         return {
           id: tab.id,
           title: session?.title ?? tab.id,
-          status: done ? ("done" as const) : working ? ("working" as const) : ("none" as const),
+          status,
         }
       }),
     )

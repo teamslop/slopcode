@@ -1,4 +1,4 @@
-export type SessionStripStatus = "none" | "working" | "done"
+export type SessionStripStatus = "none" | "working" | "ready" | "done"
 
 export type SessionStripTab = {
   id: string
@@ -21,7 +21,7 @@ const SEP = ` ${SEP_GLYPH} `
 const ACTIVE = "* "
 const CLOSE = "X"
 const CLOSE_SLOT = ` ${CLOSE}`
-const STATUS_SLOT = "⬝ "
+const STATUS_SLOT = "■ "
 const RULE = "─"
 const JOINT = "┴"
 const PREV = "<"

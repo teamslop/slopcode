@@ -94,8 +94,15 @@ export function SessionStripView(props: SessionStripViewProps) {
                       <Show
                         when={tab.status === "working"}
                         fallback={
-                          <text fg={tab.status === "done" ? props.colors.success : props.colors.muted} wrapMode="none">
-                            {tab.status === "done" ? "•" : " "}
+                          <text
+                            fg={
+                              tab.status === "done" || tab.status === "ready"
+                                ? props.colors.success
+                                : props.colors.muted
+                            }
+                            wrapMode="none"
+                          >
+                            {tab.status === "done" || tab.status === "ready" ? "■" : " "}
                           </text>
                         }
                       >

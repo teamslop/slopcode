@@ -30,6 +30,13 @@ const isDraft = (tab: SessionTab): tab is Extract<SessionTab, { type: "draft" }>
 const isSession = (tab: SessionTab): tab is Extract<SessionTab, { type: "session" }> => tab.type === "session"
 const clonePrompt = (prompt?: PromptInfo) => structuredClone(unwrap(prompt ?? blank))
 
+export function tabStatus(input: { draft?: boolean; pending?: boolean; working: boolean; count: number }) {
+  if (input.working) return "working" as const
+  if (input.draft || input.pending) return "ready" as const
+  if (input.count > 0) return "done" as const
+  return "none" as const
+}
+
 export function activateTab(state: SessionTabsState, id: string): SessionTabsState {
   if (state.active === id) return state
   return {
@@ -114,7 +121,7 @@ export function visitSessionTabs(
   if (input.root === false) return state
   if (input.source === "new") {
     return {
-      tabs: [{ type: "session", id: input.sessionID }],
+      tabs: [{ type: "session", id: input.sessionID, pendingTitle: true }],
       active: input.sessionID,
     }
   }

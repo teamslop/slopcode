@@ -6,6 +6,7 @@ import {
   promoteDraftTab,
   pruneSessionTabs,
   saveDraftPrompt,
+  tabStatus,
   visitSessionTabs,
 } from "../../../src/cli/cmd/tui/context/session-tabs-state"
 
@@ -73,7 +74,7 @@ describe("session tabs", () => {
     )
 
     expect(next).toEqual({
-      tabs: [{ type: "session", id: "ses_3" }],
+      tabs: [{ type: "session", id: "ses_3", pendingTitle: true }],
       active: "ses_3",
     })
   })
@@ -198,6 +199,16 @@ describe("session tabs", () => {
       ],
       active: "ses_2",
     })
+  })
+
+  test("new tabs are ready before message sync finishes", () => {
+    expect(tabStatus({ draft: true, working: false, count: 0 })).toBe("ready")
+    expect(tabStatus({ pending: true, working: false, count: 0 })).toBe("ready")
+    expect(tabStatus({ pending: false, working: false, count: 1 })).toBe("done")
+  })
+
+  test("working state wins over ready and done", () => {
+    expect(tabStatus({ pending: true, working: true, count: 1 })).toBe("working")
   })
 
   test("closing an inactive tab preserves the current active tab", () => {
