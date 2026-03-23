@@ -16,6 +16,11 @@ export type SessionStripLayout = {
   underline: string
 }
 
+export type SessionStripUnderlineSegment = {
+  text: string
+  owners: string[]
+}
+
 const SEP_GLYPH = "│"
 const SEP = ` ${SEP_GLYPH} `
 const ACTIVE = "* "
@@ -117,6 +122,45 @@ function better(next: Slice, best: Slice) {
   const current = best.end - best.start
   if (size !== current) return size > current
   return next.start < best.start
+}
+
+export function layoutSessionStripUnderlineSegments(
+  layout: SessionStripLayout,
+  input: {
+    active?: string
+    prevOwner?: string
+    nextOwner?: string
+  },
+): SessionStripUnderlineSegment[] {
+  const parts = [
+    ...(layout.before > 0
+      ? [
+          { width: width(PREV), owners: input.prevOwner ? [input.prevOwner] : [] },
+          { width: width(SEP), owners: [input.prevOwner, layout.tabs[0]?.id].filter((x): x is string => !!x) },
+        ]
+      : []),
+    ...layout.tabs.flatMap((tab, index) => [
+      { width: tabWidth(tab, tab.id === input.active), owners: [tab.id] },
+      { width: width(SEP), owners: [tab.id, layout.tabs[index + 1]?.id].filter((x): x is string => !!x) },
+    ]),
+    ...(layout.hidden > 0 ? [{ width: width(`+${layout.hidden}`), owners: [] as string[] }] : []),
+    ...(layout.after > 0
+      ? [
+          { width: width(SEP), owners: input.nextOwner ? [input.nextOwner] : [] },
+          { width: width(NEXT), owners: input.nextOwner ? [input.nextOwner] : [] },
+        ]
+      : []),
+  ]
+  const full = Array.from(layout.underline)
+  const used = parts.reduce((sum, part) => sum + part.width, 0)
+  const padded = used < full.length ? [...parts, { width: full.length - used, owners: [] as string[] }] : parts
+  let offset = 0
+  return padded.flatMap((part) => {
+    if (part.width <= 0) return []
+    const text = full.slice(offset, offset + part.width).join("")
+    offset += part.width
+    return [{ text, owners: [...new Set(part.owners)] }]
+  })
 }
 
 export function layoutSessionStrip(

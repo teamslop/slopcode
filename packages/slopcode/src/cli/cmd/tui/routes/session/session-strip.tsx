@@ -7,10 +7,12 @@ import { useTheme } from "@tui/context/theme"
 import { Locale } from "@/util/locale"
 import {
   layoutSessionStrip,
+  layoutSessionStripUnderlineSegments,
   sessionStripTabClose,
   sessionStripTabLabel,
   SessionStripText,
   type SessionStripTab,
+  type SessionStripUnderlineSegment,
 } from "./session-strip-layout"
 import { createBlockSpinner } from "../../ui/spinner.ts"
 
@@ -23,7 +25,7 @@ type SessionStripViewProps = {
   hidden: number
   prev?: string
   next?: string
-  underline: string
+  underlineSegments: SessionStripUnderlineSegment[]
   colors: {
     accent: RGBA
     edge: RGBA
@@ -43,6 +45,8 @@ export function SessionStripView(props: SessionStripViewProps) {
   const prev = "__prev__"
   const next = "__next__"
   const bg = (id: string) => (hover() === id ? props.colors.hover : props.colors.panel)
+  const underlineBg = (owners: string[]) =>
+    owners.some((id) => hover() === id) ? props.colors.hover : props.colors.panel
   const closeVisible = (id: string) => hover() === id
   const closeFg = (id: string) => (closeVisible(id) ? props.colors.text : props.colors.muted)
   const controlFg = (id: string) => (hover() === id ? props.colors.text : props.colors.muted)
@@ -160,9 +164,15 @@ export function SessionStripView(props: SessionStripViewProps) {
         </Show>
       </box>
       <box height={1} paddingLeft={2} paddingRight={2}>
-        <text fg={props.colors.edge} wrapMode="none">
-          {props.underline}
-        </text>
+        <For each={props.underlineSegments}>
+          {(segment) => (
+            <box backgroundColor={underlineBg(segment.owners)}>
+              <text fg={props.colors.edge} wrapMode="none">
+                {segment.text}
+              </text>
+            </box>
+          )}
+        </For>
       </box>
     </box>
   )
@@ -185,6 +195,13 @@ export function SessionStrip() {
       width: Math.max(0, dimensions().width - HORIZONTAL_PADDING),
     }),
   )
+  const underlineSegments = createMemo(() =>
+    layoutSessionStripUnderlineSegments(layout(), {
+      active: tabs.active(),
+      prevOwner: "__prev__",
+      nextOwner: "__next__",
+    }),
+  )
   const colors = createMemo(() => ({
     accent: theme.accent,
     edge: theme.border,
@@ -204,7 +221,7 @@ export function SessionStrip() {
         hidden={layout().hidden}
         prev={layout().prev}
         next={layout().next}
-        underline={layout().underline}
+        underlineSegments={underlineSegments()}
         colors={colors()}
         open={(id) => tabs.open(id)}
         close={(id) => tabs.close(id)}
