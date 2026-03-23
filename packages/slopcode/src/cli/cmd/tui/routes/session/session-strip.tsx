@@ -90,7 +90,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                   onMouseOut={() => setHover(undefined)}
                 >
                   <box flexDirection="row" onMouseUp={() => props.open(tab.id)}>
-                    <box width={2}>
+                    <box width={2} backgroundColor={bg(tab.id)}>
                       <Show
                         when={tab.status === "working"}
                         fallback={
@@ -109,11 +109,15 @@ export function SessionStripView(props: SessionStripViewProps) {
                         <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={40} />
                       </Show>
                     </box>
-                    <text fg={fg()} attributes={active() ? TextAttributes.BOLD : undefined} wrapMode="none">
-                      {sessionStripTabLabel(tab, active())}
-                    </text>
+                    <box backgroundColor={bg(tab.id)} paddingRight={1}>
+                      <text fg={fg()} attributes={active() ? TextAttributes.BOLD : undefined} wrapMode="none">
+                        {sessionStripTabLabel(tab, active())}
+                      </text>
+                    </box>
                   </box>
                   <box
+                    width={1}
+                    backgroundColor={bg(tab.id)}
                     onMouseUp={
                       closeVisible(tab.id)
                         ? (evt) => {

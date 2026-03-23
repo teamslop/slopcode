@@ -42,7 +42,7 @@ function item(tab: SessionStripTab, active: boolean) {
 }
 
 export function sessionStripTabLabel(tab: SessionStripTab, active: boolean) {
-  return item(tab, active) + " "
+  return item(tab, active)
 }
 
 export function sessionStripTabClose(hovered: boolean) {
