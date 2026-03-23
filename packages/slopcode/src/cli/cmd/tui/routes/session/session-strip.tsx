@@ -1,23 +1,105 @@
 import { useTerminalDimensions } from "@opentui/solid"
-import { TextAttributes } from "@opentui/core"
+import { TextAttributes, type RGBA } from "@opentui/core"
 import { createMemo, createSignal, For, Show } from "solid-js"
 import { useSessionTabs } from "@tui/context/session-tabs"
 import { useTheme } from "@tui/context/theme"
 import { Locale } from "@/util/locale"
-import { layoutSessionStrip, SessionStripText } from "./session-strip-layout"
+import {
+  layoutSessionStrip,
+  sessionStripTabClose,
+  sessionStripTabLabel,
+  SessionStripText,
+  type SessionStripTab,
+} from "./session-strip-layout"
 
 const MAX_TITLE = 15
 const HORIZONTAL_PADDING = 4
+
+type SessionStripViewProps = {
+  tabs: SessionStripTab[]
+  active?: string
+  hidden: number
+  underline: string
+  colors: {
+    accent: RGBA
+    edge: RGBA
+    hover: RGBA
+    panel: RGBA
+    text: RGBA
+    muted: RGBA
+  }
+  open(id: string): void
+  close(id: string): void
+}
+
+export function SessionStripView(props: SessionStripViewProps) {
+  const [hover, setHover] = createSignal<string>()
+  const bg = (id: string) => (hover() === id ? props.colors.hover : props.colors.panel)
+  const closeVisible = (id: string) => hover() === id
+  const closeFg = (id: string) => (closeVisible(id) ? props.colors.text : props.colors.muted)
+
+  return (
+    <box flexShrink={0} flexDirection="column" backgroundColor={props.colors.panel}>
+      <box height={1} flexDirection="row" paddingLeft={2} paddingRight={2}>
+        <For each={props.tabs}>
+          {(tab) => {
+            const active = () => props.active === tab.id
+            const fg = () => {
+              if (active()) return props.colors.accent
+              if (hover() === tab.id) return props.colors.text
+              return props.colors.muted
+            }
+            return (
+              <>
+                <box
+                  flexDirection="row"
+                  backgroundColor={bg(tab.id)}
+                  onMouseOver={() => setHover(tab.id)}
+                  onMouseOut={() => setHover(undefined)}
+                >
+                  <box onMouseUp={() => props.open(tab.id)}>
+                    <text fg={fg()} attributes={active() ? TextAttributes.BOLD : undefined} wrapMode="none">
+                      {sessionStripTabLabel(tab, active())}
+                    </text>
+                  </box>
+                  <box
+                    onMouseUp={
+                      closeVisible(tab.id)
+                        ? (evt) => {
+                            evt.stopPropagation()
+                            setHover(undefined)
+                            props.close(tab.id)
+                          }
+                        : undefined
+                    }
+                  >
+                    <text fg={closeFg(tab.id)} wrapMode="none">
+                      {sessionStripTabClose(closeVisible(tab.id))}
+                    </text>
+                  </box>
+                </box>
+                <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
+              </>
+            )
+          }}
+        </For>
+        <Show when={props.hidden > 0}>
+          <text fg={props.colors.muted}>{`+${props.hidden}`}</text>
+        </Show>
+      </box>
+      <box height={1} paddingLeft={2} paddingRight={2}>
+        <text fg={props.colors.edge} wrapMode="none">
+          {props.underline}
+        </text>
+      </box>
+    </box>
+  )
+}
 
 export function SessionStrip() {
   const tabs = useSessionTabs()
   const { theme } = useTheme()
   const dimensions = useTerminalDimensions()
-  const [hover, setHover] = createSignal<string>()
-  const edge = () => theme.border
-  const bg = (id: string) => (hover() === id ? theme.backgroundElement : undefined)
-  const closeVisible = (id: string) => hover() === id
-  const closeFg = (id: string) => (closeVisible(id) ? theme.text : theme.textMuted)
   const items = createMemo(() =>
     tabs.tabs().map((tab) => ({
       id: tab.id,
@@ -30,69 +112,26 @@ export function SessionStrip() {
       width: Math.max(0, dimensions().width - HORIZONTAL_PADDING),
     }),
   )
+  const colors = createMemo(() => ({
+    accent: theme.accent,
+    edge: theme.border,
+    hover: theme.backgroundElement,
+    panel: theme.backgroundPanel,
+    text: theme.text,
+    muted: theme.textMuted,
+  }))
 
   return (
     <Show when={tabs.visible()}>
-      <box flexShrink={0} flexDirection="column" backgroundColor={theme.backgroundPanel}>
-        <box height={1} flexDirection="row" paddingLeft={2} paddingRight={2}>
-          <For each={layout().tabs}>
-            {(tab, index) => {
-              const active = () => tabs.active() === tab.id
-              const fg = () => {
-                if (active()) return theme.accent
-                if (hover() === tab.id) return theme.text
-                return theme.textMuted
-              }
-              return (
-                <>
-                  <Show when={index() > 0}>
-                    <text fg={edge()}>{SessionStripText.SEP}</text>
-                  </Show>
-                  <box
-                    flexDirection="row"
-                    backgroundColor={bg(tab.id)}
-                    onMouseOver={() => setHover(tab.id)}
-                    onMouseOut={() => setHover(undefined)}
-                  >
-                    <box onMouseUp={() => tabs.open(tab.id)}>
-                      <text fg={fg()} attributes={active() ? TextAttributes.BOLD : undefined} wrapMode="none">
-                        {active() ? SessionStripText.ACTIVE : ""}
-                        {tab.title}{" "}
-                      </text>
-                    </box>
-                    <box
-                      onMouseUp={
-                        closeVisible(tab.id)
-                          ? (evt) => {
-                              evt.stopPropagation()
-                              setHover(undefined)
-                              tabs.close(tab.id)
-                            }
-                          : undefined
-                      }
-                    >
-                      <text fg={closeFg(tab.id)} wrapMode="none">
-                        {closeVisible(tab.id) ? SessionStripText.CLOSE : " "}
-                      </text>
-                    </box>
-                  </box>
-                </>
-              )
-            }}
-          </For>
-          <Show when={layout().hidden > 0}>
-            <Show when={layout().tabs.length > 0}>
-              <text fg={edge()}>{SessionStripText.SEP}</text>
-            </Show>
-            <text fg={theme.textMuted}>{`+${layout().hidden}`}</text>
-          </Show>
-        </box>
-        <box height={1} paddingLeft={2} paddingRight={2}>
-          <text fg={edge()} wrapMode="none">
-            {layout().underline}
-          </text>
-        </box>
-      </box>
+      <SessionStripView
+        tabs={layout().tabs}
+        active={tabs.active()}
+        hidden={layout().hidden}
+        underline={layout().underline}
+        colors={colors()}
+        open={(id) => tabs.open(id)}
+        close={(id) => tabs.close(id)}
+      />
     </Show>
   )
 }

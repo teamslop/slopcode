@@ -63,13 +63,13 @@ describe("session strip layout", () => {
     })
   })
 
-  test("draws a joint under visible tab separators", () => {
+  test("draws joints under tab separators including the closing divider", () => {
     const result = layoutSessionStrip(
       [
         { id: "a", title: "A" },
         { id: "b", title: "B" },
       ],
-      { width: 9 },
+      { width: 12 },
     )
 
     expect(result.tabs).toEqual([
@@ -77,7 +77,7 @@ describe("session strip layout", () => {
       { id: "b", title: "B" },
     ])
     expect(result.hidden).toBe(0)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "┴", "─", "─", "─", "─"])
+    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "┴", "─", "─", "─", "─", "─", "┴", "─"])
   })
 
   test("keeps joints aligned when the active marker shifts tab text", () => {
@@ -86,14 +86,14 @@ describe("session strip layout", () => {
         { id: "a", title: "A" },
         { id: "b", title: "B" },
       ],
-      { active: "a", width: 11 },
+      { active: "a", width: 14 },
     )
 
     expect(result.hidden).toBe(0)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "─", "─", "┴", "─", "─", "─", "─"])
+    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "─", "─", "┴", "─", "─", "─", "─", "─", "┴", "─"])
   })
 
-  test("adds a joint before the overflow marker", () => {
+  test("keeps the last tab closing divider before the overflow marker", () => {
     const result = layoutSessionStrip(
       [
         { id: "a", title: "A" },

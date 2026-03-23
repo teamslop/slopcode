@@ -26,6 +26,14 @@ function item(tab: SessionStripTab, active: boolean) {
   return (active ? ACTIVE : "") + tab.title
 }
 
+export function sessionStripTabLabel(tab: SessionStripTab, active: boolean) {
+  return item(tab, active) + " "
+}
+
+export function sessionStripTabClose(hovered: boolean) {
+  return hovered ? CLOSE : " "
+}
+
 function tabWidth(tab: SessionStripTab, active: boolean) {
   return width(item(tab, active) + CLOSE_SLOT)
 }
@@ -39,26 +47,23 @@ function layoutWidth(tabs: SessionStripTab[], active: string | undefined, total:
   }
 
   const hidden = total - tabs.length
-  const visible = tabs.reduce((sum, tab, index) => {
-    return sum + tabWidth(tab, tab.id === active) + (index === 0 ? 0 : width(SEP))
+  const visible = tabs.reduce((sum, tab) => {
+    return sum + tabWidth(tab, tab.id === active) + width(SEP)
   }, 0)
 
   return {
     hidden,
-    width: visible + (hidden > 0 ? width(SEP + `+${hidden}`) : 0),
+    width: visible + (hidden > 0 ? width(`+${hidden}`) : 0),
   }
 }
 
-function joints(tabs: SessionStripTab[], active: string | undefined, hidden: number) {
-  if (tabs.length === 0) return []
+function joints(tabs: SessionStripTab[], active: string | undefined) {
   const points: number[] = []
-  let offset = tabWidth(tabs[0]!, tabs[0]!.id === active)
-  for (const tab of tabs.slice(1)) {
+  let offset = 0
+  for (const tab of tabs) {
+    offset += tabWidth(tab, tab.id === active)
     points.push(offset + SEP_MARK)
-    offset += width(SEP) + tabWidth(tab, tab.id === active)
-  }
-  if (hidden > 0) {
-    points.push(offset + SEP_MARK)
+    offset += width(SEP)
   }
   return points
 }
@@ -73,7 +78,7 @@ function result(tabs: SessionStripTab[], active: string | undefined, width: numb
   return {
     tabs,
     hidden,
-    underline: underline(width, joints(tabs, active, hidden)),
+    underline: underline(width, joints(tabs, active)),
   }
 }
 
