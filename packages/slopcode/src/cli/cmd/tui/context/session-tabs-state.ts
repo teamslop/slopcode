@@ -1,5 +1,3 @@
-import { unwrap } from "solid-js/store"
-import type { PromptInfo } from "../component/prompt/history"
 import type { SessionRouteSource } from "./route"
 
 export const DRAFT_TAB_ID = "__draft__"
@@ -13,7 +11,6 @@ export type SessionTab =
   | {
       type: "draft"
       id: typeof DRAFT_TAB_ID
-      prompt: PromptInfo
     }
 
 export type SessionTabsState = {
@@ -21,14 +18,15 @@ export type SessionTabsState = {
   active?: string
 }
 
-const blank = {
-  input: "",
-  parts: [],
-} satisfies PromptInfo
-
 const isDraft = (tab: SessionTab): tab is Extract<SessionTab, { type: "draft" }> => tab.type === "draft"
 const isSession = (tab: SessionTab): tab is Extract<SessionTab, { type: "session" }> => tab.type === "session"
-const clonePrompt = (prompt?: PromptInfo) => structuredClone(unwrap(prompt ?? blank))
+
+export function tabStatus(input: { draft?: boolean; pending?: boolean; working: boolean; count: number }) {
+  if (input.working) return "working" as const
+  if (input.draft || input.pending) return "ready" as const
+  if (input.count > 0) return "done" as const
+  return "none" as const
+}
 
 export function activateTab(state: SessionTabsState, id: string): SessionTabsState {
   if (state.active === id) return state
@@ -42,31 +40,11 @@ export function hasDraftTab(state: SessionTabsState) {
   return state.tabs.some(isDraft)
 }
 
-export function getDraftPrompt(state: SessionTabsState) {
-  return state.tabs.find(isDraft)?.prompt
-}
-
-export function openDraftTab(
-  state: SessionTabsState,
-  input?: {
-    prompt?: PromptInfo
-  },
-): SessionTabsState {
+export function openDraftTab(state: SessionTabsState): SessionTabsState {
   if (hasDraftTab(state)) return activateTab(state, DRAFT_TAB_ID)
   return {
-    tabs: [...state.tabs, { type: "draft", id: DRAFT_TAB_ID, prompt: clonePrompt(input?.prompt) }],
+    tabs: [...state.tabs, { type: "draft", id: DRAFT_TAB_ID }],
     active: DRAFT_TAB_ID,
-  }
-}
-
-export function saveDraftPrompt(state: SessionTabsState, prompt: PromptInfo): SessionTabsState {
-  const next = clonePrompt(prompt)
-  const current = getDraftPrompt(state)
-  if (!current) return state
-  if (Bun.deepEquals(current, next)) return state
-  return {
-    tabs: state.tabs.map((tab) => (isDraft(tab) ? { ...tab, prompt: next } : tab)),
-    active: state.active,
   }
 }
 
@@ -114,7 +92,7 @@ export function visitSessionTabs(
   if (input.root === false) return state
   if (input.source === "new") {
     return {
-      tabs: [{ type: "session", id: input.sessionID }],
+      tabs: [{ type: "session", id: input.sessionID, pendingTitle: true }],
       active: input.sessionID,
     }
   }

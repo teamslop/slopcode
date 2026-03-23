@@ -2,7 +2,7 @@ import { createStore } from "solid-js/store"
 import { createSimpleContext } from "./helper"
 import type { PromptInfo } from "../component/prompt/history"
 
-export type SessionRouteSource = "child" | "new" | "switch"
+export type SessionRouteSource = "child" | "fork" | "new" | "switch"
 
 export type HomeRoute = {
   type: "home"

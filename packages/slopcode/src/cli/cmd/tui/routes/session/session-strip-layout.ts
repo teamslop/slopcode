@@ -1,4 +1,4 @@
-export type SessionStripStatus = "none" | "working" | "done"
+export type SessionStripStatus = "none" | "working" | "ready" | "done"
 
 export type SessionStripTab = {
   id: string
@@ -16,12 +16,17 @@ export type SessionStripLayout = {
   underline: string
 }
 
+export type SessionStripUnderlineSegment = {
+  text: string
+  owners: string[]
+}
+
 const SEP_GLYPH = "│"
 const SEP = ` ${SEP_GLYPH} `
 const ACTIVE = "* "
 const CLOSE = "X"
 const CLOSE_SLOT = ` ${CLOSE}`
-const STATUS_SLOT = "⬝ "
+const STATUS_SLOT = "■ "
 const RULE = "─"
 const JOINT = "┴"
 const PREV = "<"
@@ -42,7 +47,7 @@ function item(tab: SessionStripTab, active: boolean) {
 }
 
 export function sessionStripTabLabel(tab: SessionStripTab, active: boolean) {
-  return item(tab, active) + " "
+  return item(tab, active)
 }
 
 export function sessionStripTabClose(hovered: boolean) {
@@ -117,6 +122,45 @@ function better(next: Slice, best: Slice) {
   const current = best.end - best.start
   if (size !== current) return size > current
   return next.start < best.start
+}
+
+export function layoutSessionStripUnderlineSegments(
+  layout: SessionStripLayout,
+  input: {
+    active?: string
+    prevOwner?: string
+    nextOwner?: string
+  },
+): SessionStripUnderlineSegment[] {
+  const parts = [
+    ...(layout.before > 0
+      ? [
+          { width: width(PREV), owners: input.prevOwner ? [input.prevOwner] : [] },
+          { width: width(SEP), owners: [] as string[] },
+        ]
+      : []),
+    ...layout.tabs.flatMap((tab) => [
+      { width: tabWidth(tab, tab.id === input.active), owners: [tab.id] },
+      { width: width(SEP), owners: [] as string[] },
+    ]),
+    ...(layout.hidden > 0 ? [{ width: width(`+${layout.hidden}`), owners: [] as string[] }] : []),
+    ...(layout.after > 0
+      ? [
+          { width: width(SEP), owners: [] as string[] },
+          { width: width(NEXT), owners: input.nextOwner ? [input.nextOwner] : [] },
+        ]
+      : []),
+  ]
+  const full = Array.from(layout.underline)
+  const used = parts.reduce((sum, part) => sum + part.width, 0)
+  const padded = used < full.length ? [...parts, { width: full.length - used, owners: [] as string[] }] : parts
+  let offset = 0
+  return padded.flatMap((part) => {
+    if (part.width <= 0) return []
+    const text = full.slice(offset, offset + part.width).join("")
+    offset += part.width
+    return [{ text, owners: [...new Set(part.owners)] }]
+  })
 }
 
 export function layoutSessionStrip(

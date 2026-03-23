@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import { layoutSessionStrip } from "../../../src/cli/cmd/tui/routes/session/session-strip-layout"
+import {
+  layoutSessionStrip,
+  layoutSessionStripUnderlineSegments,
+} from "../../../src/cli/cmd/tui/routes/session/session-strip-layout"
 
 const tabs = [
   { id: "ses_1", title: "One" },
@@ -176,5 +179,23 @@ describe("session strip layout", () => {
     expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
     expect(result.underline[2]).toBe("┴")
     expect(result.underline[12]).toBe("┴")
+  })
+
+  test("splits underline into hover-aware segments without changing the text", () => {
+    const result = layoutSessionStrip(
+      [
+        { id: "a", title: "A" },
+        { id: "b", title: "B" },
+      ],
+      { active: "a", width: 22 },
+    )
+    const segments = layoutSessionStripUnderlineSegments(result, {
+      active: "a",
+      prevOwner: "__prev__",
+      nextOwner: "__next__",
+    })
+
+    expect(segments.map((segment) => segment.text).join("")).toBe(result.underline)
+    expect(segments.map((segment) => segment.owners)).toEqual([["a"], [], ["b"], [], []])
   })
 })

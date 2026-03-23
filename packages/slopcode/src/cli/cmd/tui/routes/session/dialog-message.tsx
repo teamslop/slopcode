@@ -99,7 +99,7 @@ export function DialogMessage(props: {
               sessionID: result.data!.id,
               type: "session",
               initialPrompt,
-              source: "new",
+              source: "fork",
             })
             dialog.clear()
           },

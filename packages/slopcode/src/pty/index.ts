@@ -8,6 +8,7 @@ import { Instance } from "../project/instance"
 import { lazy } from "@slopcode-ai/util/lazy"
 import { Shell } from "@/shell/shell"
 import { Plugin } from "@/plugin"
+import { Env } from "@/env"
 
 export namespace Pty {
   const log = Log.create({ service: "pty" })
@@ -47,10 +48,17 @@ export namespace Pty {
       cwd: z.string(),
       status: z.enum(["running", "exited"]),
       pid: z.number(),
+      sessionID: Identifier.schema("session").optional(),
     })
     .meta({ ref: "Pty" })
 
   export type Info = z.infer<typeof Info>
+
+  export const AccessInput = z.object({
+    sessionID: Identifier.schema("session").optional(),
+  })
+
+  export type AccessInput = z.infer<typeof AccessInput>
 
   export const CreateInput = z.object({
     command: z.string().optional(),
@@ -58,6 +66,7 @@ export namespace Pty {
     cwd: z.string().optional(),
     title: z.string().optional(),
     env: z.record(z.string(), z.string()).optional(),
+    sessionID: Identifier.schema("session").optional(),
   })
 
   export type CreateInput = z.infer<typeof CreateInput>
@@ -90,6 +99,11 @@ export namespace Pty {
     subscribers: Map<unknown, Socket>
   }
 
+  function allowed(info: Info, sessionID?: string) {
+    if (!info.sessionID) return true
+    return info.sessionID === sessionID
+  }
+
   const state = Instance.state(
     () => new Map<string, ActiveSession>(),
     async (sessions) => {
@@ -109,12 +123,17 @@ export namespace Pty {
     },
   )
 
-  export function list() {
-    return Array.from(state().values()).map((s) => s.info)
+  export function list(input?: AccessInput) {
+    return Array.from(state().values())
+      .map((session) => session.info)
+      .filter((info) => allowed(info, input?.sessionID))
   }
 
-  export function get(id: string) {
-    return state().get(id)?.info
+  export function get(id: string, input?: AccessInput) {
+    const info = state().get(id)?.info
+    if (!info) return
+    if (!allowed(info, input?.sessionID)) return
+    return info
   }
 
   export async function create(input: CreateInput) {
@@ -126,9 +145,12 @@ export namespace Pty {
     }
 
     const cwd = input.cwd || Instance.directory
-    const shellEnv = await Plugin.trigger("shell.env", { cwd }, { env: {} })
+    if (input.sessionID && input.env) {
+      Env.merge(input.env, { sessionID: input.sessionID })
+    }
+    const shellEnv = await Plugin.trigger("shell.env", { cwd, sessionID: input.sessionID }, { env: {} })
     const env = {
-      ...process.env,
+      ...Env.all({ sessionID: input.sessionID }),
       ...input.env,
       ...shellEnv.env,
       TERM: "xterm-256color",
@@ -157,6 +179,7 @@ export namespace Pty {
       cwd,
       status: "running",
       pid: ptyProcess.pid,
+      sessionID: input.sessionID,
     } as const
     const session: ActiveSession = {
       info,
@@ -212,9 +235,10 @@ export namespace Pty {
     return info
   }
 
-  export async function update(id: string, input: UpdateInput) {
+  export async function update(id: string, input: UpdateInput, access?: AccessInput) {
     const session = state().get(id)
     if (!session) return
+    if (!allowed(session.info, access?.sessionID)) return
     if (input.title) {
       session.info.title = input.title
     }
@@ -225,9 +249,10 @@ export namespace Pty {
     return session.info
   }
 
-  export async function remove(id: string) {
+  export async function remove(id: string, access?: AccessInput) {
     const session = state().get(id)
     if (!session) return
+    if (!allowed(session.info, access?.sessionID)) return
     log.info("removing session", { id })
     try {
       session.process.kill()
@@ -258,9 +283,9 @@ export namespace Pty {
     }
   }
 
-  export function connect(id: string, ws: Socket, cursor?: number) {
+  export function connect(id: string, ws: Socket, cursor?: number, access?: AccessInput) {
     const session = state().get(id)
-    if (!session) {
+    if (!session || !allowed(session.info, access?.sessionID)) {
       ws.close()
       return
     }

@@ -924,6 +924,7 @@ export type Pty = {
   cwd: string
   status: "running" | "exited"
   pid: number
+  sessionID?: string
 }
 
 export type EventPtyCreated = {
@@ -2187,6 +2188,7 @@ export type PtyListData = {
   path?: never
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/pty"
 }
@@ -2209,6 +2211,7 @@ export type PtyCreateData = {
     env?: {
       [key: string]: string
     }
+    sessionID?: string
   }
   path?: never
   query?: {
@@ -2242,6 +2245,7 @@ export type PtyRemoveData = {
   }
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/pty/{ptyID}"
 }
@@ -2271,6 +2275,7 @@ export type PtyGetData = {
   }
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/pty/{ptyID}"
 }
@@ -2306,6 +2311,7 @@ export type PtyUpdateData = {
   }
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/pty/{ptyID}"
 }
