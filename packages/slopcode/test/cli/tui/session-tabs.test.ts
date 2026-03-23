@@ -5,6 +5,7 @@ import {
   openDraftTab,
   promoteDraftTab,
   pruneSessionTabs,
+  sessionWaiting,
   tabStatus,
   visitSessionTabs,
 } from "../../../src/cli/cmd/tui/context/session-tabs-state"
@@ -183,14 +184,47 @@ describe("session tabs", () => {
     })
   })
 
-  test("new tabs are ready before message sync finishes", () => {
-    expect(tabStatus({ draft: true, working: false, count: 0 })).toBe("ready")
+  test("draft tabs wait for their first prompt while pending titles stay ready", () => {
+    expect(tabStatus({ draft: true, working: false, count: 0 })).toBe("waiting")
     expect(tabStatus({ pending: true, working: false, count: 0 })).toBe("ready")
     expect(tabStatus({ pending: false, working: false, count: 1 })).toBe("done")
   })
 
-  test("working state wins over ready and done", () => {
-    expect(tabStatus({ pending: true, working: true, count: 1 })).toBe("working")
+  test("waiting state wins over ready and done", () => {
+    expect(tabStatus({ waiting: true, pending: true, working: false, count: 1 })).toBe("waiting")
+  })
+
+  test("working state wins over waiting, ready and done", () => {
+    expect(tabStatus({ waiting: true, pending: true, working: true, count: 1 })).toBe("working")
+  })
+
+  test("waiting follows pending root and child prompts", () => {
+    expect(
+      sessionWaiting({
+        sessionID: "ses_root",
+        sessions: [{ id: "ses_root" }, { id: "ses_child", parentID: "ses_root" }],
+        permission: { ses_child: [{}] },
+        question: {},
+      }),
+    ).toBe(true)
+
+    expect(
+      sessionWaiting({
+        sessionID: "ses_root",
+        sessions: [{ id: "ses_root" }, { id: "ses_child", parentID: "ses_root" }],
+        permission: {},
+        question: { ses_root: [{}] },
+      }),
+    ).toBe(true)
+
+    expect(
+      sessionWaiting({
+        sessionID: "ses_root",
+        sessions: [{ id: "ses_root" }, { id: "ses_child", parentID: "ses_root" }],
+        permission: {},
+        question: {},
+      }),
+    ).toBe(false)
   })
 
   test("closing an inactive tab preserves the current active tab", () => {

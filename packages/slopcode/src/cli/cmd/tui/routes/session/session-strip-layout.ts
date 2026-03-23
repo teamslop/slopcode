@@ -1,4 +1,4 @@
-export type SessionStripStatus = "none" | "working" | "ready" | "done"
+export type SessionStripStatus = "none" | "working" | "waiting" | "ready" | "done"
 
 export type SessionStripTab = {
   id: string
