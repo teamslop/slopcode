@@ -79,8 +79,8 @@ describe("session strip layout", () => {
     expect(result.hidden).toBe(0)
     expect(result.underline).toHaveLength(20)
     expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
-    expect(result.underline[8]).toBe("┴")
-    expect(result.underline[18]).toBe("┴")
+    expect(result.underline[6]).toBe("┴")
+    expect(result.underline[14]).toBe("┴")
   })
 
   test("keeps joints aligned when the active marker shifts tab text", () => {
@@ -95,8 +95,8 @@ describe("session strip layout", () => {
     expect(result.hidden).toBe(0)
     expect(result.underline).toHaveLength(22)
     expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
-    expect(result.underline[10]).toBe("┴")
-    expect(result.underline[20]).toBe("┴")
+    expect(result.underline[8]).toBe("┴")
+    expect(result.underline[16]).toBe("┴")
   })
 
   test("keeps the last tab closing divider before the overflow marker", () => {
@@ -116,7 +116,7 @@ describe("session strip layout", () => {
     expect(result.hidden).toBe(1)
     expect(result.underline).toHaveLength(22)
     expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
-    expect(result.underline[8]).toBe("┴")
-    expect(result.underline[18]).toBe("┴")
+    expect(result.underline[6]).toBe("┴")
+    expect(result.underline[14]).toBe("┴")
   })
 })

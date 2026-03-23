@@ -12,7 +12,7 @@ import {
   SessionStripText,
   type SessionStripTab,
 } from "./session-strip-layout"
-import { createColors, createFrames } from "../../ui/spinner.ts"
+import { createBlockSpinner } from "../../ui/spinner.ts"
 
 const MAX_TITLE = 15
 const HORIZONTAL_PADDING = 4
@@ -41,26 +41,12 @@ export function SessionStripView(props: SessionStripViewProps) {
   const bg = (id: string) => (hover() === id ? props.colors.hover : props.colors.panel)
   const closeVisible = (id: string) => hover() === id
   const closeFg = (id: string) => (closeVisible(id) ? props.colors.text : props.colors.muted)
-  const spinnerDef = createMemo(() => ({
-    frames: createFrames({
+  const spinnerDef = createMemo(() =>
+    createBlockSpinner({
       color: props.colors.warning,
-      holdEnd: 2,
-      holdStart: 6,
-      inactiveFactor: 0.35,
-      minAlpha: 0.2,
-      style: "blocks",
-      width: 3,
+      width: 1,
     }),
-    color: createColors({
-      color: props.colors.warning,
-      holdEnd: 2,
-      holdStart: 6,
-      inactiveFactor: 0.35,
-      minAlpha: 0.2,
-      style: "blocks",
-      width: 3,
-    }),
-  }))
+  )
 
   return (
     <box flexShrink={0} flexDirection="column" backgroundColor={props.colors.panel}>
@@ -82,7 +68,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                   onMouseOut={() => setHover(undefined)}
                 >
                   <box flexDirection="row" onMouseUp={() => props.open(tab.id)}>
-                    <box width={4}>
+                    <box width={2}>
                       <Show
                         when={tab.status === "working"}
                         fallback={
@@ -91,7 +77,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                           </text>
                         }
                       >
-                        <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={60} />
+                        <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={40} />
                       </Show>
                     </box>
                     <text fg={fg()} attributes={active() ? TextAttributes.BOLD : undefined} wrapMode="none">
