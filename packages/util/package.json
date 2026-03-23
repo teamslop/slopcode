@@ -1,7 +1,7 @@
 {
   "name": "@slopcode-ai/util",
-  "version": "0.1.50",
-  "private": false,
+  "version": "0.1.49",
+  "private": true,
   "type": "module",
   "license": "MIT",
   "exports": {
