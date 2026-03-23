@@ -13,13 +13,13 @@ export const releaseInfo = async (repo = process.env.GH_REPO ?? "teamslop/slopco
   }
 
   if (!Script.preview) {
-    const existing = await $`gh release view ${tag} --json tagName,databaseId --repo ${repo}`.quiet().nothrow()
+    const existing = await $`gh release view ${tag} --json tagName,id --repo ${repo}`.quiet().nothrow()
     if (existing.exitCode !== 0) {
       await $`gh release create ${tag} -d --title ${tag} --notes "Release ${tag}" --repo ${repo}`
     }
 
-    const release = await $`gh release view ${tag} --json tagName,databaseId --repo ${repo}`.json()
-    output.release = `${release.databaseId}`
+    const release = await $`gh release view ${tag} --json tagName,id --repo ${repo}`.json()
+    output.release = `${release.id}`
     output.tag = release.tagName
   }
 
