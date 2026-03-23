@@ -78,6 +78,30 @@ describe("session tabs", () => {
     })
   })
 
+  test("forked sessions append to the strip instead of resetting it", () => {
+    const next = visitSessionTabs(
+      {
+        tabs: [
+          { type: "session", id: "ses_1" },
+          { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+          { type: "session", id: "ses_2" },
+        ],
+        active: "ses_2",
+      },
+      { sessionID: "ses_3", source: "fork", root: true },
+    )
+
+    expect(next).toEqual({
+      tabs: [
+        { type: "session", id: "ses_1" },
+        { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+        { type: "session", id: "ses_2" },
+        { type: "session", id: "ses_3" },
+      ],
+      active: "ses_3",
+    })
+  })
+
   test("child routes never enter the top strip", () => {
     const next = visitSessionTabs(
       {

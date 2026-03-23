@@ -325,7 +325,7 @@ function App() {
       if (args.fork) {
         sdk.client.session.fork({ sessionID: match }).then((result) => {
           if (result.data?.id) {
-            route.navigate({ type: "session", sessionID: result.data.id, source: "new" })
+            route.navigate({ type: "session", sessionID: result.data.id, source: "fork" })
           } else {
             toast.show({ message: "Failed to fork session", variant: "error" })
           }
@@ -345,7 +345,7 @@ function App() {
     forked = true
     sdk.client.session.fork({ sessionID: args.sessionID }).then((result) => {
       if (result.data?.id) {
-        route.navigate({ type: "session", sessionID: result.data.id, source: "new" })
+        route.navigate({ type: "session", sessionID: result.data.id, source: "fork" })
       } else {
         toast.show({ message: "Failed to fork session", variant: "error" })
       }
