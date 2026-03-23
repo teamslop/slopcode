@@ -306,7 +306,7 @@
     },
     "packages/slopcode": {
       "name": "slopcode",
-      "version": "0.1.49",
+      "version": "0.1.51",
       "bin": {
         "slopcode": "./bin/slopcode",
       },
