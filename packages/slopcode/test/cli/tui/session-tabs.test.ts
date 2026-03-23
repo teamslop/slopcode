@@ -5,12 +5,9 @@ import {
   openDraftTab,
   promoteDraftTab,
   pruneSessionTabs,
-  saveDraftPrompt,
   tabStatus,
   visitSessionTabs,
 } from "../../../src/cli/cmd/tui/context/session-tabs-state"
-
-const prompt = (input: string) => ({ input, parts: [] })
 
 describe("session tabs", () => {
   test("tracks the first root session without duplication", () => {
@@ -65,7 +62,7 @@ describe("session tabs", () => {
       {
         tabs: [
           { type: "session", id: "ses_1" },
-          { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+          { type: "draft", id: DRAFT_TAB_ID },
           { type: "session", id: "ses_2" },
         ],
         active: DRAFT_TAB_ID,
@@ -84,7 +81,7 @@ describe("session tabs", () => {
       {
         tabs: [
           { type: "session", id: "ses_1" },
-          { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+          { type: "draft", id: DRAFT_TAB_ID },
           { type: "session", id: "ses_2" },
         ],
         active: "ses_2",
@@ -95,7 +92,7 @@ describe("session tabs", () => {
     expect(next).toEqual({
       tabs: [
         { type: "session", id: "ses_1" },
-        { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+        { type: "draft", id: DRAFT_TAB_ID },
         { type: "session", id: "ses_2" },
         { type: "session", id: "ses_3" },
       ],
@@ -152,32 +149,17 @@ describe("session tabs", () => {
   })
 
   test("opens a single reusable draft tab", () => {
-    const next = openDraftTab(
-      { tabs: [{ type: "session", id: "ses_1" }], active: "ses_1" },
-      { prompt: prompt("draft") },
-    )
-    const reused = openDraftTab(next, { prompt: prompt("replace me") })
+    const next = openDraftTab({ tabs: [{ type: "session", id: "ses_1" }], active: "ses_1" })
+    const reused = openDraftTab(next)
 
     expect(next).toEqual({
       tabs: [
         { type: "session", id: "ses_1" },
-        { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+        { type: "draft", id: DRAFT_TAB_ID },
       ],
       active: DRAFT_TAB_ID,
     })
     expect(reused).toEqual(next)
-  })
-
-  test("saves draft prompt state", () => {
-    const next = saveDraftPrompt(
-      { tabs: [{ type: "draft", id: DRAFT_TAB_ID, prompt: prompt("") }], active: DRAFT_TAB_ID },
-      prompt("hello"),
-    )
-
-    expect(next).toEqual({
-      tabs: [{ type: "draft", id: DRAFT_TAB_ID, prompt: prompt("hello") }],
-      active: DRAFT_TAB_ID,
-    })
   })
 
   test("promotes the draft tab into a real session in place", () => {
@@ -185,7 +167,7 @@ describe("session tabs", () => {
       {
         tabs: [
           { type: "session", id: "ses_1" },
-          { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("hello") },
+          { type: "draft", id: DRAFT_TAB_ID },
         ],
         active: DRAFT_TAB_ID,
       },
@@ -277,7 +259,7 @@ describe("session tabs", () => {
     const next = closeSessionTab(
       {
         tabs: [
-          { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+          { type: "draft", id: DRAFT_TAB_ID },
           { type: "session", id: "ses_1" },
         ],
         active: DRAFT_TAB_ID,
@@ -294,7 +276,7 @@ describe("session tabs", () => {
   test("closing the final tab clears the active tab", () => {
     const next = closeSessionTab(
       {
-        tabs: [{ type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") }],
+        tabs: [{ type: "draft", id: DRAFT_TAB_ID }],
         active: DRAFT_TAB_ID,
       },
       DRAFT_TAB_ID,
@@ -311,7 +293,7 @@ describe("session tabs", () => {
       {
         tabs: [
           { type: "session", id: "ses_1" },
-          { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+          { type: "draft", id: DRAFT_TAB_ID },
           { type: "session", id: "ses_2" },
           { type: "session", id: "ses_3" },
         ],
@@ -322,7 +304,7 @@ describe("session tabs", () => {
 
     expect(next).toEqual({
       tabs: [
-        { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+        { type: "draft", id: DRAFT_TAB_ID },
         { type: "session", id: "ses_2" },
         { type: "session", id: "ses_3" },
       ],
@@ -335,7 +317,7 @@ describe("session tabs", () => {
       {
         tabs: [
           { type: "session", id: "ses_1" },
-          { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+          { type: "draft", id: DRAFT_TAB_ID },
           { type: "session", id: "ses_3" },
         ],
         active: "ses_1",
@@ -345,7 +327,7 @@ describe("session tabs", () => {
 
     expect(next).toEqual({
       tabs: [
-        { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+        { type: "draft", id: DRAFT_TAB_ID },
         { type: "session", id: "ses_3" },
       ],
       active: "ses_3",

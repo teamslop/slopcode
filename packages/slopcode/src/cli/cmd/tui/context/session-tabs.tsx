@@ -1,6 +1,5 @@
 import { createEffect, createMemo, createSignal, on } from "solid-js"
 import { Session as SessionApi } from "@/session"
-import type { PromptInfo } from "../component/prompt/history"
 import { createSimpleContext } from "./helper"
 import { useRoute } from "./route"
 import { useSync } from "./sync"
@@ -8,12 +7,10 @@ import {
   DRAFT_TAB_ID,
   activateTab,
   closeSessionTab,
-  getDraftPrompt,
   hasDraftTab,
   openDraftTab,
   promoteDraftTab,
   pruneSessionTabs,
-  saveDraftPrompt,
   tabStatus,
   visitSessionTabs,
   type SessionTabsState,
@@ -107,8 +104,8 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       }),
     )
 
+    const ids = createMemo(() => state().tabs.map((tab) => tab.id))
     const hasDraft = createMemo(() => hasDraftTab(state()))
-    const draftPrompt = createMemo(() => getDraftPrompt(state()))
     const active = createMemo(() => state().active)
     const draftActive = createMemo(() => route.data.type === "home" && active() === DRAFT_TAB_ID)
     const visible = createMemo(() => {
@@ -120,10 +117,10 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
 
     return {
       tabs,
+      ids,
       active,
       visible,
       hasDraft,
-      draftPrompt,
       draftActive,
       open(id: string) {
         if (id === DRAFT_TAB_ID) {
@@ -154,12 +151,9 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
           source: "switch",
         })
       },
-      openDraft(prompt?: PromptInfo) {
-        setState((state) => openDraftTab(state, { prompt }))
+      openDraft() {
+        setState((state) => openDraftTab(state))
         route.navigate({ type: "home" })
-      },
-      saveDraft(prompt: PromptInfo) {
-        setState((state) => saveDraftPrompt(state, prompt))
       },
       promoteDraft(sessionID: string) {
         setState((state) => promoteDraftTab(state, { sessionID }))

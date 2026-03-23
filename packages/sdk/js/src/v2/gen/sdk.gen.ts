@@ -465,10 +465,21 @@ export class Pty extends HeyApiClient {
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
+          ],
+        },
+      ],
+    )
     return (options?.client ?? this.client).get<PtyListResponses, unknown, ThrowOnError>({
       url: "/pty",
       ...options,
@@ -491,6 +502,7 @@ export class Pty extends HeyApiClient {
       env?: {
         [key: string]: string
       }
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -505,6 +517,7 @@ export class Pty extends HeyApiClient {
             { in: "body", key: "cwd" },
             { in: "body", key: "title" },
             { in: "body", key: "env" },
+            { in: "body", key: "sessionID" },
           ],
         },
       ],
@@ -530,6 +543,7 @@ export class Pty extends HeyApiClient {
     parameters: {
       ptyID: string
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -540,6 +554,7 @@ export class Pty extends HeyApiClient {
           args: [
             { in: "path", key: "ptyID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
           ],
         },
       ],
@@ -560,6 +575,7 @@ export class Pty extends HeyApiClient {
     parameters: {
       ptyID: string
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -570,6 +586,7 @@ export class Pty extends HeyApiClient {
           args: [
             { in: "path", key: "ptyID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
           ],
         },
       ],
@@ -590,6 +607,7 @@ export class Pty extends HeyApiClient {
     parameters: {
       ptyID: string
       directory?: string
+      sessionID?: string
       title?: string
       size?: {
         rows: number
@@ -605,6 +623,7 @@ export class Pty extends HeyApiClient {
           args: [
             { in: "path", key: "ptyID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
             { in: "body", key: "title" },
             { in: "body", key: "size" },
           ],

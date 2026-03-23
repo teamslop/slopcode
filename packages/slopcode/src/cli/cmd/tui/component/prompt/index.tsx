@@ -1,11 +1,24 @@
 import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent } from "@opentui/core"
-import { createEffect, createMemo, type JSX, onMount, createSignal, onCleanup, on, Show, Switch, Match } from "solid-js"
+import {
+  createEffect,
+  createMemo,
+  type JSX,
+  onMount,
+  createSignal,
+  onCleanup,
+  on,
+  Show,
+  Switch,
+  Match,
+  untrack,
+} from "solid-js"
 import "opentui-spinner/solid"
 import path from "path"
 import { Filesystem } from "@/util/filesystem"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
 import { useSessionTabs } from "@tui/context/session-tabs"
+import { useTabState } from "@tui/context/tab-state"
 import { EmptyBorder } from "@tui/component/border"
 import { useSDK } from "@tui/context/sdk"
 import { useRoute } from "@tui/context/route"
@@ -74,6 +87,7 @@ export function Prompt(props: PromptProps) {
   const sdk = useSDK()
   const route = useRoute()
   const tabs = useSessionTabs()
+  const tabState = useTabState()
   const sync = useSync()
   const dialog = useDialog()
   const toast = useToast()
@@ -150,12 +164,8 @@ export function Prompt(props: PromptProps) {
     input.cursorColor = theme.text
   })
 
-  const lastUserMessage = createMemo(() => {
-    if (!props.sessionID) return undefined
-    const messages = sync.data.message[props.sessionID]
-    if (!messages) return undefined
-    return messages.findLast((m) => m.role === "user")
-  })
+  const currentTabID = createMemo(() => tabState.currentID())
+  const currentTab = createMemo(() => tabState.get(currentTabID()))
 
   const [store, setStore] = createStore<{
     prompt: PromptInfo
@@ -189,6 +199,19 @@ export function Prompt(props: PromptProps) {
       col: visual.visualCol,
       offset: visual.offset,
     })
+  }
+
+  function loadPrompt(prompt: PromptInfo) {
+    if (!input || input.isDestroyed) return
+    input.setText(prompt.input)
+    setStore("prompt", {
+      input: prompt.input,
+      parts: structuredClone(prompt.parts),
+    })
+    setStore("mode", prompt.mode ?? "normal")
+    restoreExtmarksFromParts(prompt.parts)
+    input.gotoBufferEnd()
+    syncCursor()
   }
 
   const ghostPoint = createMemo(() => ghostCursor(input, cursor()))
@@ -231,25 +254,28 @@ export function Prompt(props: PromptProps) {
     ),
   )
 
-  // Initialize agent/model/variant from last user message when session changes
-  let syncedSessionID: string | undefined
   createEffect(() => {
-    const sessionID = props.sessionID
-    const msg = lastUserMessage()
+    const id = currentTabID()
+    const next = currentTab().prompt
+    if (!id || !input || input.isDestroyed) return
+    const mode = next.mode ?? "normal"
+    const current = untrack(() => ({
+      input: store.prompt.input,
+      parts: store.prompt.parts,
+      mode: store.mode,
+    }))
+    if (current.input === next.input && Bun.deepEquals(current.parts, next.parts) && current.mode === mode) return
+    loadPrompt(next)
+  })
 
-    if (sessionID !== syncedSessionID) {
-      if (!sessionID || !msg) return
-
-      syncedSessionID = sessionID
-
-      // Only set agent if it's a primary agent (not a subagent)
-      const isPrimaryAgent = local.agent.list().some((x) => x.name === msg.agent)
-      if (msg.agent && isPrimaryAgent) {
-        local.agent.set(msg.agent)
-        if (msg.model) local.model.set(msg.model)
-        if (msg.variant) local.model.variant.set(msg.variant)
-      }
-    }
+  createEffect(() => {
+    const id = currentTabID()
+    if (!id || !input || input.isDestroyed) return
+    tabState.setPrompt(id, {
+      input: store.prompt.input,
+      parts: store.prompt.parts,
+      mode: store.mode,
+    })
   })
 
   command.register(() => {
@@ -262,6 +288,9 @@ export function Prompt(props: PromptProps) {
         onSelect: (dialog) => {
           input.extmarks.clear()
           input.clear()
+          setStore("prompt", { input: "", parts: [] })
+          setStore("mode", "normal")
+          setStore("extmarkToPartIndex", new Map())
           dialog.clear()
         },
       },
@@ -444,7 +473,10 @@ export function Prompt(props: PromptProps) {
       return input.focused
     },
     get current() {
-      return store.prompt
+      return {
+        ...store.prompt,
+        mode: store.mode,
+      }
     },
     focus() {
       input.focus()
@@ -453,10 +485,7 @@ export function Prompt(props: PromptProps) {
       input.blur()
     },
     set(prompt) {
-      input.setText(prompt.input)
-      setStore("prompt", prompt)
-      restoreExtmarksFromParts(prompt.parts)
-      input.gotoBufferEnd()
+      loadPrompt(prompt)
     },
     reset() {
       input.clear()
@@ -465,6 +494,7 @@ export function Prompt(props: PromptProps) {
         input: "",
         parts: [],
       })
+      setStore("mode", "normal")
       setStore("extmarkToPartIndex", new Map())
     },
     submit() {
@@ -676,6 +706,7 @@ export function Prompt(props: PromptProps) {
         input.extmarks.clear()
         input.clear()
         setStore("prompt", { input: "", parts: [] })
+        setStore("mode", "normal")
         setStore("extmarkToPartIndex", new Map())
         dialog.clear()
       },
@@ -688,10 +719,7 @@ export function Prompt(props: PromptProps) {
       onSelect: (dialog) => {
         const entry = stash.pop()
         if (entry) {
-          input.setText(entry.input)
-          setStore("prompt", { input: entry.input, parts: entry.parts })
-          restoreExtmarksFromParts(entry.parts)
-          input.gotoBufferEnd()
+          loadPrompt(entry)
         }
         dialog.clear()
       },
@@ -705,10 +733,7 @@ export function Prompt(props: PromptProps) {
         dialog.replace(() => (
           <DialogStash
             onSelect={(entry) => {
-              input.setText(entry.input)
-              setStore("prompt", { input: entry.input, parts: entry.parts })
-              restoreExtmarksFromParts(entry.parts)
-              input.gotoBufferEnd()
+              loadPrompt(entry)
             }}
           />
         ))
@@ -732,6 +757,7 @@ export function Prompt(props: PromptProps) {
       return
     }
     const draft = !props.sessionID && tabs.draftActive()
+    const sourceTabID = currentTabID()
     const sessionID = props.sessionID
       ? props.sessionID
       : await (async () => {
@@ -842,11 +868,15 @@ export function Prompt(props: PromptProps) {
         mode: currentMode,
       },
     )
+    if (!props.sessionID) {
+      tabState.copySelection(sourceTabID, sessionID)
+    }
     input.extmarks.clear()
     setStore("prompt", {
       input: "",
       parts: [],
     })
+    setStore("mode", "normal")
     setStore("extmarkToPartIndex", new Map())
     props.onSubmit?.()
 
@@ -1113,6 +1143,7 @@ export function Prompt(props: PromptProps) {
                       input: "",
                       parts: [],
                     })
+                    setStore("mode", "normal")
                     setStore("extmarkToPartIndex", new Map())
                     return
                   }
@@ -1262,6 +1293,7 @@ export function Prompt(props: PromptProps) {
                   if (promptPartTypeId === 0) {
                     promptPartTypeId = input.extmarks.registerType("prompt-part")
                   }
+                  loadPrompt(currentTab().prompt)
                   props.ref?.(ref)
                   syncCursor()
                   setTimeout(() => {

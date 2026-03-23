@@ -17,6 +17,7 @@ import { Shell } from "@/shell/shell"
 import { BashArity } from "@/permission/arity"
 import { Truncate } from "./truncation"
 import { Plugin } from "@/plugin"
+import { Env } from "@/env"
 
 const MAX_METADATA_LENGTH = 30_000
 const DEFAULT_TIMEOUT = Flag.SLOPCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS || 2 * 60 * 1000
@@ -173,7 +174,7 @@ export const BashTool = Tool.define("bash", async () => {
         shell,
         cwd,
         env: {
-          ...process.env,
+          ...Env.all({ sessionID: ctx.sessionID }),
           ...shellEnv.env,
         },
         stdio: ["ignore", "pipe", "pipe"],

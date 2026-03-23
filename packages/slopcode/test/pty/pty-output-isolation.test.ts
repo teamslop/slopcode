@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { Env } from "../../src/env"
 import { Instance } from "../../src/project/instance"
 import { Pty } from "../../src/pty"
 import { tmpdir } from "../fixture/fixture"
@@ -134,6 +135,53 @@ describe("pty", () => {
           expect(out.join("")).toContain("AAA")
         } finally {
           await Pty.remove(a.id)
+        }
+      },
+    })
+  })
+
+  test("scopes owned ptys to their session", async () => {
+    await using dir = await tmpdir({ git: true })
+
+    await Instance.provide({
+      directory: dir.path,
+      fn: async () => {
+        const shared = await Pty.create({ command: "cat", title: "shared" })
+        const owned = await Pty.create({
+          command: "cat",
+          title: "owned",
+          sessionID: "ses_owner",
+          env: { SESSION_FLAG: "1" },
+        })
+        try {
+          expect(Env.get("SESSION_FLAG", { sessionID: "ses_owner" })).toBe("1")
+          expect(Pty.list().map((item) => item.id)).toEqual([shared.id])
+          expect(Pty.list({ sessionID: "ses_owner" }).map((item) => item.id)).toEqual([shared.id, owned.id])
+          expect(Pty.get(owned.id)).toBeUndefined()
+          expect(Pty.get(owned.id, { sessionID: "ses_owner" })?.sessionID).toBe("ses_owner")
+
+          let closed = false
+          const denied = {
+            readyState: 1,
+            data: { id: "denied" },
+            send: () => {},
+            close: () => {
+              closed = true
+            },
+          }
+
+          const handle = Pty.connect(owned.id, denied as any, undefined, { sessionID: "ses_other" })
+          expect(handle).toBeUndefined()
+          expect(closed).toBe(true)
+
+          await Pty.remove(owned.id)
+          expect(Pty.get(owned.id, { sessionID: "ses_owner" })?.id).toBe(owned.id)
+
+          await Pty.remove(owned.id, { sessionID: "ses_owner" })
+          expect(Pty.get(owned.id, { sessionID: "ses_owner" })).toBeUndefined()
+        } finally {
+          await Pty.remove(shared.id)
+          await Pty.remove(owned.id, { sessionID: "ses_owner" })
         }
       },
     })

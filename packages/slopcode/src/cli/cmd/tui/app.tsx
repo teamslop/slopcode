@@ -1,10 +1,11 @@
 import { render, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { batch, createEffect, createSignal, ErrorBoundary, Match, on, onMount, Switch, untrack } from "solid-js"
+import { createEffect, createSignal, ErrorBoundary, Match, on, onMount, Switch, untrack } from "solid-js"
 import { Clipboard } from "@tui/util/clipboard"
 import { Selection } from "@tui/util/selection"
 import { MouseButton, TextAttributes } from "@opentui/core"
 import { RouteProvider, useRoute } from "@tui/context/route"
 import { SessionTabsProvider, useSessionTabs } from "@tui/context/session-tabs"
+import { TabStateProvider, useTabState } from "@tui/context/tab-state"
 import { SDKProvider, useSDK } from "@tui/context/sdk"
 import { SyncProvider, useSync } from "@tui/context/sync"
 import { DialogProvider, useDialog } from "@tui/ui/dialog"
@@ -42,6 +43,7 @@ import { TuiConfig } from "@/config/tui"
 import { Flag } from "@/flag/flag"
 import { Installation } from "@/installation"
 import { win32DisableProcessedInput, win32FlushInputBuffer, win32InstallCtrlCGuard } from "./win32"
+import { DRAFT_TAB_ID } from "./context/session-tabs-state"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   // can't set raw mode if not a TTY
@@ -153,25 +155,27 @@ export function tui(input: {
                         >
                           <SyncProvider>
                             <SessionTabsProvider>
-                              <ThemeProvider mode={mode}>
-                                <LocalProvider>
-                                  <KeybindProvider>
-                                    <PromptStashProvider>
-                                      <DialogProvider>
-                                        <CommandProvider>
-                                          <FrecencyProvider>
-                                            <PromptHistoryProvider>
-                                              <PromptRefProvider>
-                                                <App />
-                                              </PromptRefProvider>
-                                            </PromptHistoryProvider>
-                                          </FrecencyProvider>
-                                        </CommandProvider>
-                                      </DialogProvider>
-                                    </PromptStashProvider>
-                                  </KeybindProvider>
-                                </LocalProvider>
-                              </ThemeProvider>
+                              <TabStateProvider>
+                                <ThemeProvider mode={mode}>
+                                  <LocalProvider>
+                                    <KeybindProvider>
+                                      <PromptStashProvider>
+                                        <DialogProvider>
+                                          <CommandProvider>
+                                            <FrecencyProvider>
+                                              <PromptHistoryProvider>
+                                                <PromptRefProvider>
+                                                  <App />
+                                                </PromptRefProvider>
+                                              </PromptHistoryProvider>
+                                            </FrecencyProvider>
+                                          </CommandProvider>
+                                        </DialogProvider>
+                                      </PromptStashProvider>
+                                    </KeybindProvider>
+                                  </LocalProvider>
+                                </ThemeProvider>
+                              </TabStateProvider>
                             </SessionTabsProvider>
                           </SyncProvider>
                         </SDKProvider>
@@ -220,6 +224,7 @@ function App() {
   const exit = useExit()
   const promptRef = usePromptRef()
   const tabs = useSessionTabs()
+  const tabState = useTabState()
 
   useKeyboard((evt) => {
     if (!Flag.SLOPCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
@@ -290,27 +295,24 @@ function App() {
 
   const args = useArgs()
   onMount(() => {
-    batch(() => {
-      if (args.agent) local.agent.set(args.agent)
-      if (args.model) {
-        const { providerID, modelID } = Provider.parseModel(args.model)
-        if (!providerID || !modelID)
-          return toast.show({
-            variant: "warning",
-            message: `Invalid model format: ${args.model}`,
-            duration: 3000,
-          })
-        local.model.set({ providerID, modelID }, { recent: true })
-      }
-      // Handle --session without --fork immediately (fork is handled in createEffect below)
-      if (args.sessionID && !args.fork) {
-        route.navigate({
-          type: "session",
-          sessionID: args.sessionID,
-          source: "switch",
+    if (args.sessionID && !args.fork) {
+      route.navigate({
+        type: "session",
+        sessionID: args.sessionID,
+        source: "switch",
+      })
+    }
+    if (args.agent) local.agent.set(args.agent)
+    if (args.model) {
+      const { providerID, modelID } = Provider.parseModel(args.model)
+      if (!providerID || !modelID)
+        return toast.show({
+          variant: "warning",
+          message: `Invalid model format: ${args.model}`,
+          duration: 3000,
         })
-      }
-    })
+      local.model.set({ providerID, modelID }, { recent: true })
+    }
   })
 
   let continued = false
@@ -390,9 +392,12 @@ function App() {
         aliases: ["clear"],
       },
       onSelect: () => {
-        const current = promptRef.current
-        const currentPrompt = current?.current?.input ? current.current : undefined
-        tabs.openDraft(currentPrompt)
+        const current = promptRef.current?.current
+        const currentPrompt = current && (current.input || current.parts.length > 0) ? current : undefined
+        tabState.copySelection(tabState.currentID(), DRAFT_TAB_ID)
+        if (currentPrompt) tabState.setPrompt(DRAFT_TAB_ID, currentPrompt)
+        else tabState.clearPrompt(DRAFT_TAB_ID)
+        tabs.openDraft()
         dialog.clear()
       },
     },

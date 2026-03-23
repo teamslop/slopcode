@@ -449,6 +449,7 @@ export const Terminal = (props: TerminalProps) => {
 
       const url = new URL(sdk.url + `/pty/${local.pty.id}/connect`)
       url.searchParams.set("directory", sdk.directory)
+      if (local.pty.sessionID) url.searchParams.set("sessionID", local.pty.sessionID)
       url.searchParams.set("cursor", String(start !== undefined ? start : local.pty.buffer ? -1 : 0))
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
       url.username = server.current?.http.username ?? ""

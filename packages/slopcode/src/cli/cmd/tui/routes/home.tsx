@@ -1,8 +1,7 @@
 import { Prompt, type PromptRef } from "@tui/component/prompt"
-import { createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js"
+import { createMemo, Match, onMount, Show, Switch } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { useKeybind } from "@tui/context/keybind"
-import { useSessionTabs } from "@tui/context/session-tabs"
 import { Logo } from "../component/logo"
 import { Tips } from "../component/tips"
 import { Locale } from "@/util/locale"
@@ -23,7 +22,6 @@ let argsPromptSubmitted = false
 export function Home() {
   const sync = useSync()
   const kv = useKV()
-  const tabs = useSessionTabs()
   const { theme } = useTheme()
   const route = useRouteData("home")
   const promptRef = usePromptRef()
@@ -89,11 +87,6 @@ export function Home() {
   let prompt: PromptRef
   const args = useArgs()
   onMount(() => {
-    const draft = tabs.draftPrompt()
-    if (draft) {
-      prompt.set(draft)
-      return
-    }
     if (route.initialPrompt) {
       prompt.set(route.initialPrompt)
       return
@@ -102,11 +95,6 @@ export function Home() {
     argsPromptSubmitted = true
     prompt.set({ input: args.prompt, parts: [] })
     prompt.submit()
-  })
-  onCleanup(() => {
-    if (!tabs.hasDraft()) return
-    if (!prompt) return
-    tabs.saveDraft(prompt.current)
   })
   const directory = useDirectory()
 
