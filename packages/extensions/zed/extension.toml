@@ -1,7 +1,7 @@
 id = "slopcode"
 name = "SlopCode"
 description = "The open source coding agent."
-version = "0.1.60"
+version = "0.1.198"
 schema_version = 1
 authors = ["Anomaly"]
 repository = "http://github.com/teamslop/slopcode"
