@@ -566,23 +566,45 @@ export namespace SessionPrompt {
         )
 
         const current = mode === "serial" ? state()[sessionID]?.current : undefined
+        let currentMsg: MessageV2.WithParts | undefined
         let lastUser: MessageV2.User | undefined
         let lastAssistant: MessageV2.Assistant | undefined
         let lastFinished: MessageV2.Assistant | undefined
+        let lastComplete: MessageV2.Assistant | undefined
         let tasks: (MessageV2.CompactionPart | MessageV2.SubtaskPart)[] = []
         for (let i = msgs.length - 1; i >= 0; i--) {
           const msg = msgs[i]
           if (!lastUser && msg.info.role === "user" && (!current || msg.info.id === current)) {
             lastUser = msg.info as MessageV2.User
+            currentMsg = msg
           }
           if (!lastAssistant && msg.info.role === "assistant") lastAssistant = msg.info as MessageV2.Assistant
-          if (!lastFinished && msg.info.role === "assistant" && msg.info.finish)
+          if (!lastFinished && msg.info.role === "assistant" && msg.info.finish) {
             lastFinished = msg.info as MessageV2.Assistant
-          if (lastUser && lastFinished) break
+          }
+          if (
+            !lastComplete &&
+            msg.info.role === "assistant" &&
+            msg.info.finish &&
+            !["tool-calls", "unknown"].includes(msg.info.finish)
+          ) {
+            lastComplete = msg.info as MessageV2.Assistant
+          }
+          if (lastUser && lastComplete) break
           const task = msg.parts.filter((part) => part.type === "compaction" || part.type === "subtask")
-          if (task && !lastFinished) {
+          if (task && !lastComplete && (!current || msg.info.id !== current)) {
             tasks.push(...task)
           }
+        }
+        if (currentMsg && !lastComplete) {
+          const processed = msgs.filter(
+            (msg) =>
+              msg.info.role === "assistant" &&
+              msg.info.parentID === currentMsg!.info.id &&
+              msg.parts.some((part) => part.type === "tool" && part.tool === TaskTool.id),
+          ).length
+          const remaining = currentMsg.parts.filter((part) => part.type === "subtask").slice(processed)
+          tasks.push(...remaining)
         }
 
         if (!lastUser) throw new Error("No user message found in stream. This should never happen.")
