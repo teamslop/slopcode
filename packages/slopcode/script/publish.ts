@@ -55,6 +55,7 @@ const skipPack = process.env.SLOPCODE_SKIP_PACK === "true"
 const registry = (process.env.npm_config_registry ?? "https://registry.npmjs.org").replace(/\/$/, "")
 const exists = (name: string, version: string) => fetch(`${registry}/${name}/${version}`).then((x) => x.ok)
 const latestRelease = Script.channel === "latest" && Script.release
+const supplemental = process.env.SLOPCODE_ENABLE_SUPPLEMENTAL_CHANNELS === "true"
 const enforceApt = process.env.SLOPCODE_ENFORCE_APT === "true"
 const enforceRpm = process.env.SLOPCODE_ENFORCE_RPM === "true"
 const enforceApk = process.env.SLOPCODE_ENFORCE_APK === "true"
@@ -241,38 +242,56 @@ if (metadata.keywords.length === 0) {
   throw new Error("Missing npm metadata field: keywords")
 }
 
-await $`rm -rf ./dist/${pkg.name}`
-await $`mkdir -p ./dist/${pkg.name}`
-await $`cp -r ./bin ./dist/${pkg.name}/bin`
-await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`
-await Bun.file(`./dist/${pkg.name}/LICENSE`).write(await Bun.file("../../LICENSE").text())
-await Bun.file(`./dist/${pkg.name}/README.md`).write(readme + "\n")
+const aliases = [
+  {
+    name: "sloppycode",
+    bin: "sloppycode",
+    description: "Alias for slopcode, the open source AI slopcoding agent.",
+  },
+] as const
 
-await Bun.file(`./dist/${pkg.name}/package.json`).write(
-  JSON.stringify(
-    {
-      name: pkg.name,
-      description: metadata.description,
-      homepage: metadata.homepage,
-      repository: metadata.repository,
-      bugs: metadata.bugs,
-      keywords: metadata.keywords,
-      funding: metadata.funding,
-      bin: {
-        [pkg.name]: `./bin/${pkg.name}`,
+const stage = async (input: { name: string; bin: string; description: string }) => {
+  await $`rm -rf ./dist/${input.name}`
+  await $`mkdir -p ./dist/${input.name}`
+  await $`cp -r ./bin ./dist/${input.name}/bin`
+  await $`cp ./script/postinstall.mjs ./dist/${input.name}/postinstall.mjs`
+  await Bun.file(`./dist/${input.name}/LICENSE`).write(await Bun.file("../../LICENSE").text())
+  await Bun.file(`./dist/${input.name}/README.md`).write(readme + "\n")
+  await Bun.file(`./dist/${input.name}/package.json`).write(
+    JSON.stringify(
+      {
+        name: input.name,
+        description: input.description,
+        homepage: metadata.homepage,
+        repository: metadata.repository,
+        bugs: metadata.bugs,
+        keywords: metadata.keywords,
+        funding: metadata.funding,
+        bin: {
+          [input.bin]: `./bin/${pkg.name}`,
+        },
+        files: ["bin", "postinstall.mjs", "README.md", "LICENSE"],
+        scripts: {
+          postinstall: "bun ./postinstall.mjs || node ./postinstall.mjs",
+        },
+        version: version,
+        license: pkg.license,
+        optionalDependencies: deps,
       },
-      files: ["bin", "postinstall.mjs", "README.md", "LICENSE"],
-      scripts: {
-        postinstall: "bun ./postinstall.mjs || node ./postinstall.mjs",
-      },
-      version: version,
-      license: pkg.license,
-      optionalDependencies: deps,
-    },
-    null,
-    2,
-  ),
-)
+      null,
+      2,
+    ),
+  )
+}
+
+await Promise.all([
+  stage({
+    name: pkg.name,
+    bin: pkg.name,
+    description: metadata.description,
+  }),
+  ...aliases.map((item) => stage(item)),
+])
 
 if (latestRelease) {
   if (enforceApt && process.env.SLOPCODE_DISABLE_APT === "true") {
@@ -313,26 +332,26 @@ const tasks = binaries.map(async (binary) => {
   await publish.cwd(`./dist/${binary.dir}`)
 })
 
-const main = (async () => {
-  if (await exists(pkg.name, version)) {
-    console.log("skip", pkg.name, version)
+const publishPackage = async (name: string) => {
+  if (await exists(name, version)) {
+    console.log("skip", name, version)
     return
   }
 
-  await $`bash -lc "rm -f ./*.tgz"`.cwd(`./dist/${pkg.name}`)
-  await $`bun pm pack`.cwd(`./dist/${pkg.name}`)
+  await $`bash -lc "rm -f ./*.tgz"`.cwd(`./dist/${name}`)
+  await $`bun pm pack`.cwd(`./dist/${name}`)
   const publish = otp
     ? $`npm publish *.tgz --access public --tag ${Script.channel} --otp=${otp}`
     : $`npm publish *.tgz --access public --tag ${Script.channel}`
-  await publish.cwd(`./dist/${pkg.name}`)
-})()
+  await publish.cwd(`./dist/${name}`)
+}
 
-await Promise.all([...tasks, main])
+await Promise.all([...tasks, publishPackage(pkg.name), ...aliases.map((item) => publishPackage(item.name))])
 await verifyAptParity()
 await verifyRpmParity()
 await verifyApkParity()
 
-if (Script.channel === "latest") {
+if (Script.channel === "latest" && supplemental) {
   const jobs = [import("./publish-aur.ts"), import("./publish-snap.ts")]
   if (process.env.SLOPCODE_DISABLE_HOMEBREW !== "true") {
     jobs.push(import("./publish-homebrew.ts"))
@@ -340,6 +359,8 @@ if (Script.channel === "latest") {
     console.log("homebrew tap: disabled")
   }
   await Promise.all(jobs)
+} else if (Script.channel === "latest") {
+  console.log("supplemental channels: disabled")
 }
 
 // Supplemental channels sourced from npm artifacts.
