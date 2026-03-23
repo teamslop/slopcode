@@ -144,15 +144,15 @@ function ContentDiffLine(props: { lang?: string; parts: DiffPart[]; tone: Tone }
       if (!value) return []
       const fileLang = lang && lang in bundledLanguages ? (lang as keyof typeof bundledLanguages) : "text"
       return (
-        await codeToTokens(value, {
-          lang: fileLang,
-          themes: {
-            light: "github-light",
-            dark: "github-dark",
-          },
-        })
-      ).tokens[0] ?? []
-
+        (
+          await codeToTokens(value, {
+            lang: fileLang,
+            themes: {
+              light: "github-light",
+              dark: "github-dark",
+            },
+          })
+        ).tokens[0] ?? []
       )
     },
   )
