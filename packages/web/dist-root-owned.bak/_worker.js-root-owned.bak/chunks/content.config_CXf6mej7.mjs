@@ -436,9 +436,9 @@ var bool = new type("tag:yaml.org,2002:bool", {
 
 function isHexCode(c) {
   return (
-    (0x30 /* 0 */ <= c && c <= 0x39 /* 9 */) ||
-    (0x41 /* A */ <= c && c <= 0x46 /* F */) ||
-    (0x61 /* a */ <= c && c <= 0x66 /* f */)
+    (0x30 /* 0 */ <= c && c <= 0x39) /* 9 */ ||
+    (0x41 /* A */ <= c && c <= 0x46) /* F */ ||
+    (0x61 /* a */ <= c && c <= 0x66) /* f */
   )
 }
 
@@ -1329,8 +1329,7 @@ function requirePrism() {
                 }
                 clone = []
                 visited[id] = clone
-
-                ;/** @type {Array} */ (/** @type {any} */ (o)).forEach(function (v, i) {
+                /** @type {Array} */ ;(/** @type {any} */ (o)).forEach(function (v, i) {
                   clone[i] = deepClone(v, visited)
                 })
 
@@ -2644,7 +2643,6 @@ function requirePrism() {
     /* **********************************************
 		     Begin prism-css.js
 		********************************************** */
-
     ;(function (Prism) {
       var string = /(?:"(?:\\(?:\r\n|[\s\S])|[^"\\\r\n])*"|'(?:\\(?:\r\n|[\s\S])|[^'\\\r\n])*')/
 
@@ -2933,7 +2931,6 @@ function requirePrism() {
     /* **********************************************
 		     Begin prism-file-highlight.js
 		********************************************** */
-
     ;(function () {
       if (typeof Prism === "undefined" || typeof document === "undefined") {
         return
