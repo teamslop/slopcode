@@ -84,6 +84,19 @@ Then run it with:
 
 Replace `<platform>` with your platform (e.g., `darwin-arm64`, `linux-x64`).
 
+### Releasing locally
+
+Local releases are the default path now. Run them from a clean worktree:
+
+```bash
+bun run release patch
+bun run release minor
+bun run release major
+bun run release 1.2.3
+```
+
+This flow creates the draft GitHub release if needed, builds the CLI locally when `packages/slopcode/dist` is missing, and then publishes from your machine. Use `.github/workflows/publish.yml` only as a manual fallback.
+
 - Core pieces:
   - `packages/slopcode`: SlopCode core business logic & server.
   - `packages/slopcode/src/cli/cmd/tui/`: The TUI code, written in SolidJS with [opentui](https://github.com/sst/opentui)

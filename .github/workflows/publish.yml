@@ -2,13 +2,7 @@ name: publish
 run-name: "${{ format('release {0}', inputs.bump) }}"
 
 on:
-  push:
-    branches:
-      - ci
-      - dev
-      - beta
-      - snapshot-*
-  workflow_dispatch:
+  workflow_dispatch: # Remote fallback; default releases run locally via `bun run release`
     inputs:
       bump:
         description: "Bump major, minor, or patch"

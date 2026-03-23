@@ -3,6 +3,7 @@
 import { Script } from "@slopcode-ai/script"
 import { $ } from "bun"
 import { fileURLToPath } from "url"
+import { releaseInfo } from "./version.ts"
 
 const highlightsTemplate = `
 <!--
@@ -55,6 +56,29 @@ console.log("updated:", extensionToml)
 await Bun.file(extensionToml).write(toml)
 
 await $`bun install`
+
+if (Script.release && !Script.preview) {
+  const release = await releaseInfo()
+  process.env.GH_REPO = release.repo
+}
+
+const forceBuild = process.env.SLOPCODE_FORCE_BUILD === "true"
+const skipBuild = process.env.SLOPCODE_SKIP_BUILD === "true"
+const buildLocal = async () => {
+  const dist = await Array.fromAsync(new Bun.Glob("*/package.json").scan({ cwd: "./packages/slopcode/dist" }))
+  if (!forceBuild && dist.length > 0) {
+    console.log("build: using existing ./packages/slopcode/dist bundle")
+    return
+  }
+
+  if (skipBuild) {
+    throw new Error("Local build skipped but forcing or generating ./packages/slopcode/dist was required")
+  }
+
+  console.log("\n=== local build ===\n")
+  await import(`../packages/slopcode/script/build.ts`)
+}
+
 // Non-npm publishing channels are intentionally disabled for npm-only rollout.
 // await import(`../packages/sdk/js/script/build.ts`)
 
@@ -84,6 +108,8 @@ if (Script.release) {
   // Non-npm publishing channels are intentionally disabled for npm-only rollout.
   // await import(`../packages/desktop/scripts/finalize-latest-json.ts`)
 }
+
+await buildLocal()
 
 console.log("\n=== cli ===\n")
 await import(`../packages/slopcode/script/publish.ts`)
