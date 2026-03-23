@@ -11,12 +11,7 @@
       "description": "Log level",
       "ref": "LogLevel",
       "type": "string",
-      "enum": [
-        "DEBUG",
-        "INFO",
-        "WARN",
-        "ERROR"
-      ]
+      "enum": ["DEBUG", "INFO", "WARN", "ERROR"]
     },
     "server": {
       "description": "Server configuration for slopcode serve and web commands",
@@ -77,9 +72,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "template"
-        ],
+        "required": ["template"],
         "additionalProperties": false
       }
     },
@@ -128,11 +121,7 @@
     "share": {
       "description": "Control sharing behavior:'manual' allows manual sharing via commands, 'auto' enables automatic sharing, 'disabled' disables all sharing",
       "type": "string",
-      "enum": [
-        "manual",
-        "auto",
-        "disabled"
-      ]
+      "enum": ["manual", "auto", "disabled"]
     },
     "autoshare": {
       "description": "@deprecated Use 'share' field instead. Share newly created sessions automatically",
@@ -226,11 +215,7 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "subagent",
-                "primary",
-                "all"
-              ]
+              "enum": ["subagent", "primary", "all"]
             },
             "hidden": {
               "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -252,15 +237,7 @@
                 },
                 {
                   "type": "string",
-                  "enum": [
-                    "primary",
-                    "secondary",
-                    "accent",
-                    "success",
-                    "warning",
-                    "error",
-                    "info"
-                  ]
+                  "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
                 }
               ]
             },
@@ -294,11 +271,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -309,11 +282,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -324,11 +293,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -339,11 +304,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -354,11 +315,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -369,11 +326,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -384,11 +337,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -399,11 +348,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -414,11 +359,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -429,11 +370,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -444,11 +381,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -459,11 +392,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -474,11 +403,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -489,11 +414,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -504,11 +425,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -519,11 +436,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -531,56 +444,32 @@
                     "todowrite": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "todoread": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "question": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "webfetch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "websearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "codesearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "lsp": {
                       "ref": "PermissionRuleConfig",
@@ -588,11 +477,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -603,11 +488,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -615,11 +496,7 @@
                     "doom_loop": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "skill": {
                       "ref": "PermissionRuleConfig",
@@ -627,11 +504,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -642,11 +515,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -658,11 +527,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -673,11 +538,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -686,11 +547,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               ]
             }
@@ -737,11 +594,7 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "subagent",
-                "primary",
-                "all"
-              ]
+              "enum": ["subagent", "primary", "all"]
             },
             "hidden": {
               "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -763,15 +616,7 @@
                 },
                 {
                   "type": "string",
-                  "enum": [
-                    "primary",
-                    "secondary",
-                    "accent",
-                    "success",
-                    "warning",
-                    "error",
-                    "info"
-                  ]
+                  "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
                 }
               ]
             },
@@ -805,11 +650,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -820,11 +661,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -835,11 +672,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -850,11 +683,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -865,11 +694,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -880,11 +705,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -895,11 +716,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -910,11 +727,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -925,11 +738,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -940,11 +749,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -955,11 +760,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -970,11 +771,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -985,11 +782,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1000,11 +793,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -1015,11 +804,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1030,11 +815,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -1042,56 +823,32 @@
                     "todowrite": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "todoread": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "question": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "webfetch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "websearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "codesearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "lsp": {
                       "ref": "PermissionRuleConfig",
@@ -1099,11 +856,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1114,11 +867,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -1126,11 +875,7 @@
                     "doom_loop": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "skill": {
                       "ref": "PermissionRuleConfig",
@@ -1138,11 +883,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1153,11 +894,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -1169,11 +906,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1184,11 +917,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1197,11 +926,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               ]
             }
@@ -1249,11 +974,7 @@
           },
           "mode": {
             "type": "string",
-            "enum": [
-              "subagent",
-              "primary",
-              "all"
-            ]
+            "enum": ["subagent", "primary", "all"]
           },
           "hidden": {
             "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -1275,15 +996,7 @@
               },
               {
                 "type": "string",
-                "enum": [
-                  "primary",
-                  "secondary",
-                  "accent",
-                  "success",
-                  "warning",
-                  "error",
-                  "info"
-                ]
+                "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
               }
             ]
           },
@@ -1317,11 +1030,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1332,11 +1041,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1347,11 +1052,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1362,11 +1063,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1377,11 +1074,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1392,11 +1085,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1407,11 +1096,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1422,11 +1107,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1437,11 +1118,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1452,11 +1129,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1467,11 +1140,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1482,11 +1151,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1497,11 +1162,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1512,11 +1173,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1527,11 +1184,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1542,11 +1195,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1554,56 +1203,32 @@
                   "todowrite": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "todoread": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "question": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "webfetch": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "websearch": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "codesearch": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "lsp": {
                     "ref": "PermissionRuleConfig",
@@ -1611,11 +1236,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1626,11 +1247,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1638,11 +1255,7 @@
                   "doom_loop": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "skill": {
                     "ref": "PermissionRuleConfig",
@@ -1650,11 +1263,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -1665,11 +1274,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -1681,11 +1286,7 @@
                     {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     {
                       "ref": "PermissionObjectConfig",
@@ -1696,11 +1297,7 @@
                       "additionalProperties": {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       }
                     }
                   ]
@@ -1709,11 +1306,7 @@
               {
                 "ref": "PermissionActionConfig",
                 "type": "string",
-                "enum": [
-                  "ask",
-                  "allow",
-                  "deny"
-                ]
+                "enum": ["ask", "allow", "deny"]
               }
             ]
           }
@@ -1765,11 +1358,7 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "subagent",
-                "primary",
-                "all"
-              ]
+              "enum": ["subagent", "primary", "all"]
             },
             "hidden": {
               "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -1791,15 +1380,7 @@
                 },
                 {
                   "type": "string",
-                  "enum": [
-                    "primary",
-                    "secondary",
-                    "accent",
-                    "success",
-                    "warning",
-                    "error",
-                    "info"
-                  ]
+                  "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
                 }
               ]
             },
@@ -1833,11 +1414,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1848,11 +1425,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -1863,11 +1436,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1878,11 +1447,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -1893,11 +1458,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1908,11 +1469,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -1923,11 +1480,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1938,11 +1491,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -1953,11 +1502,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1968,11 +1513,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -1983,11 +1524,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -1998,11 +1535,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2013,11 +1546,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2028,11 +1557,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2043,11 +1568,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2058,11 +1579,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2070,56 +1587,32 @@
                     "todowrite": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "todoread": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "question": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "webfetch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "websearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "codesearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "lsp": {
                       "ref": "PermissionRuleConfig",
@@ -2127,11 +1620,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2142,11 +1631,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2154,11 +1639,7 @@
                     "doom_loop": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "skill": {
                       "ref": "PermissionRuleConfig",
@@ -2166,11 +1647,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2181,11 +1658,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2197,11 +1670,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -2212,11 +1681,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -2225,11 +1690,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               ]
             }
@@ -2276,11 +1737,7 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "subagent",
-                "primary",
-                "all"
-              ]
+              "enum": ["subagent", "primary", "all"]
             },
             "hidden": {
               "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -2302,15 +1759,7 @@
                 },
                 {
                   "type": "string",
-                  "enum": [
-                    "primary",
-                    "secondary",
-                    "accent",
-                    "success",
-                    "warning",
-                    "error",
-                    "info"
-                  ]
+                  "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
                 }
               ]
             },
@@ -2344,11 +1793,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2359,11 +1804,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2374,11 +1815,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2389,11 +1826,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2404,11 +1837,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2419,11 +1848,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2434,11 +1859,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2449,11 +1870,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2464,11 +1881,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2479,11 +1892,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2494,11 +1903,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2509,11 +1914,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2524,11 +1925,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2539,11 +1936,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2554,11 +1947,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2569,11 +1958,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2581,56 +1966,32 @@
                     "todowrite": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "todoread": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "question": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "webfetch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "websearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "codesearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "lsp": {
                       "ref": "PermissionRuleConfig",
@@ -2638,11 +1999,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2653,11 +2010,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2665,11 +2018,7 @@
                     "doom_loop": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "skill": {
                       "ref": "PermissionRuleConfig",
@@ -2677,11 +2026,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2692,11 +2037,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2708,11 +2049,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -2723,11 +2060,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -2736,11 +2069,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               ]
             }
@@ -2787,11 +2116,7 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "subagent",
-                "primary",
-                "all"
-              ]
+              "enum": ["subagent", "primary", "all"]
             },
             "hidden": {
               "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -2813,15 +2138,7 @@
                 },
                 {
                   "type": "string",
-                  "enum": [
-                    "primary",
-                    "secondary",
-                    "accent",
-                    "success",
-                    "warning",
-                    "error",
-                    "info"
-                  ]
+                  "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
                 }
               ]
             },
@@ -2855,11 +2172,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2870,11 +2183,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2885,11 +2194,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2900,11 +2205,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2915,11 +2216,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2930,11 +2227,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2945,11 +2238,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2960,11 +2249,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -2975,11 +2260,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -2990,11 +2271,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3005,11 +2282,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3020,11 +2293,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3035,11 +2304,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3050,11 +2315,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3065,11 +2326,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3080,11 +2337,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3092,56 +2345,32 @@
                     "todowrite": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "todoread": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "question": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "webfetch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "websearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "codesearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "lsp": {
                       "ref": "PermissionRuleConfig",
@@ -3149,11 +2378,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3164,11 +2389,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3176,11 +2397,7 @@
                     "doom_loop": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "skill": {
                       "ref": "PermissionRuleConfig",
@@ -3188,11 +2405,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3203,11 +2416,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3219,11 +2428,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -3234,11 +2439,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -3247,11 +2448,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               ]
             }
@@ -3298,11 +2495,7 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "subagent",
-                "primary",
-                "all"
-              ]
+              "enum": ["subagent", "primary", "all"]
             },
             "hidden": {
               "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -3324,15 +2517,7 @@
                 },
                 {
                   "type": "string",
-                  "enum": [
-                    "primary",
-                    "secondary",
-                    "accent",
-                    "success",
-                    "warning",
-                    "error",
-                    "info"
-                  ]
+                  "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
                 }
               ]
             },
@@ -3366,11 +2551,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3381,11 +2562,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3396,11 +2573,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3411,11 +2584,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3426,11 +2595,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3441,11 +2606,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3456,11 +2617,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3471,11 +2628,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3486,11 +2639,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3501,11 +2650,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3516,11 +2661,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3531,11 +2672,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3546,11 +2683,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3561,11 +2694,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3576,11 +2705,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3591,11 +2716,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3603,56 +2724,32 @@
                     "todowrite": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "todoread": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "question": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "webfetch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "websearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "codesearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "lsp": {
                       "ref": "PermissionRuleConfig",
@@ -3660,11 +2757,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3675,11 +2768,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3687,11 +2776,7 @@
                     "doom_loop": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "skill": {
                       "ref": "PermissionRuleConfig",
@@ -3699,11 +2784,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3714,11 +2795,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3730,11 +2807,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -3745,11 +2818,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -3758,11 +2827,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               ]
             }
@@ -3809,11 +2874,7 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "subagent",
-                "primary",
-                "all"
-              ]
+              "enum": ["subagent", "primary", "all"]
             },
             "hidden": {
               "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -3835,15 +2896,7 @@
                 },
                 {
                   "type": "string",
-                  "enum": [
-                    "primary",
-                    "secondary",
-                    "accent",
-                    "success",
-                    "warning",
-                    "error",
-                    "info"
-                  ]
+                  "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
                 }
               ]
             },
@@ -3877,11 +2930,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3892,11 +2941,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3907,11 +2952,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3922,11 +2963,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3937,11 +2974,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3952,11 +2985,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3967,11 +2996,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -3982,11 +3007,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -3997,11 +3018,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4012,11 +3029,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4027,11 +3040,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4042,11 +3051,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4057,11 +3062,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4072,11 +3073,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4087,11 +3084,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4102,11 +3095,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4114,56 +3103,32 @@
                     "todowrite": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "todoread": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "question": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "webfetch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "websearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "codesearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "lsp": {
                       "ref": "PermissionRuleConfig",
@@ -4171,11 +3136,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4186,11 +3147,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4198,11 +3155,7 @@
                     "doom_loop": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "skill": {
                       "ref": "PermissionRuleConfig",
@@ -4210,11 +3163,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4225,11 +3174,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4241,11 +3186,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -4256,11 +3197,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -4269,11 +3206,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               ]
             }
@@ -4320,11 +3253,7 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "subagent",
-                "primary",
-                "all"
-              ]
+              "enum": ["subagent", "primary", "all"]
             },
             "hidden": {
               "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -4346,15 +3275,7 @@
                 },
                 {
                   "type": "string",
-                  "enum": [
-                    "primary",
-                    "secondary",
-                    "accent",
-                    "success",
-                    "warning",
-                    "error",
-                    "info"
-                  ]
+                  "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
                 }
               ]
             },
@@ -4388,11 +3309,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4403,11 +3320,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4418,11 +3331,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4433,11 +3342,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4448,11 +3353,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4463,11 +3364,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4478,11 +3375,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4493,11 +3386,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4508,11 +3397,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4523,11 +3408,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4538,11 +3419,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4553,11 +3430,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4568,11 +3441,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4583,11 +3452,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4598,11 +3463,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4613,11 +3474,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4625,56 +3482,32 @@
                     "todowrite": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "todoread": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "question": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "webfetch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "websearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "codesearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "lsp": {
                       "ref": "PermissionRuleConfig",
@@ -4682,11 +3515,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4697,11 +3526,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4709,11 +3534,7 @@
                     "doom_loop": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "skill": {
                       "ref": "PermissionRuleConfig",
@@ -4721,11 +3542,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4736,11 +3553,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4752,11 +3565,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -4767,11 +3576,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -4780,11 +3585,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               ]
             }
@@ -4831,11 +3632,7 @@
             },
             "mode": {
               "type": "string",
-              "enum": [
-                "subagent",
-                "primary",
-                "all"
-              ]
+              "enum": ["subagent", "primary", "all"]
             },
             "hidden": {
               "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -4857,15 +3654,7 @@
                 },
                 {
                   "type": "string",
-                  "enum": [
-                    "primary",
-                    "secondary",
-                    "accent",
-                    "success",
-                    "warning",
-                    "error",
-                    "info"
-                  ]
+                  "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
                 }
               ]
             },
@@ -4899,11 +3688,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4914,11 +3699,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4929,11 +3710,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4944,11 +3721,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4959,11 +3732,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -4974,11 +3743,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -4989,11 +3754,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -5004,11 +3765,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -5019,11 +3776,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -5034,11 +3787,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -5049,11 +3798,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -5064,11 +3809,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -5079,11 +3820,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -5094,11 +3831,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -5109,11 +3842,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -5124,11 +3853,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -5136,56 +3861,32 @@
                     "todowrite": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "todoread": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "question": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "webfetch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "websearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "codesearch": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "lsp": {
                       "ref": "PermissionRuleConfig",
@@ -5193,11 +3894,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -5208,11 +3905,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -5220,11 +3913,7 @@
                     "doom_loop": {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     "skill": {
                       "ref": "PermissionRuleConfig",
@@ -5232,11 +3921,7 @@
                         {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         },
                         {
                           "ref": "PermissionObjectConfig",
@@ -5247,11 +3932,7 @@
                           "additionalProperties": {
                             "ref": "PermissionActionConfig",
                             "type": "string",
-                            "enum": [
-                              "ask",
-                              "allow",
-                              "deny"
-                            ]
+                            "enum": ["ask", "allow", "deny"]
                           }
                         }
                       ]
@@ -5263,11 +3944,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5278,11 +3955,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5291,11 +3964,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               ]
             }
@@ -5343,11 +4012,7 @@
           },
           "mode": {
             "type": "string",
-            "enum": [
-              "subagent",
-              "primary",
-              "all"
-            ]
+            "enum": ["subagent", "primary", "all"]
           },
           "hidden": {
             "description": "Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)",
@@ -5369,15 +4034,7 @@
               },
               {
                 "type": "string",
-                "enum": [
-                  "primary",
-                  "secondary",
-                  "accent",
-                  "success",
-                  "warning",
-                  "error",
-                  "info"
-                ]
+                "enum": ["primary", "secondary", "accent", "success", "warning", "error", "info"]
               }
             ]
           },
@@ -5411,11 +4068,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5426,11 +4079,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5441,11 +4090,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5456,11 +4101,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5471,11 +4112,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5486,11 +4123,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5501,11 +4134,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5516,11 +4145,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5531,11 +4156,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5546,11 +4167,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5561,11 +4178,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5576,11 +4189,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5591,11 +4200,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5606,11 +4211,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5621,11 +4222,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5636,11 +4233,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5648,56 +4241,32 @@
                   "todowrite": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "todoread": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "question": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "webfetch": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "websearch": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "codesearch": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "lsp": {
                     "ref": "PermissionRuleConfig",
@@ -5705,11 +4274,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5720,11 +4285,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5732,11 +4293,7 @@
                   "doom_loop": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   },
                   "skill": {
                     "ref": "PermissionRuleConfig",
@@ -5744,11 +4301,7 @@
                       {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       },
                       {
                         "ref": "PermissionObjectConfig",
@@ -5759,11 +4312,7 @@
                         "additionalProperties": {
                           "ref": "PermissionActionConfig",
                           "type": "string",
-                          "enum": [
-                            "ask",
-                            "allow",
-                            "deny"
-                          ]
+                          "enum": ["ask", "allow", "deny"]
                         }
                       }
                     ]
@@ -5775,11 +4324,7 @@
                     {
                       "ref": "PermissionActionConfig",
                       "type": "string",
-                      "enum": [
-                        "ask",
-                        "allow",
-                        "deny"
-                      ]
+                      "enum": ["ask", "allow", "deny"]
                     },
                     {
                       "ref": "PermissionObjectConfig",
@@ -5790,11 +4335,7 @@
                       "additionalProperties": {
                         "ref": "PermissionActionConfig",
                         "type": "string",
-                        "enum": [
-                          "ask",
-                          "allow",
-                          "deny"
-                        ]
+                        "enum": ["ask", "allow", "deny"]
                       }
                     }
                   ]
@@ -5803,11 +4344,7 @@
               {
                 "ref": "PermissionActionConfig",
                 "type": "string",
-                "enum": [
-                  "ask",
-                  "allow",
-                  "deny"
-                ]
+                "enum": ["ask", "allow", "deny"]
               }
             ]
           }
@@ -5886,15 +4423,10 @@
                       "properties": {
                         "field": {
                           "type": "string",
-                          "enum": [
-                            "reasoning_content",
-                            "reasoning_details"
-                          ]
+                          "enum": ["reasoning_content", "reasoning_details"]
                         }
                       },
-                      "required": [
-                        "field"
-                      ],
+                      "required": ["field"],
                       "additionalProperties": false
                     }
                   ]
@@ -5930,17 +4462,11 @@
                           "type": "number"
                         }
                       },
-                      "required": [
-                        "input",
-                        "output"
-                      ],
+                      "required": ["input", "output"],
                       "additionalProperties": false
                     }
                   },
-                  "required": [
-                    "input",
-                    "output"
-                  ],
+                  "required": ["input", "output"],
                   "additionalProperties": false
                 },
                 "limit": {
@@ -5956,10 +4482,7 @@
                       "type": "number"
                     }
                   },
-                  "required": [
-                    "context",
-                    "output"
-                  ],
+                  "required": ["context", "output"],
                   "additionalProperties": false
                 },
                 "modalities": {
@@ -5969,33 +4492,18 @@
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "enum": [
-                          "text",
-                          "audio",
-                          "image",
-                          "video",
-                          "pdf"
-                        ]
+                        "enum": ["text", "audio", "image", "video", "pdf"]
                       }
                     },
                     "output": {
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "enum": [
-                          "text",
-                          "audio",
-                          "image",
-                          "video",
-                          "pdf"
-                        ]
+                        "enum": ["text", "audio", "image", "video", "pdf"]
                       }
                     }
                   },
-                  "required": [
-                    "input",
-                    "output"
-                  ],
+                  "required": ["input", "output"],
                   "additionalProperties": false
                 },
                 "experimental": {
@@ -6003,11 +4511,7 @@
                 },
                 "status": {
                   "type": "string",
-                  "enum": [
-                    "alpha",
-                    "beta",
-                    "deprecated"
-                  ]
+                  "enum": ["alpha", "beta", "deprecated"]
                 },
                 "options": {
                   "type": "object",
@@ -6157,10 +4661,7 @@
                     "maximum": 9007199254740991
                   }
                 },
-                "required": [
-                  "type",
-                  "command"
-                ],
+                "required": ["type", "command"],
                 "additionalProperties": false
               },
               {
@@ -6225,10 +4726,7 @@
                     "maximum": 9007199254740991
                   }
                 },
-                "required": [
-                  "type",
-                  "url"
-                ],
+                "required": ["type", "url"],
                 "additionalProperties": false
               }
             ]
@@ -6240,9 +4738,7 @@
                 "type": "boolean"
               }
             },
-            "required": [
-              "enabled"
-            ],
+            "required": ["enabled"],
             "additionalProperties": false
           }
         ]
@@ -6313,9 +4809,7 @@
                     "const": true
                   }
                 },
-                "required": [
-                  "disabled"
-                ],
+                "required": ["disabled"],
                 "additionalProperties": false
               },
               {
@@ -6353,9 +4847,7 @@
                     "additionalProperties": {}
                   }
                 },
-                "required": [
-                  "command"
-                ],
+                "required": ["command"],
                 "additionalProperties": false
               }
             ]
@@ -6374,10 +4866,7 @@
       "description": "@deprecated Always uses stretch layout.",
       "ref": "LayoutConfig",
       "type": "string",
-      "enum": [
-        "auto",
-        "stretch"
-      ]
+      "enum": ["auto", "stretch"]
     },
     "permission": {
       "ref": "PermissionConfig",
@@ -6397,11 +4886,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6412,11 +4897,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6427,11 +4908,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6442,11 +4919,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6457,11 +4930,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6472,11 +4941,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6487,11 +4952,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6502,11 +4963,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6517,11 +4974,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6532,11 +4985,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6547,11 +4996,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6562,11 +5007,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6577,11 +5018,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6592,11 +5029,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6607,11 +5040,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6622,11 +5051,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6634,56 +5059,32 @@
             "todowrite": {
               "ref": "PermissionActionConfig",
               "type": "string",
-              "enum": [
-                "ask",
-                "allow",
-                "deny"
-              ]
+              "enum": ["ask", "allow", "deny"]
             },
             "todoread": {
               "ref": "PermissionActionConfig",
               "type": "string",
-              "enum": [
-                "ask",
-                "allow",
-                "deny"
-              ]
+              "enum": ["ask", "allow", "deny"]
             },
             "question": {
               "ref": "PermissionActionConfig",
               "type": "string",
-              "enum": [
-                "ask",
-                "allow",
-                "deny"
-              ]
+              "enum": ["ask", "allow", "deny"]
             },
             "webfetch": {
               "ref": "PermissionActionConfig",
               "type": "string",
-              "enum": [
-                "ask",
-                "allow",
-                "deny"
-              ]
+              "enum": ["ask", "allow", "deny"]
             },
             "websearch": {
               "ref": "PermissionActionConfig",
               "type": "string",
-              "enum": [
-                "ask",
-                "allow",
-                "deny"
-              ]
+              "enum": ["ask", "allow", "deny"]
             },
             "codesearch": {
               "ref": "PermissionActionConfig",
               "type": "string",
-              "enum": [
-                "ask",
-                "allow",
-                "deny"
-              ]
+              "enum": ["ask", "allow", "deny"]
             },
             "lsp": {
               "ref": "PermissionRuleConfig",
@@ -6691,11 +5092,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6706,11 +5103,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6718,11 +5111,7 @@
             "doom_loop": {
               "ref": "PermissionActionConfig",
               "type": "string",
-              "enum": [
-                "ask",
-                "allow",
-                "deny"
-              ]
+              "enum": ["ask", "allow", "deny"]
             },
             "skill": {
               "ref": "PermissionRuleConfig",
@@ -6730,11 +5119,7 @@
                 {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 },
                 {
                   "ref": "PermissionObjectConfig",
@@ -6745,11 +5130,7 @@
                   "additionalProperties": {
                     "ref": "PermissionActionConfig",
                     "type": "string",
-                    "enum": [
-                      "ask",
-                      "allow",
-                      "deny"
-                    ]
+                    "enum": ["ask", "allow", "deny"]
                   }
                 }
               ]
@@ -6761,11 +5142,7 @@
               {
                 "ref": "PermissionActionConfig",
                 "type": "string",
-                "enum": [
-                  "ask",
-                  "allow",
-                  "deny"
-                ]
+                "enum": ["ask", "allow", "deny"]
               },
               {
                 "ref": "PermissionObjectConfig",
@@ -6776,11 +5153,7 @@
                 "additionalProperties": {
                   "ref": "PermissionActionConfig",
                   "type": "string",
-                  "enum": [
-                    "ask",
-                    "allow",
-                    "deny"
-                  ]
+                  "enum": ["ask", "allow", "deny"]
                 }
               }
             ]
@@ -6789,11 +5162,7 @@
         {
           "ref": "PermissionActionConfig",
           "type": "string",
-          "enum": [
-            "ask",
-            "allow",
-            "deny"
-          ]
+          "enum": ["ask", "allow", "deny"]
         }
       ]
     },
