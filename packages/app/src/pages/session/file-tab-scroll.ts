@@ -6,11 +6,39 @@ type Input = {
   contextOpen: boolean
 }
 
+type Box = {
+  left: number
+  right: number
+}
+
 export const nextTabListScrollLeft = (input: Input) => {
   if (input.scrollWidth <= input.prevScrollWidth) return
   if (!input.prevContextOpen && input.contextOpen) return 0
   if (input.scrollWidth <= input.clientWidth) return
   return input.scrollWidth - input.clientWidth
+}
+
+export const nextTabListDividerLeft = (input: { list: Box; tabs: Box[] }) => {
+  const tab = input.tabs.find((tab) => tab.right > input.list.left)
+  if (!tab) return
+  return Math.max(tab.left - input.list.left, 0)
+}
+
+const syncLeadingDivider = (el: HTMLDivElement) => {
+  const divider = el.parentElement?.querySelector<HTMLElement>('[data-slot="tabs-leading-divider"]')
+  if (!divider) return
+
+  const list = el.getBoundingClientRect()
+  const left = nextTabListDividerLeft({
+    list,
+    tabs: Array.from(el.querySelectorAll<HTMLElement>('[data-slot="tabs-trigger-wrapper"]'))
+      .map((tab) => tab.getBoundingClientRect())
+      .filter((tab) => tab.width > 0 && tab.left < list.right && tab.right > list.left),
+  })
+
+  divider.toggleAttribute("data-hidden", left === undefined)
+  if (left === undefined) return
+  divider.style.left = `${left}px`
 }
 
 export const createFileTabListSync = (input: { el: HTMLDivElement; contextOpen: () => boolean }) => {
@@ -37,6 +65,7 @@ export const createFileTabListSync = (input: { el: HTMLDivElement; contextOpen: 
       })
     }
 
+    syncLeadingDivider(input.el)
     prevScrollWidth = scrollWidth
     prevContextOpen = contextOpen
   }
@@ -56,12 +85,18 @@ export const createFileTabListSync = (input: { el: HTMLDivElement; contextOpen: 
   }
 
   input.el.addEventListener("wheel", onWheel, { passive: false })
+  input.el.addEventListener("scroll", schedule, { passive: true })
   const observer = new MutationObserver(schedule)
-  observer.observe(input.el, { childList: true })
+  observer.observe(input.el, { childList: true, subtree: true, characterData: true })
+  const resize = new ResizeObserver(schedule)
+  resize.observe(input.el)
+  schedule()
 
   return () => {
     input.el.removeEventListener("wheel", onWheel)
+    input.el.removeEventListener("scroll", schedule)
     observer.disconnect()
+    resize.disconnect()
     if (frame !== undefined) cancelAnimationFrame(frame)
   }
 }

@@ -231,6 +231,9 @@ export function SessionSidePanel(props: {
                     aria-hidden="true"
                     class="pointer-events-none absolute inset-y-0 left-0 z-10"
                   />
+                  <div data-slot="tabs-leading-divider" aria-hidden="true" data-hidden>
+                    |
+                  </div>
                   <Tabs.List
                     ref={(el: HTMLDivElement) => {
                       const stop = createFileTabListSync({ el, contextOpen })
