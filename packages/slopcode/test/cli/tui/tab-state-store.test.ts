@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { createStore } from "solid-js/store"
 import { DRAFT_TAB_ID } from "../../../src/cli/cmd/tui/context/session-tabs-state"
 import {
   blankTabState,
@@ -110,5 +111,19 @@ describe("tab state store", () => {
     removeTabState(store, "ses_4")
 
     expect(store).toEqual({})
+  })
+
+  test("accepts prompt proxies from solid stores", () => {
+    const store: TabStateStore = {}
+    const [state] = createStore({
+      prompt: {
+        input: "hello",
+        parts: [],
+        mode: "normal" as const,
+      },
+    })
+
+    expect(() => setTabPrompt(store, DRAFT_TAB_ID, state.prompt)).not.toThrow()
+    expect(getTabState(store, DRAFT_TAB_ID).prompt).toEqual(state.prompt)
   })
 })
