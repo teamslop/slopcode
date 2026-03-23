@@ -14,6 +14,10 @@ export function SessionStrip() {
   const { theme } = useTheme()
   const dimensions = useTerminalDimensions()
   const [hover, setHover] = createSignal<string>()
+  const edge = () => theme.border
+  const bg = (id: string) => (hover() === id ? theme.backgroundElement : undefined)
+  const closeVisible = (id: string) => hover() === id
+  const closeFg = (id: string) => (closeVisible(id) ? theme.text : theme.textMuted)
   const items = createMemo(() =>
     tabs.tabs().map((tab) => ({
       id: tab.id,
@@ -29,8 +33,8 @@ export function SessionStrip() {
 
   return (
     <Show when={tabs.visible()}>
-      <box flexShrink={0} backgroundColor={theme.backgroundPanel}>
-        <box flexDirection="row" paddingLeft={2} paddingRight={2}>
+      <box flexShrink={0} flexDirection="column" backgroundColor={theme.backgroundPanel}>
+        <box height={1} flexDirection="row" paddingLeft={2} paddingRight={2}>
           <For each={layout().tabs}>
             {(tab, index) => {
               const active = () => tabs.active() === tab.id
@@ -42,30 +46,49 @@ export function SessionStrip() {
               return (
                 <>
                   <Show when={index() > 0}>
-                    <text fg={theme.textMuted}>{SessionStripText.SEP}</text>
+                    <text fg={edge()}>{SessionStripText.SEP}</text>
                   </Show>
                   <box
+                    flexDirection="row"
+                    backgroundColor={bg(tab.id)}
                     onMouseOver={() => setHover(tab.id)}
                     onMouseOut={() => setHover(undefined)}
-                    onMouseUp={() => tabs.open(tab.id)}
                   >
-                    <text fg={fg()} attributes={active() ? TextAttributes.BOLD : undefined} wrapMode="none">
-                      {active() ? SessionStripText.ACTIVE : ""}
-                      {tab.title}
-                    </text>
+                    <box onMouseUp={() => tabs.open(tab.id)}>
+                      <text fg={fg()} attributes={active() ? TextAttributes.BOLD : undefined} wrapMode="none">
+                        {active() ? SessionStripText.ACTIVE : ""}
+                        {tab.title}{" "}
+                      </text>
+                    </box>
+                    <box
+                      onMouseUp={
+                        closeVisible(tab.id)
+                          ? (evt) => {
+                              evt.stopPropagation()
+                              setHover(undefined)
+                              tabs.close(tab.id)
+                            }
+                          : undefined
+                      }
+                    >
+                      <text fg={closeFg(tab.id)} wrapMode="none">
+                        {closeVisible(tab.id) ? SessionStripText.CLOSE : " "}
+                      </text>
+                    </box>
                   </box>
                 </>
               )
             }}
           </For>
           <Show when={layout().hidden > 0}>
-            <text
-              fg={theme.textMuted}
-            >{`${layout().tabs.length > 0 ? SessionStripText.SEP : ""}+${layout().hidden}`}</text>
+            <Show when={layout().tabs.length > 0}>
+              <text fg={edge()}>{SessionStripText.SEP}</text>
+            </Show>
+            <text fg={theme.textMuted}>{`+${layout().hidden}`}</text>
           </Show>
         </box>
-        <box paddingLeft={2} paddingRight={2}>
-          <text fg={theme.border} wrapMode="none">
+        <box height={1} paddingLeft={2} paddingRight={2}>
+          <text fg={edge()} wrapMode="none">
             {layout().underline}
           </text>
         </box>

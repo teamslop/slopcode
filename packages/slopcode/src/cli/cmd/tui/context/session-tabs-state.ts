@@ -130,6 +130,22 @@ export function visitSessionTabs(
   }
 }
 
+export function closeSessionTab(state: SessionTabsState, id: string): SessionTabsState {
+  const index = state.tabs.findIndex((tab) => tab.id === id)
+  if (index === -1) return state
+  const tabs = state.tabs.filter((tab) => tab.id !== id)
+  if (state.active && state.active !== id && tabs.some((tab) => tab.id === state.active)) {
+    return {
+      tabs,
+      active: state.active,
+    }
+  }
+  return {
+    tabs,
+    active: tabs[index]?.id ?? tabs[index - 1]?.id,
+  }
+}
+
 export function pruneSessionTabs(state: SessionTabsState, keep: Set<string>): SessionTabsState {
   const tabs = state.tabs.filter((tab) => isDraft(tab) || keep.has(tab.id))
   if (tabs.length === state.tabs.length) return state

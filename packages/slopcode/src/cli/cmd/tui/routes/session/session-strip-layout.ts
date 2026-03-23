@@ -12,6 +12,8 @@ export type SessionStripLayout = {
 const SEP_GLYPH = "│"
 const SEP = ` ${SEP_GLYPH} `
 const ACTIVE = "* "
+const CLOSE = "X"
+const CLOSE_SLOT = ` ${CLOSE}`
 const RULE = "─"
 const JOINT = "┴"
 const SEP_MARK = width(" ")
@@ -24,12 +26,8 @@ function item(tab: SessionStripTab, active: boolean) {
   return (active ? ACTIVE : "") + tab.title
 }
 
-function parts(tabs: SessionStripTab[], active: string | undefined, hidden: number) {
-  return [...tabs.map((tab) => item(tab, tab.id === active)), ...(hidden > 0 ? [`+${hidden}`] : [])]
-}
-
 function tabWidth(tab: SessionStripTab, active: boolean) {
-  return width(item(tab, active))
+  return width(item(tab, active) + CLOSE_SLOT)
 }
 
 function layoutWidth(tabs: SessionStripTab[], active: string | undefined, total: number) {
@@ -52,16 +50,17 @@ function layoutWidth(tabs: SessionStripTab[], active: string | undefined, total:
 }
 
 function joints(tabs: SessionStripTab[], active: string | undefined, hidden: number) {
-  let offset = 0
-  return parts(tabs, active, hidden).flatMap((part, index) => {
-    if (index === 0) {
-      offset += width(part)
-      return []
-    }
-    const point = offset + SEP_MARK
-    offset += width(SEP) + width(part)
-    return [point]
-  })
+  if (tabs.length === 0) return []
+  const points: number[] = []
+  let offset = tabWidth(tabs[0]!, tabs[0]!.id === active)
+  for (const tab of tabs.slice(1)) {
+    points.push(offset + SEP_MARK)
+    offset += width(SEP) + tabWidth(tab, tab.id === active)
+  }
+  if (hidden > 0) {
+    points.push(offset + SEP_MARK)
+  }
+  return points
 }
 
 function underline(width: number, points: number[]) {
@@ -125,5 +124,6 @@ export function layoutSessionStrip(
 
 export const SessionStripText = {
   ACTIVE,
+  CLOSE,
   SEP,
 }

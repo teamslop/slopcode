@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+  closeSessionTab,
   DRAFT_TAB_ID,
   openDraftTab,
   promoteDraftTab,
@@ -172,6 +173,101 @@ describe("session tabs", () => {
         { type: "session", id: "ses_2", pendingTitle: true },
       ],
       active: "ses_2",
+    })
+  })
+
+  test("closing an inactive tab preserves the current active tab", () => {
+    const next = closeSessionTab(
+      {
+        tabs: [
+          { type: "session", id: "ses_1" },
+          { type: "session", id: "ses_2" },
+          { type: "session", id: "ses_3" },
+        ],
+        active: "ses_2",
+      },
+      "ses_1",
+    )
+
+    expect(next).toEqual({
+      tabs: [
+        { type: "session", id: "ses_2" },
+        { type: "session", id: "ses_3" },
+      ],
+      active: "ses_2",
+    })
+  })
+
+  test("closing the active tab prefers the tab to the right", () => {
+    const next = closeSessionTab(
+      {
+        tabs: [
+          { type: "session", id: "ses_1" },
+          { type: "session", id: "ses_2" },
+          { type: "session", id: "ses_3" },
+        ],
+        active: "ses_2",
+      },
+      "ses_2",
+    )
+
+    expect(next).toEqual({
+      tabs: [
+        { type: "session", id: "ses_1" },
+        { type: "session", id: "ses_3" },
+      ],
+      active: "ses_3",
+    })
+  })
+
+  test("closing the last tab falls back to the left", () => {
+    const next = closeSessionTab(
+      {
+        tabs: [
+          { type: "session", id: "ses_1" },
+          { type: "session", id: "ses_2" },
+        ],
+        active: "ses_2",
+      },
+      "ses_2",
+    )
+
+    expect(next).toEqual({
+      tabs: [{ type: "session", id: "ses_1" }],
+      active: "ses_1",
+    })
+  })
+
+  test("closing the draft can activate the next session tab", () => {
+    const next = closeSessionTab(
+      {
+        tabs: [
+          { type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") },
+          { type: "session", id: "ses_1" },
+        ],
+        active: DRAFT_TAB_ID,
+      },
+      DRAFT_TAB_ID,
+    )
+
+    expect(next).toEqual({
+      tabs: [{ type: "session", id: "ses_1" }],
+      active: "ses_1",
+    })
+  })
+
+  test("closing the final tab clears the active tab", () => {
+    const next = closeSessionTab(
+      {
+        tabs: [{ type: "draft", id: DRAFT_TAB_ID, prompt: prompt("draft") }],
+        active: DRAFT_TAB_ID,
+      },
+      DRAFT_TAB_ID,
+    )
+
+    expect(next).toEqual({
+      tabs: [],
+      active: undefined,
     })
   })
 

@@ -33,7 +33,7 @@ describe("session strip layout", () => {
   test("prefers a wider left-anchored window on ties", () => {
     const result = layoutSessionStrip(tabs, {
       active: "ses_2",
-      width: 18,
+      width: 20,
     })
 
     expect(result.tabs).toEqual([tabs[0], tabs[1]])
@@ -43,7 +43,7 @@ describe("session strip layout", () => {
   test("falls back to a prefix when active is missing", () => {
     const result = layoutSessionStrip(tabs, {
       active: "ses_missing",
-      width: 14,
+      width: 18,
     })
 
     expect(result.tabs).toEqual([tabs[0], tabs[1]])
@@ -69,7 +69,7 @@ describe("session strip layout", () => {
         { id: "a", title: "A" },
         { id: "b", title: "B" },
       ],
-      { width: 6 },
+      { width: 9 },
     )
 
     expect(result.tabs).toEqual([
@@ -77,7 +77,7 @@ describe("session strip layout", () => {
       { id: "b", title: "B" },
     ])
     expect(result.hidden).toBe(0)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "┴", "─", "─", "─"])
+    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "┴", "─", "─", "─", "─"])
   })
 
   test("keeps joints aligned when the active marker shifts tab text", () => {
@@ -86,11 +86,11 @@ describe("session strip layout", () => {
         { id: "a", title: "A" },
         { id: "b", title: "B" },
       ],
-      { active: "a", width: 8 },
+      { active: "a", width: 11 },
     )
 
     expect(result.hidden).toBe(0)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "┴", "─", "─", "─"])
+    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "─", "─", "┴", "─", "─", "─", "─"])
   })
 
   test("adds a joint before the overflow marker", () => {
@@ -100,7 +100,7 @@ describe("session strip layout", () => {
         { id: "b", title: "B" },
         { id: "c", title: "Long" },
       ],
-      { width: 10 },
+      { width: 14 },
     )
 
     expect(result.tabs).toEqual([
@@ -108,6 +108,6 @@ describe("session strip layout", () => {
       { id: "b", title: "B" },
     ])
     expect(result.hidden).toBe(1)
-    expect(Array.from(result.underline)).toEqual(["─", "─", "┴", "─", "─", "─", "┴", "─", "─", "─"])
+    expect(Array.from(result.underline)).toEqual(["─", "─", "─", "─", "┴", "─", "─", "─", "─", "─", "┴", "─", "─", "─"])
   })
 })

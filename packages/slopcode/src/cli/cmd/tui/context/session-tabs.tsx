@@ -7,6 +7,7 @@ import { useSync } from "./sync"
 import {
   DRAFT_TAB_ID,
   activateTab,
+  closeSessionTab,
   getDraftPrompt,
   hasDraftTab,
   openDraftTab,
@@ -123,6 +124,23 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
         route.navigate({
           type: "session",
           sessionID: id,
+          source: "switch",
+        })
+      },
+      close(id: string) {
+        const current = state()
+        const next = closeSessionTab(current, id)
+        if (next === current) return
+        setState(next)
+        const routeID = route.data.type === "home" ? DRAFT_TAB_ID : route.data.sessionID
+        if (routeID !== id) return
+        if (!next.active || next.active === DRAFT_TAB_ID) {
+          route.navigate({ type: "home" })
+          return
+        }
+        route.navigate({
+          type: "session",
+          sessionID: next.active,
           source: "switch",
         })
       },
