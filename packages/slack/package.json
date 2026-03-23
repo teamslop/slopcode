@@ -1,6 +1,6 @@
 {
   "name": "@slopcode-ai/slack",
-  "version": "0.1.45",
+  "version": "0.1.46",
   "type": "module",
   "license": "MIT",
   "scripts": {
