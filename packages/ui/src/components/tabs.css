@@ -145,6 +145,28 @@
         width: var(--tabs-review-fade);
         background: linear-gradient(90deg, var(--background-stronger), transparent);
       }
+
+      > [data-slot="tabs-leading-divider"] {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 11;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 10px;
+        color: var(--text-weaker);
+        font-family: var(--font-family-mono);
+        font-size: 15px;
+        line-height: 1;
+        pointer-events: none;
+        transition: opacity 120ms ease;
+      }
+
+      > [data-slot="tabs-leading-divider"][data-hidden] {
+        opacity: 0;
+      }
     }
 
     [data-slot="tabs-list"] {
