@@ -17,6 +17,7 @@ import { useRoute, useRouteData } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { SplitBorder } from "@tui/component/border"
 import { Spinner } from "@tui/component/spinner"
+import "@tui/component/diff-color"
 import { selectedForeground, tint, useTheme } from "@tui/context/theme"
 import {
   BoxRenderable,

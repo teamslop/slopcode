@@ -23,16 +23,17 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-function stream(text: string) {
+function stream(input: { text: string; finishReason?: string; wait?: Promise<void> }) {
   return {
     fullStream: (async function* () {
       yield { type: "start" }
       yield { type: "text-start", id: "txt-0" }
-      yield { type: "text-delta", id: "txt-0", text }
+      if (input.wait) await input.wait
+      yield { type: "text-delta", id: "txt-0", text: input.text }
       yield { type: "text-end", id: "txt-0" }
       yield {
         type: "finish-step",
-        finishReason: "stop",
+        finishReason: input.finishReason ?? "stop",
         usage: {
           inputTokens: 0,
           outputTokens: 0,
@@ -108,7 +109,7 @@ describe("session serial queue e2e", () => {
 
         spyOn(LLM, "stream").mockImplementation(async (input) => {
           calls.push({ input: JSON.stringify(input.messages), taskRuns: tasks.length })
-          return stream(`turn ${calls.length}`)
+          return stream({ text: `turn ${calls.length}` })
         })
 
         const first = await app.request(`/session/${session.id}/prompt_async`, {

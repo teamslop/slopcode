@@ -563,6 +563,7 @@ export namespace SessionPrompt {
         let msgs = filterQueuedMessages(
           await MessageV2.filterCompacted(MessageV2.stream(sessionID)),
           state()[sessionID],
+          mode,
         )
 
         const current = mode === "serial" ? state()[sessionID]?.current : undefined
@@ -1039,10 +1040,31 @@ export namespace SessionPrompt {
     }
   }
 
-  function filterQueuedMessages(messages: MessageV2.WithParts[], entry: Entry | undefined) {
-    if (!entry || entry.queued.length === 0) return messages
-    const queued = new Set(entry.queued)
-    return messages.filter((msg) => msg.info.role !== "user" || !queued.has(msg.info.id))
+  function isInternalUserMessage(message: MessageV2.WithParts) {
+    if (message.info.role !== "user") return false
+    if (message.parts.length === 0) return false
+    return message.parts.every((part) => {
+      if (part.type === "compaction" || part.type === "subtask") return true
+      return part.type === "text" && !!part.synthetic
+    })
+  }
+
+  function filterQueuedMessages(
+    messages: MessageV2.WithParts[],
+    entry: Entry | undefined,
+    mode: Awaited<ReturnType<typeof queueMode>>,
+  ) {
+    if (!entry) return messages
+    const queued = new Set([...entry.queued, ...entry.pending])
+    return messages.filter((msg) => {
+      if (msg.info.role !== "user") return true
+      if (queued.has(msg.info.id)) return false
+      if (mode !== "serial") return true
+      if (!entry.current) return true
+      if (msg.info.id === entry.current) return true
+      if (msg.info.id > entry.current && !isInternalUserMessage(msg)) return false
+      return true
+    })
   }
 
   /** @internal Exported for testing */

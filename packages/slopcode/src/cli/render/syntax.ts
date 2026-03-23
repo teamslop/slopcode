@@ -7,6 +7,8 @@ export type SyntaxTheme = {
   diffAddedBg: RGBA
   diffContext: RGBA
   diffContextBg: RGBA
+  diffHighlightAdded?: RGBA
+  diffHighlightRemoved?: RGBA
   diffRemoved: RGBA
   diffRemovedBg: RGBA
   error: RGBA
@@ -44,6 +46,8 @@ export function createCliSyntaxTheme() {
     diffAddedBg: RGBA.fromInts(35, 54, 35),
     diffContext: RGBA.fromInts(128, 128, 128),
     diffContextBg: RGBA.fromInts(26, 26, 26),
+    diffHighlightAdded: RGBA.fromInts(190, 230, 154),
+    diffHighlightRemoved: RGBA.fromInts(245, 149, 157),
     diffRemoved: RGBA.fromInts(224, 108, 117),
     diffRemovedBg: RGBA.fromInts(58, 35, 38),
     error: RGBA.fromInts(224, 108, 117),
@@ -523,6 +527,38 @@ function getSyntaxRules(theme: SyntaxTheme) {
       style: {
         foreground: theme.diffContext,
         background: theme.diffContextBg,
+      },
+    },
+    {
+      scope: ["slopcode.diff.plus"],
+      style: {
+        foreground: theme.diffAdded,
+      },
+    },
+    {
+      scope: ["slopcode.diff.minus"],
+      style: {
+        foreground: theme.diffRemoved,
+      },
+    },
+    {
+      scope: ["slopcode.diff.plus.emphasis"],
+      style: {
+        foreground: theme.diffHighlightAdded ?? theme.diffAdded,
+        bold: true,
+      },
+    },
+    {
+      scope: ["slopcode.diff.minus.emphasis"],
+      style: {
+        foreground: theme.diffHighlightRemoved ?? theme.diffRemoved,
+        bold: true,
+      },
+    },
+    {
+      scope: ["slopcode.diff.context"],
+      style: {
+        dim: true,
       },
     },
     {
