@@ -19,7 +19,7 @@ import { usePromptStash } from "./stash"
 import { DialogStash } from "../dialog-stash"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useCommandDialog } from "../dialog-command"
-import { useRenderer } from "@opentui/solid"
+import { useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Editor } from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import { Clipboard } from "../../util/clipboard"
@@ -961,6 +961,26 @@ export function Prompt(props: PromptProps) {
     }
     return `Ask anything... "${PLACEHOLDERS[store.placeholder % PLACEHOLDERS.length]}"`
   })
+  const dimensions = useTerminalDimensions()
+  const compact = createMemo(() => dimensions().width < 100)
+  const tight = createMemo(() => dimensions().width < 80)
+  const statusWidth = createMemo(() => {
+    if (status().type === "idle") return undefined
+    if (!compact()) return undefined
+    return Math.max(24, Math.floor(dimensions().width / 2) - 6)
+  })
+  const chipGap = createMemo(() => (tight() ? 1 : 2))
+  const chipPad = createMemo(() => (compact() ? 0 : 1))
+  const label = (full: string, short: string = full, hideOnTight = false) => {
+    if (tight() && hideOnTight) return ""
+    if (compact()) return short
+    return full
+  }
+  const muted = (full: string, short: string = full, hideOnTight = false) => {
+    const text = label(full, short, hideOnTight)
+    if (!text) return ""
+    return <span style={{ fg: theme.textMuted }}> {text}</span>
+  }
 
   const spinnerDef = createMemo(() => {
     const color = local.agent.color(local.agent.current().name)
@@ -1300,21 +1320,25 @@ export function Prompt(props: PromptProps) {
             }
           />
         </box>
-        <box flexDirection="row" justifyContent="space-between">
+        <box flexDirection="row" justifyContent="space-between" gap={compact() ? 1 : 2}>
           <Show when={status().type !== "idle"} fallback={<text />}>
             <box
               flexDirection="row"
-              gap={1}
+              gap={compact() ? 0 : 1}
               flexGrow={1}
-              justifyContent={status().type === "retry" ? "space-between" : "flex-start"}
+              flexShrink={1}
+              minWidth={0}
+              maxWidth={statusWidth()}
+              justifyContent="flex-start"
+              alignItems="center"
             >
-              <box flexShrink={0} flexDirection="row" gap={1}>
-                <box marginLeft={1}>
+              <box flexShrink={0} flexDirection="row" gap={compact() ? 0 : 1} alignItems="center">
+                <box marginLeft={compact() ? 0 : 1}>
                   <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>[⋯]</text>}>
                     <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={40} />
                   </Show>
                 </box>
-                <box flexDirection="row" gap={1} flexShrink={0}>
+                <box flexDirection="row" gap={compact() ? 0 : 1} flexShrink={1} minWidth={0}>
                   {(() => {
                     const retry = createMemo(() => {
                       const s = status()
@@ -1356,17 +1380,21 @@ export function Prompt(props: PromptProps) {
                     const retryText = () => {
                       const r = retry()
                       if (!r) return ""
-                      const baseMessage = message()
-                      const truncatedHint = isTruncated() ? " (click to expand)" : ""
+                      const baseMessage = compact() ? Locale.truncate(message() ?? "", tight() ? 18 : 28) : message() ?? ""
+                      const truncatedHint = isTruncated() && !compact() ? " (click to expand)" : ""
                       const duration = formatDuration(seconds())
-                      const retryInfo = ` [retrying ${duration ? `in ${duration} ` : ""}attempt #${r.attempt}]`
+                      const retryInfo = compact()
+                        ? ` [${duration ? `${duration} ` : ""}#${r.attempt}]`
+                        : ` [retrying ${duration ? `in ${duration} ` : ""}attempt #${r.attempt}]`
                       return baseMessage + truncatedHint + retryInfo
                     }
 
                     return (
                       <Show when={retry()}>
                         <box onMouseUp={handleMessageClick}>
-                          <text fg={theme.error}>{retryText()}</text>
+                          <text fg={theme.error} wrapMode="none">
+                            {retryText()}
+                          </text>
                         </box>
                       </Show>
                     )
@@ -1374,7 +1402,7 @@ export function Prompt(props: PromptProps) {
                 </box>
               </box>
               <box
-                paddingLeft={1}
+                paddingLeft={chipPad()}
                 paddingRight={1}
                 onMouseDown={() => input?.focus()}
                 onMouseOver={() => setHover("interrupt")}
@@ -1385,18 +1413,18 @@ export function Prompt(props: PromptProps) {
                 <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
                   esc{" "}
                   <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
-                    {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
+                    {store.interrupt > 0 ? label("again to interrupt", "again") : label("interrupt", "stop")}
                   </span>
                 </text>
               </box>
             </box>
           </Show>
           <Show when={status().type !== "retry"}>
-            <box gap={2} flexDirection="row">
+            <box gap={chipGap()} flexDirection="row" flexShrink={0}>
               <Switch>
                 <Match when={props.historyMode}>
                   <box
-                    paddingLeft={1}
+                    paddingLeft={chipPad()}
                     paddingRight={1}
                     onMouseDown={() => input?.focus()}
                     onMouseOver={() => setHover("history-toggle")}
@@ -1405,12 +1433,13 @@ export function Prompt(props: PromptProps) {
                     backgroundColor={chip("history-toggle")}
                   >
                     <text fg={theme.text}>
-                      {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>edit mode</span>
+                      {keybind.print("history_mode_toggle")}
+                      {muted("edit mode", "edit")}
                     </text>
                   </box>
-                  <box flexDirection="row" alignItems="center" gap={1}>
+                  <box flexDirection="row" alignItems="center" gap={compact() ? 0 : 1}>
                     <box
-                      paddingLeft={1}
+                      paddingLeft={chipPad()}
                       paddingRight={1}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history-previous")}
@@ -1421,7 +1450,7 @@ export function Prompt(props: PromptProps) {
                       <text fg={theme.text}>↑</text>
                     </box>
                     <box
-                      paddingLeft={1}
+                      paddingLeft={chipPad()}
                       paddingRight={1}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history-next")}
@@ -1431,11 +1460,11 @@ export function Prompt(props: PromptProps) {
                     >
                       <text fg={theme.text}>↓</text>
                     </box>
-                    <text fg={theme.textMuted}>nav. prompt</text>
+                    <text fg={theme.textMuted}>{label("nav. prompt", "prompt")}</text>
                   </box>
-                  <box flexDirection="row" alignItems="center" gap={1}>
+                  <box flexDirection="row" alignItems="center" gap={compact() ? 0 : 1}>
                     <box
-                      paddingLeft={1}
+                      paddingLeft={chipPad()}
                       paddingRight={1}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history-left")}
@@ -1446,7 +1475,7 @@ export function Prompt(props: PromptProps) {
                       <text fg={theme.text}>←</text>
                     </box>
                     <box
-                      paddingLeft={1}
+                      paddingLeft={chipPad()}
                       paddingRight={1}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history-right")}
@@ -1456,16 +1485,17 @@ export function Prompt(props: PromptProps) {
                     >
                       <text fg={theme.text}>→</text>
                     </box>
-                    <text fg={theme.textMuted}>nav. trace</text>
+                    <text fg={theme.textMuted}>{label("nav. trace", "trace")}</text>
                   </box>
                   <text fg={theme.text}>
-                    space <span style={{ fg: theme.textMuted }}>expand</span>
+                    space
+                    {muted("expand", "expand", true)}
                   </text>
                 </Match>
                 <Match when={store.mode === "normal"}>
                   <Show when={local.model.variant.list().length > 0}>
                     <box
-                      paddingLeft={1}
+                      paddingLeft={chipPad()}
                       paddingRight={1}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("variant")}
@@ -1474,12 +1504,13 @@ export function Prompt(props: PromptProps) {
                       backgroundColor={chip("variant")}
                     >
                       <text fg={theme.text}>
-                        {keybind.print("variant_cycle")} <span style={{ fg: theme.textMuted }}>variants</span>
+                        {keybind.print("variant_cycle")}
+                        {muted("variants", "var")}
                       </text>
                     </box>
                   </Show>
                   <box
-                    paddingLeft={1}
+                    paddingLeft={chipPad()}
                     paddingRight={1}
                     onMouseDown={() => input?.focus()}
                     onMouseOver={() => setHover("agent")}
@@ -1488,12 +1519,13 @@ export function Prompt(props: PromptProps) {
                     backgroundColor={chip("agent")}
                   >
                     <text fg={theme.text}>
-                      {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>agents</span>
+                      {keybind.print("agent_cycle")}
+                      {muted("agents", "agent")}
                     </text>
                   </box>
                   <Show when={props.showHistoryHint !== false && history.has()}>
                     <box
-                      paddingLeft={1}
+                      paddingLeft={chipPad()}
                       paddingRight={1}
                       onMouseDown={() => input?.focus()}
                       onMouseOver={() => setHover("history")}
@@ -1502,12 +1534,13 @@ export function Prompt(props: PromptProps) {
                       backgroundColor={chip("history")}
                     >
                       <text fg={theme.text}>
-                        {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>history</span>
+                        {keybind.print("history_mode_toggle")}
+                        {muted("history", "hist")}
                       </text>
                     </box>
                   </Show>
                   <box
-                    paddingLeft={1}
+                    paddingLeft={chipPad()}
                     paddingRight={1}
                     onMouseDown={() => input?.focus()}
                     onMouseOver={() => setHover("command")}
@@ -1516,13 +1549,15 @@ export function Prompt(props: PromptProps) {
                     backgroundColor={chip("command")}
                   >
                     <text fg={theme.text}>
-                      {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>commands</span>
+                      {keybind.print("command_list")}
+                      {muted("commands", "cmd")}
                     </text>
                   </box>
                 </Match>
                 <Match when={store.mode === "shell"}>
                   <text fg={theme.text}>
-                    esc <span style={{ fg: theme.textMuted }}>exit shell mode</span>
+                    esc
+                    {muted("exit shell mode", "shell")}
                   </text>
                 </Match>
               </Switch>
