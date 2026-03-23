@@ -108,7 +108,6 @@ describe("session.prompt missing file", () => {
           (part) => part.type === "text" && part.synthetic && part.text.includes("Read tool failed to read"),
         )
         expect(hasFailure).toBe(true)
-
         await Session.remove(session.id)
       },
     })
@@ -158,7 +157,6 @@ describe("session.prompt missing file", () => {
         expect(text[0]?.startsWith("Called the Read tool with the following input:")).toBe(true)
         expect(text[1]?.includes("Read tool failed to read")).toBe(true)
         expect(text[2]).toBe("after-file")
-
         await Session.remove(session.id)
       },
     })
@@ -198,7 +196,6 @@ describe("session.prompt special characters", () => {
         const textParts = stored.parts.filter((part) => part.type === "text")
         const hasContent = textParts.some((part) => part.text.includes("special content"))
         expect(hasContent).toBe(true)
-
         await Session.remove(session.id)
       },
     })
@@ -334,8 +331,74 @@ describe("session.prompt queue mode", () => {
         expect(seen[2]).toContain("second prompt")
         expect(text(firstResult)).toContain("first done")
         expect(text(secondResult)).toContain("second done")
+      },
+    })
+  })
 
-        await Session.remove(session.id)
+  test("serial does not let concurrent prompt admission inject follow-up prompts", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        queue_mode: "serial",
+        agent: {
+          build: {
+            model: "slopcode/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "Queue Test" })
+        const gate = deferred<void>()
+        const seen: string[] = []
+        let calls = 0
+
+        spyOn(LLM, "stream").mockImplementation(async (input) => {
+          calls++
+          seen.push(JSON.stringify(input.messages))
+          if (calls === 1) {
+            return stream({ text: "working", finishReason: "tool-calls", wait: gate.promise })
+          }
+          if (calls === 2) {
+            return stream({ text: "turn one done", finishReason: "stop" })
+          }
+          if (calls === 3) {
+            return stream({ text: "turn two done", finishReason: "stop" })
+          }
+          throw new Error(`unexpected llm call ${calls}`)
+        })
+
+        const first = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "first prompt" }],
+        })
+        const second = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "second prompt" }],
+        })
+
+        await eventually(() => calls === 1)
+        await eventually(async () => {
+          const messages = await Session.messages({ sessionID: session.id })
+          return messages.filter((msg) => msg.info.role === "user").length === 2
+        })
+        gate.resolve()
+
+        const firstResult = await first
+        const secondResult = await second
+        const active = seen[1]?.includes("first prompt") ? "first prompt" : "second prompt"
+        const queued = active === "first prompt" ? "second prompt" : "first prompt"
+
+        expect(calls).toBe(3)
+        expect(seen[1]).toContain(active)
+        expect(seen[1]).not.toContain(queued)
+        expect(seen[2]).toContain(queued)
+        expect([text(firstResult), text(secondResult)].toSorted()).toEqual(["turn one done", "turn two done"])
       },
     })
   })
@@ -401,8 +464,6 @@ describe("session.prompt queue mode", () => {
         expect(injected).toContain("The user sent the following message:")
         expect(injected).toContain("second prompt")
         expect(firstResult.info.id).toBe(secondResult.info.id)
-
-        await Session.remove(session.id)
       },
     })
   })
