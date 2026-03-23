@@ -1,3 +1,4 @@
+import { unwrap } from "solid-js/store"
 import type { PromptInfo } from "../component/prompt/history"
 
 export type TabModel = {
@@ -41,14 +42,14 @@ export function blankTabState(): TabState {
 }
 
 export function clonePrompt(prompt?: PromptInfo): PromptInfo {
-  return structuredClone(prompt ?? blankPrompt())
+  return structuredClone(unwrap(prompt ?? blankPrompt()))
 }
 
 export function cloneSelection(selection?: Partial<TabSelection>): TabSelection {
   return {
     agent: selection?.agent,
-    model: structuredClone(selection?.model ?? {}),
-    variant: structuredClone(selection?.variant ?? {}),
+    model: structuredClone(unwrap(selection?.model ?? {})),
+    variant: structuredClone(unwrap(selection?.variant ?? {})),
   }
 }
 

@@ -24,7 +24,7 @@ import { useSDK } from "@tui/context/sdk"
 import { useRoute } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { Identifier } from "@/id/id"
-import { createStore, produce } from "solid-js/store"
+import { createStore, produce, unwrap } from "solid-js/store"
 import { useKeybind } from "@tui/context/keybind"
 import { usePromptHistory, type PromptInfo } from "./history"
 import { ghostCursor, ghostVisible, ghostRemainder } from "./ghost.ts"
@@ -203,13 +203,14 @@ export function Prompt(props: PromptProps) {
 
   function loadPrompt(prompt: PromptInfo) {
     if (!input || input.isDestroyed) return
-    input.setText(prompt.input)
+    const next = unwrap(prompt)
+    input.setText(next.input)
     setStore("prompt", {
-      input: prompt.input,
-      parts: structuredClone(prompt.parts),
+      input: next.input,
+      parts: structuredClone(next.parts),
     })
-    setStore("mode", prompt.mode ?? "normal")
-    restoreExtmarksFromParts(prompt.parts)
+    setStore("mode", next.mode ?? "normal")
+    restoreExtmarksFromParts(next.parts)
     input.gotoBufferEnd()
     syncCursor()
   }
