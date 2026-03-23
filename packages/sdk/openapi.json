@@ -10008,6 +10008,11 @@
               }
             }
           },
+          "queue_mode": {
+            "description": "How follow-up prompts are handled while a session is already running (default: serial)",
+            "type": "string",
+            "enum": ["serial", "injection"]
+          },
           "compaction": {
             "type": "object",
             "properties": {

@@ -1,4 +1,5 @@
-globalThis.process ??= {}; globalThis.process.env ??= {};
-const ecConfig = {};
+globalThis.process ??= {}
+globalThis.process.env ??= {}
+const ecConfig = {}
 
-export { ecConfig as default };
+export { ecConfig as default }
