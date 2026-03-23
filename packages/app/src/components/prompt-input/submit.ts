@@ -32,7 +32,7 @@ type PromptSubmitInput = {
   editor: () => HTMLDivElement | undefined
   queueScroll: () => void
   promptLength: (prompt: Prompt) => number
-  addToHistory: (prompt: Prompt, mode: "normal" | "shell") => void
+  addToHistory: (prompt: Prompt, mode: "normal" | "shell", target?: { dir?: string; id?: string }) => void
   resetHistoryNavigation: () => void
   setMode: (mode: "normal" | "shell") => void
   setPopover: (popover: "at" | "slash" | null) => void
@@ -135,9 +135,6 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       return
     }
 
-    input.addToHistory(currentPrompt, mode)
-    input.resetHistoryNavigation()
-
     const projectDirectory = sdk.directory
     const isNewSession = !params.id
     const worktreeSelection = input.newSessionWorktree?.() || "main"
@@ -208,6 +205,9 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       })
       return
     }
+
+    input.addToHistory(currentPrompt, mode, { dir: sessionDirectory, id: session.id })
+    input.resetHistoryNavigation()
 
     input.onSubmit?.()
 

@@ -7,6 +7,7 @@ const createdClients: string[] = []
 const createdSessions: string[] = []
 const sentShell: string[] = []
 const syncedDirectories: string[] = []
+const historyTargets: Array<{ dir?: string; id?: string } | undefined> = []
 
 let selected = "/repo/worktree-a"
 
@@ -147,6 +148,7 @@ beforeEach(() => {
   createdSessions.length = 0
   sentShell.length = 0
   syncedDirectories.length = 0
+  historyTargets.length = 0
   selected = "/repo/worktree-a"
 })
 
@@ -161,7 +163,9 @@ describe("prompt submit worktree selection", () => {
       editor: () => undefined,
       queueScroll: () => undefined,
       promptLength: (value) => value.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0),
-      addToHistory: () => undefined,
+      addToHistory: (_, __, target) => {
+        historyTargets.push(target)
+      },
       resetHistoryNavigation: () => undefined,
       setMode: () => undefined,
       setPopover: () => undefined,
@@ -180,5 +184,9 @@ describe("prompt submit worktree selection", () => {
     expect(createdSessions).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
     expect(sentShell).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
     expect(syncedDirectories).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
+    expect(historyTargets).toEqual([
+      { dir: "/repo/worktree-a", id: "session-1" },
+      { dir: "/repo/worktree-b", id: "session-2" },
+    ])
   })
 })

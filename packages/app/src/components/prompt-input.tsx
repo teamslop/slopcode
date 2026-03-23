@@ -33,7 +33,6 @@ import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { DialogSelectModelUnpaid } from "@/components/dialog-select-model-unpaid"
 import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
-import { Persist, persisted } from "@/utils/persist"
 import { usePermission } from "@/context/permission"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
@@ -45,7 +44,6 @@ import {
   prependHistoryEntry,
   type PromptHistoryComment,
   type PromptHistoryEntry,
-  type PromptHistoryStoredEntry,
   promptLength,
 } from "./prompt-input/history"
 import { createPromptSubmit } from "./prompt-input/submit"
@@ -258,6 +256,16 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     ghost: "",
   })
 
+  createEffect(
+    on(
+      sessionKey,
+      () => {
+        resetHistoryNavigation(true)
+      },
+      { defer: true },
+    ),
+  )
+
   const commentCount = createMemo(() => {
     if (store.mode === "shell") return 0
     return prompt.context.items().filter((item) => !!item.comment?.trim()).length
@@ -276,23 +284,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     if (!messages) return false
     return messages.some((m) => m.role === "user")
   })
-
-  const [history, setHistory] = persisted(
-    Persist.global("prompt-history", ["prompt-history.v1"]),
-    createStore<{
-      entries: PromptHistoryStoredEntry[]
-    }>({
-      entries: [],
-    }),
-  )
-  const [shellHistory, setShellHistory] = persisted(
-    Persist.global("prompt-history-shell", ["prompt-history-shell.v1"]),
-    createStore<{
-      entries: PromptHistoryStoredEntry[]
-    }>({
-      entries: [],
-    }),
-  )
 
   const suggest = createMemo(() => !hasUserPrompt())
 
@@ -1048,18 +1039,17 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return true
   }
 
-  const addToHistory = (prompt: Prompt, mode: "normal" | "shell") => {
-    const currentHistory = mode === "shell" ? shellHistory : history
-    const setCurrentHistory = mode === "shell" ? setShellHistory : setHistory
-    const next = prependHistoryEntry(currentHistory.entries, prompt, mode === "shell" ? [] : historyComments())
-    if (next === currentHistory.entries) return
-    setCurrentHistory("entries", next)
+  const addToHistory = (value: Prompt, mode: "normal" | "shell", target?: { dir?: string; id?: string }) => {
+    const entries = prompt.history.entries(mode, target)
+    const next = prependHistoryEntry(entries, value, mode === "shell" ? [] : historyComments())
+    if (next === entries) return
+    prompt.history.set(mode, next, target)
   }
 
   const navigateHistory = (direction: "up" | "down") => {
     const result = navigatePromptHistory({
       direction,
-      entries: store.mode === "shell" ? shellHistory.entries : history.entries,
+      entries: store.mode === "shell" ? prompt.history.shell() : prompt.history.normal(),
       historyIndex: store.historyIndex,
       currentPrompt: prompt.current(),
       currentComments: historyComments(),
