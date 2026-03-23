@@ -21,6 +21,8 @@ type SessionStripViewProps = {
   tabs: SessionStripTab[]
   active?: string
   hidden: number
+  prev?: string
+  next?: string
   underline: string
   colors: {
     accent: RGBA
@@ -38,9 +40,12 @@ type SessionStripViewProps = {
 
 export function SessionStripView(props: SessionStripViewProps) {
   const [hover, setHover] = createSignal<string>()
+  const prev = "__prev__"
+  const next = "__next__"
   const bg = (id: string) => (hover() === id ? props.colors.hover : props.colors.panel)
   const closeVisible = (id: string) => hover() === id
   const closeFg = (id: string) => (closeVisible(id) ? props.colors.text : props.colors.muted)
+  const controlFg = (id: string) => (hover() === id ? props.colors.text : props.colors.muted)
   const spinnerDef = createMemo(() =>
     createBlockSpinner({
       color: props.colors.warning,
@@ -51,6 +56,23 @@ export function SessionStripView(props: SessionStripViewProps) {
   return (
     <box flexShrink={0} flexDirection="column" backgroundColor={props.colors.panel}>
       <box height={1} flexDirection="row" paddingLeft={2} paddingRight={2}>
+        <Show when={props.prev}>
+          {(id) => (
+            <>
+              <box
+                backgroundColor={bg(prev)}
+                onMouseOver={() => setHover(prev)}
+                onMouseOut={() => setHover(undefined)}
+                onMouseUp={() => props.open(id())}
+              >
+                <text fg={controlFg(prev)} wrapMode="none">
+                  {SessionStripText.PREV}
+                </text>
+              </box>
+              <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
+            </>
+          )}
+        </Show>
         <For each={props.tabs}>
           {(tab) => {
             const active = () => props.active === tab.id
@@ -108,6 +130,23 @@ export function SessionStripView(props: SessionStripViewProps) {
         <Show when={props.hidden > 0}>
           <text fg={props.colors.muted}>{`+${props.hidden}`}</text>
         </Show>
+        <Show when={props.next}>
+          {(id) => (
+            <>
+              <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
+              <box
+                backgroundColor={bg(next)}
+                onMouseOver={() => setHover(next)}
+                onMouseOut={() => setHover(undefined)}
+                onMouseUp={() => props.open(id())}
+              >
+                <text fg={controlFg(next)} wrapMode="none">
+                  {SessionStripText.NEXT}
+                </text>
+              </box>
+            </>
+          )}
+        </Show>
       </box>
       <box height={1} paddingLeft={2} paddingRight={2}>
         <text fg={props.colors.edge} wrapMode="none">
@@ -152,6 +191,8 @@ export function SessionStrip() {
         tabs={layout().tabs}
         active={tabs.active()}
         hidden={layout().hidden}
+        prev={layout().prev}
+        next={layout().next}
         underline={layout().underline}
         colors={colors()}
         open={(id) => tabs.open(id)}

@@ -27,6 +27,27 @@ import { AUTOCOMPLETE_FALLBACK_MODELS_BY_PROVIDER } from "./autocomplete-fast-ma
 
 const log = Log.create({ service: "server" })
 
+function aborted(error: unknown) {
+  return MessageV2.AbortedError.isInstance(error) || (error instanceof DOMException && error.name === "AbortError")
+}
+
+async function interrupted(sessionID: string, parentID: string, timeout = 1000) {
+  const start = Date.now()
+  while (Date.now() - start < timeout) {
+    const messages = await Session.messages({ sessionID })
+    const match = [...messages]
+      .reverse()
+      .find(
+        (item) =>
+          item.info.role === "assistant" &&
+          item.info.parentID === parentID &&
+          item.info.error?.name === "MessageAbortedError",
+      )
+    if (match) return match
+    await Bun.sleep(25)
+  }
+}
+
 const AutocompleteInput = z.object({
   model: z.object({
     providerID: z.string(),
@@ -1165,8 +1186,16 @@ export const SessionRoutes = lazy(() =>
         return stream(c, async (stream) => {
           const sessionID = c.req.valid("param").sessionID
           const body = c.req.valid("json")
-          const msg = await SessionPrompt.prompt({ ...body, sessionID })
-          stream.write(JSON.stringify(msg))
+          const messageID = body.messageID ?? Identifier.ascending("message")
+          try {
+            const msg = await SessionPrompt.prompt({ ...body, sessionID, messageID })
+            stream.write(JSON.stringify(msg))
+          } catch (error) {
+            if (!aborted(error)) throw error
+            const msg = await interrupted(sessionID, messageID)
+            if (!msg) throw error
+            stream.write(JSON.stringify(msg))
+          }
         })
       },
     )
@@ -1234,8 +1263,16 @@ export const SessionRoutes = lazy(() =>
       async (c) => {
         const sessionID = c.req.valid("param").sessionID
         const body = c.req.valid("json")
-        const msg = await SessionPrompt.command({ ...body, sessionID })
-        return c.json(msg)
+        const messageID = body.messageID ?? Identifier.ascending("message")
+        try {
+          const msg = await SessionPrompt.command({ ...body, sessionID, messageID })
+          return c.json(msg)
+        } catch (error) {
+          if (!aborted(error)) throw error
+          const msg = await interrupted(sessionID, messageID)
+          if (!msg) throw error
+          return c.json(msg)
+        }
       },
     )
     .post(

@@ -360,6 +360,18 @@ export namespace SessionPrompt {
     )
   }
 
+  function abortReason(reason: unknown) {
+    if (MessageV2.AbortedError.isInstance(reason)) return reason
+    if (reason instanceof DOMException && reason.name === "AbortError") {
+      return new MessageV2.AbortedError({ message: reason.message || "Aborted" }, { cause: reason })
+    }
+    return new MessageV2.AbortedError({ message: "Aborted" })
+  }
+
+  function aborted(reason: unknown) {
+    return MessageV2.AbortedError.isInstance(reason) || (reason instanceof DOMException && reason.name === "AbortError")
+  }
+
   async function admit(input: {
     sessionID: string
     messageID: string
@@ -517,14 +529,31 @@ export namespace SessionPrompt {
       return
     }
     await withLock(entry, () => {
+      const current = entry.current
+      const active = aborted(reason) && !!current && entry.running && !entry.pending.has(current)
+      const error = aborted(reason) ? abortReason(reason) : reason
       entry.abort.abort()
+      if (active) {
+        entry.queued = []
+        for (const id of [...entry.pending]) {
+          if (id !== current) entry.pending.delete(id)
+        }
+        for (const [id, waiters] of Object.entries(entry.waiters)) {
+          if (id === current) continue
+          delete entry.waiters[id]
+          for (const waiter of waiters) {
+            waiter.reject(error)
+          }
+        }
+        return
+      }
       for (const callback of entry.callbacks.splice(0)) {
-        callback.reject(reason)
+        callback.reject(error)
       }
       for (const [id, waiters] of Object.entries(entry.waiters)) {
         delete entry.waiters[id]
         for (const waiter of waiters) {
-          waiter.reject(reason)
+          waiter.reject(error)
         }
       }
       delete state()[sessionID]
