@@ -79,6 +79,10 @@ export function Prompt(props: PromptProps) {
   const toast = useToast()
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
   const history = usePromptHistory()
+  const historyScope = createMemo(() => ({
+    dir: sync.data.path.directory || process.cwd(),
+    sessionID: props.sessionID,
+  }))
   const stash = usePromptStash()
   const command = useCommandDialog()
   const renderer = useRenderer()
@@ -828,10 +832,16 @@ export function Prompt(props: PromptProps) {
         }),
       )
     }
-    history.append({
-      ...store.prompt,
-      mode: currentMode,
-    })
+    history.append(
+      {
+        ...historyScope(),
+        sessionID,
+      },
+      {
+        ...store.prompt,
+        mode: currentMode,
+      },
+    )
     input.extmarks.clear()
     setStore("prompt", {
       input: "",
@@ -974,7 +984,7 @@ export function Prompt(props: PromptProps) {
   const chipPad = createMemo(() => (compact() ? 0 : 1))
   const showVariantHint = createMemo(() => !compact())
   const showAgentHint = createMemo(() => !tight())
-  const showHistoryChip = createMemo(() => props.showHistoryHint !== false && history.has() && !tiny())
+  const showHistoryChip = createMemo(() => props.showHistoryHint !== false && history.has(historyScope()) && !tiny())
   const showCommandChip = createMemo(() => !tiny())
   const label = (full: string, short: string = full, hideOnTight = false) => {
     if (tight() && hideOnTight) return ""
@@ -1155,7 +1165,7 @@ export function Prompt(props: PromptProps) {
                         (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length))
                     ) {
                       const direction = keybind.match("history_previous", e) ? -1 : 1
-                      const item = history.move(direction, {
+                      const item = history.move(historyScope(), direction, {
                         ...store.prompt,
                         mode: store.mode,
                       })
