@@ -8,11 +8,13 @@ import { gunzipSync } from "zlib"
 const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)
 
+const aliasNames = new Set(["sloppycode"])
+
 const binaries = await Array.fromAsync(new Bun.Glob("*/package.json").scan({ cwd: "./dist" })).then((arr) =>
   Promise.all(
     arr.map(async (filepath) => {
       const dir = filepath.replace(/\/package\.json$/, "")
-      if (dir === pkg.name) return
+      if (dir === pkg.name || aliasNames.has(dir)) return
 
       const item = await Bun.file(`./dist/${filepath}`).json()
       let name = item.name
