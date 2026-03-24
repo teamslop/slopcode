@@ -1889,11 +1889,15 @@ type QueueRow = {
   id: string
   label: string
   mode: "normal" | "shell"
+  agent: string
   summary: string
   detail?: string
 }
 
+const initial = (value: string) => value.trim().charAt(0).toUpperCase() || "?"
+
 function PromptQueuePanel(props: { sessionID: string }) {
+  const local = useLocal()
   const { theme } = useTheme()
   const renderer = useRenderer()
   const [store, setStore] = createStore({
@@ -1924,6 +1928,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
             id: store.active.id,
             label: "Active",
             mode: store.active.mode,
+            agent: store.active.agent,
             summary: store.active.summary,
             detail: store.active.detail,
           },
@@ -1936,6 +1941,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
         id: item.id,
         label: "Queued",
         mode: item.mode,
+        agent: item.agent,
         summary: item.summary,
         detail: item.detail,
       })),
@@ -1950,7 +1956,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
     return text.slice(0, 45).trimEnd() + "..."
   })
 
-  const color = (item: QueueRow) => (item.mode === "shell" ? theme.primary : theme.secondary)
+  const color = (item: QueueRow) => (item.mode === "shell" ? theme.primary : local.agent.color(item.agent))
 
   const toggle = () => {
     setStore("collapsed", (value) => !value)
@@ -2004,7 +2010,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
           <box paddingLeft={3} paddingRight={3} flexDirection="column">
             <For each={visible()}>
               {(item: QueueRow) => {
-                const bg = createMemo(() => (item.label === "Active" ? theme.primary : theme.secondary))
+                const bg = createMemo(() => color(item))
                 const fg = createMemo(() => selectedForeground(theme, bg()))
                 return (
                   <box
@@ -2017,6 +2023,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
                     <box flexDirection="row" justifyContent="space-between">
                       <text fg={theme.text}>
                         <span style={{ bg: bg(), fg: fg(), bold: true }}> {item.label} </span>
+                        <span style={{ fg: bg(), bold: true }}> {initial(item.agent)} </span>
                         <span> {item.summary}</span>
                       </text>
                       <Show when={item.label === "Queued"}>
