@@ -63,9 +63,12 @@ function measure(tabs: SessionStripTab[], slice: Slice, active: string | undefin
   const before = slice.start
   const after = tabs.length - slice.end - 1
   const hidden = before + after
-  const body = visible.reduce((sum, tab) => {
-    return sum + tabWidth(tab, tab.id === active) + width(SEP)
-  }, 0)
+  const lead = before === 0 && visible.length > 0 ? width(SEP) : 0
+  const body =
+    lead +
+    visible.reduce((sum, tab) => {
+      return sum + tabWidth(tab, tab.id === active) + width(SEP)
+    }, 0)
   const nav =
     (before > 0 ? width(PREV + SEP) : 0) + (hidden > 0 ? width(`+${hidden}`) : 0) + (after > 0 ? width(SEP + NEXT) : 0)
   return {
@@ -82,6 +85,10 @@ function measure(tabs: SessionStripTab[], slice: Slice, active: string | undefin
 function joints(layout: Omit<SessionStripLayout, "underline">, active: string | undefined) {
   const points: number[] = []
   let offset = 0
+  if (layout.before === 0 && layout.tabs.length > 0) {
+    points.push(SEP_MARK)
+    offset += width(SEP)
+  }
   if (layout.before > 0) {
     offset += width(PREV)
     points.push(offset + SEP_MARK)
@@ -138,6 +145,8 @@ export function layoutSessionStripUnderlineSegments(
           { width: width(PREV), owners: input.prevOwner ? [input.prevOwner] : [] },
           { width: width(SEP), owners: [] as string[] },
         ]
+      : layout.tabs.length > 0
+        ? [{ width: width(SEP), owners: [] as string[] }]
       : []),
     ...layout.tabs.flatMap((tab) => [
       { width: tabWidth(tab, tab.id === input.active), owners: [tab.id] },
