@@ -95,13 +95,14 @@ export namespace PermissionNext {
   })
 
   export const Event = {
-    Asked: BusEvent.define("permission.asked", Request),
+    Asked: BusEvent.define("permission.asked", Request.extend({ viewID: z.string().optional() })),
     Replied: BusEvent.define(
       "permission.replied",
       z.object({
         sessionID: z.string(),
         requestID: z.string(),
         reply: Reply,
+        viewID: z.string().optional(),
       }),
     ),
   }
@@ -152,7 +153,7 @@ export namespace PermissionNext {
               resolve,
               reject,
             }
-            Bus.publish(Event.Asked, info)
+            Bus.publish(Event.Asked, { ...info, viewID: Instance.viewID })
           })
         }
         if (rule.action === "allow") continue
@@ -165,16 +166,19 @@ export namespace PermissionNext {
       requestID: Identifier.schema("permission"),
       reply: Reply,
       message: z.string().optional(),
+      sessionID: Identifier.schema("session").optional(),
     }),
     async (input) => {
       const s = await state()
       const existing = s.pending[input.requestID]
-      if (!existing) return
+      if (!existing) return false
+      if (input.sessionID && existing.info.sessionID !== input.sessionID) return false
       delete s.pending[input.requestID]
       Bus.publish(Event.Replied, {
         sessionID: existing.info.sessionID,
         requestID: existing.info.id,
         reply: input.reply,
+        viewID: Instance.viewID,
       })
       if (input.reply === "reject") {
         existing.reject(input.message ? new CorrectedError(input.message) : new RejectedError())
@@ -187,15 +191,16 @@ export namespace PermissionNext {
               sessionID: pending.info.sessionID,
               requestID: pending.info.id,
               reply: "reject",
+              viewID: Instance.viewID,
             })
             pending.reject(new RejectedError())
           }
         }
-        return
+        return true
       }
       if (input.reply === "once") {
         existing.resolve()
-        return
+        return true
       }
       if (input.reply === "always") {
         for (const pattern of existing.info.always) {
@@ -220,6 +225,7 @@ export namespace PermissionNext {
             sessionID: pending.info.sessionID,
             requestID: pending.info.id,
             reply: "always",
+            viewID: Instance.viewID,
           })
           pending.resolve()
         }
@@ -228,8 +234,9 @@ export namespace PermissionNext {
         // UI to manage it
         // db().insert(PermissionTable).values({ projectID: Instance.project.id, data: s.approved })
         //   .onConflictDoUpdate({ target: PermissionTable.projectID, set: { data: s.approved } }).run()
-        return
+        return true
       }
+      return true
     },
   )
 
@@ -279,8 +286,10 @@ export namespace PermissionNext {
     }
   }
 
-  export async function list() {
+  export async function list(input?: { sessionID?: string }) {
     const s = await state()
-    return Object.values(s.pending).map((x) => x.info)
+    const list = Object.values(s.pending).map((x) => x.info)
+    if (!input?.sessionID) return list
+    return list.filter((item) => item.sessionID === input.sessionID)
   }
 }

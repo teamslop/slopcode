@@ -2199,6 +2199,7 @@ export class Permission extends HeyApiClient {
     parameters: {
       requestID: string
       directory?: string
+      sessionID?: string
       reply?: "once" | "always" | "reject"
       message?: string
     },
@@ -2211,6 +2212,7 @@ export class Permission extends HeyApiClient {
           args: [
             { in: "path", key: "requestID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
             { in: "body", key: "reply" },
             { in: "body", key: "message" },
           ],
@@ -2237,10 +2239,21 @@ export class Permission extends HeyApiClient {
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
+          ],
+        },
+      ],
+    )
     return (options?.client ?? this.client).get<PermissionListResponses, unknown, ThrowOnError>({
       url: "/permission",
       ...options,
@@ -2258,10 +2271,21 @@ export class Question extends HeyApiClient {
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
+          ],
+        },
+      ],
+    )
     return (options?.client ?? this.client).get<QuestionListResponses, unknown, ThrowOnError>({
       url: "/question",
       ...options,
@@ -2278,6 +2302,7 @@ export class Question extends HeyApiClient {
     parameters: {
       requestID: string
       directory?: string
+      sessionID?: string
       answers?: Array<QuestionAnswer>
     },
     options?: Options<never, ThrowOnError>,
@@ -2289,6 +2314,7 @@ export class Question extends HeyApiClient {
           args: [
             { in: "path", key: "requestID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
             { in: "body", key: "answers" },
           ],
         },
@@ -2315,6 +2341,7 @@ export class Question extends HeyApiClient {
     parameters: {
       requestID: string
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2325,6 +2352,7 @@ export class Question extends HeyApiClient {
           args: [
             { in: "path", key: "requestID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
           ],
         },
       ],
@@ -2963,6 +2991,7 @@ export class Tui extends HeyApiClient {
     parameters?: {
       directory?: string
       text?: string
+      viewID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2973,6 +3002,7 @@ export class Tui extends HeyApiClient {
           args: [
             { in: "query", key: "directory" },
             { in: "body", key: "text" },
+            { in: "body", key: "viewID" },
           ],
         },
       ],
@@ -3150,6 +3180,7 @@ export class Tui extends HeyApiClient {
       message?: string
       variant?: "info" | "success" | "warning" | "error"
       duration?: number
+      viewID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3163,6 +3194,7 @@ export class Tui extends HeyApiClient {
             { in: "body", key: "message" },
             { in: "body", key: "variant" },
             { in: "body", key: "duration" },
+            { in: "body", key: "viewID" },
           ],
         },
       ],
@@ -3223,6 +3255,7 @@ export class Tui extends HeyApiClient {
     parameters?: {
       directory?: string
       sessionID?: string
+      viewID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3233,6 +3266,7 @@ export class Tui extends HeyApiClient {
           args: [
             { in: "query", key: "directory" },
             { in: "body", key: "sessionID" },
+            { in: "body", key: "viewID" },
           ],
         },
       ],

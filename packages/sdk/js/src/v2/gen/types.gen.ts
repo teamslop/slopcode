@@ -548,24 +548,23 @@ export type EventMessagePartRemoved = {
   }
 }
 
-export type PermissionRequest = {
-  id: string
-  sessionID: string
-  permission: string
-  patterns: Array<string>
-  metadata: {
-    [key: string]: unknown
-  }
-  always: Array<string>
-  tool?: {
-    messageID: string
-    callID: string
-  }
-}
-
 export type EventPermissionAsked = {
   type: "permission.asked"
-  properties: PermissionRequest
+  properties: {
+    id: string
+    sessionID: string
+    permission: string
+    patterns: Array<string>
+    metadata: {
+      [key: string]: unknown
+    }
+    always: Array<string>
+    tool?: {
+      messageID: string
+      callID: string
+    }
+    viewID?: string
+  }
 }
 
 export type EventPermissionReplied = {
@@ -574,6 +573,7 @@ export type EventPermissionReplied = {
     sessionID: string
     requestID: string
     reply: "once" | "always" | "reject"
+    viewID?: string
   }
 }
 
@@ -596,6 +596,7 @@ export type EventSessionStatus = {
   properties: {
     sessionID: string
     status: SessionStatus
+    viewID?: string
   }
 }
 
@@ -603,6 +604,7 @@ export type EventSessionIdle = {
   type: "session.idle"
   properties: {
     sessionID: string
+    viewID?: string
   }
 }
 
@@ -640,22 +642,21 @@ export type QuestionInfo = {
   custom?: boolean
 }
 
-export type QuestionRequest = {
-  id: string
-  sessionID: string
-  /**
-   * Questions to ask
-   */
-  questions: Array<QuestionInfo>
-  tool?: {
-    messageID: string
-    callID: string
-  }
-}
-
 export type EventQuestionAsked = {
   type: "question.asked"
-  properties: QuestionRequest
+  properties: {
+    id: string
+    sessionID: string
+    /**
+     * Questions to ask
+     */
+    questions: Array<QuestionInfo>
+    tool?: {
+      messageID: string
+      callID: string
+    }
+    viewID?: string
+  }
 }
 
 export type QuestionAnswer = Array<string>
@@ -666,6 +667,7 @@ export type EventQuestionReplied = {
     sessionID: string
     requestID: string
     answers: Array<QuestionAnswer>
+    viewID?: string
   }
 }
 
@@ -674,6 +676,7 @@ export type EventQuestionRejected = {
   properties: {
     sessionID: string
     requestID: string
+    viewID?: string
   }
 }
 
@@ -719,6 +722,7 @@ export type EventTuiPromptAppend = {
   type: "tui.prompt.append"
   properties: {
     text: string
+    viewID?: string
   }
 }
 
@@ -743,6 +747,7 @@ export type EventTuiCommandExecute = {
       | "prompt.submit"
       | "agent.cycle"
       | string
+    viewID?: string
   }
 }
 
@@ -756,6 +761,7 @@ export type EventTuiToastShow = {
      * Duration in milliseconds
      */
     duration?: number
+    viewID?: string
   }
 }
 
@@ -766,6 +772,7 @@ export type EventTuiSessionSelect = {
      * Session ID to navigate to
      */
     sessionID: string
+    viewID?: string
   }
 }
 
@@ -877,6 +884,7 @@ export type EventSessionError = {
       | StructuredOutputError
       | ContextOverflowError
       | ApiError
+    viewID?: string
   }
 }
 
@@ -1822,6 +1830,34 @@ export type SubtaskPartInput = {
     modelID: string
   }
   command?: string
+}
+
+export type PermissionRequest = {
+  id: string
+  sessionID: string
+  permission: string
+  patterns: Array<string>
+  metadata: {
+    [key: string]: unknown
+  }
+  always: Array<string>
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
+export type QuestionRequest = {
+  id: string
+  sessionID: string
+  /**
+   * Questions to ask
+   */
+  questions: Array<QuestionInfo>
+  tool?: {
+    messageID: string
+    callID: string
+  }
 }
 
 export type ProviderAuthMethod = {
@@ -3878,6 +3914,7 @@ export type PermissionReplyData = {
   }
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/permission/{requestID}/reply"
 }
@@ -3909,6 +3946,7 @@ export type PermissionListData = {
   path?: never
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/permission"
 }
@@ -3927,6 +3965,7 @@ export type QuestionListData = {
   path?: never
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/question"
 }
@@ -3952,6 +3991,7 @@ export type QuestionReplyData = {
   }
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/question/{requestID}/reply"
 }
@@ -3985,6 +4025,7 @@ export type QuestionRejectData = {
   }
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/question/{requestID}/reject"
 }
@@ -4561,6 +4602,7 @@ export type McpDisconnectResponse = McpDisconnectResponses[keyof McpDisconnectRe
 export type TuiAppendPromptData = {
   body?: {
     text: string
+    viewID?: string
   }
   path?: never
   query?: {
@@ -4733,6 +4775,7 @@ export type TuiShowToastData = {
      * Duration in milliseconds
      */
     duration?: number
+    viewID?: string
   }
   path?: never
   query?: {
@@ -4783,6 +4826,7 @@ export type TuiSelectSessionData = {
      * Session ID to navigate to
      */
     sessionID: string
+    viewID?: string
   }
   path?: never
   query?: {

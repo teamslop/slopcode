@@ -4,6 +4,7 @@ import { tui } from "./app"
 import { win32DisableProcessedInput, win32InstallCtrlCGuard } from "./win32"
 import { TuiConfig } from "@/config/tui"
 import { Instance } from "@/project/instance"
+import { randomUUID } from "crypto"
 import { existsSync } from "fs"
 
 export const AttachCommand = cmd({
@@ -70,6 +71,7 @@ export const AttachCommand = cmd({
         directory: directory && existsSync(directory) ? directory : process.cwd(),
         fn: () => TuiConfig.get(),
       })
+      const viewID = randomUUID()
       await tui({
         url: args.url,
         config,
@@ -79,6 +81,7 @@ export const AttachCommand = cmd({
           fork: args.fork,
         },
         directory,
+        viewID,
         headers,
       })
     } finally {

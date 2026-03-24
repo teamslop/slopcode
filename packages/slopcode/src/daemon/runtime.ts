@@ -50,6 +50,7 @@ export namespace DaemonRuntime {
   async function run<T>(fn: () => Promise<T> | T) {
     return Instance.provide({
       directory: state.directory,
+      viewID: state.view_id,
       fn,
     })
   }

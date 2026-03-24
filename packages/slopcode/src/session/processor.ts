@@ -15,6 +15,7 @@ import { Config } from "@/config/config"
 import { SessionCompaction } from "./compaction"
 import { PermissionNext } from "@/permission/next"
 import { Question } from "@/question"
+import { Instance } from "@/project/instance"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
@@ -373,6 +374,7 @@ export namespace SessionProcessor {
             Bus.publish(Session.Event.Error, {
               sessionID: input.assistantMessage.sessionID,
               error: input.assistantMessage.error,
+              viewID: Instance.viewID,
             })
             SessionStatus.set(input.sessionID, { type: "idle" })
           }

@@ -190,6 +190,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             sdk.client.permission.reply({
               reply: "once",
               requestID: request.id,
+              sessionID: request.sessionID,
             })
             break
           }

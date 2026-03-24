@@ -661,6 +661,7 @@ export namespace SessionPrompt {
               error: new NamedError.Unknown({
                 message: `Model not found: ${e.data.providerID}/${e.data.modelID}.${hint}`,
               }).toObject(),
+              viewID: Instance.viewID,
             })
           }
           throw e
@@ -1552,6 +1553,7 @@ export namespace SessionPrompt {
                       error: new NamedError.Unknown({
                         message,
                       }).toObject(),
+                      viewID: Instance.viewID,
                     })
                     pieces.push({
                       messageID: info.id,
@@ -2181,6 +2183,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         Bus.publish(Session.Event.Error, {
           sessionID: input.sessionID,
           error: new NamedError.Unknown({ message: `Model not found: ${providerID}/${modelID}.${hint}` }).toObject(),
+          viewID: Instance.viewID,
         })
       }
       throw e
@@ -2193,6 +2196,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       Bus.publish(Session.Event.Error, {
         sessionID: input.sessionID,
         error: error.toObject(),
+        viewID: Instance.viewID,
       })
       throw error
     }

@@ -4,6 +4,7 @@ import z from "zod"
 import { PermissionNext } from "@/permission/next"
 import { errors } from "../error"
 import { lazy } from "../../util/lazy"
+import { NotFoundError } from "../../storage/db"
 
 export const PermissionRoutes = lazy(() =>
   new Hono()
@@ -31,15 +32,24 @@ export const PermissionRoutes = lazy(() =>
           requestID: z.string(),
         }),
       ),
+      validator(
+        "query",
+        z.object({
+          sessionID: z.string().optional(),
+        }),
+      ),
       validator("json", z.object({ reply: PermissionNext.Reply, message: z.string().optional() })),
       async (c) => {
         const params = c.req.valid("param")
+        const query = c.req.valid("query")
         const json = c.req.valid("json")
-        await PermissionNext.reply({
+        const ok = await PermissionNext.reply({
           requestID: params.requestID,
           reply: json.reply,
           message: json.message,
+          sessionID: query.sessionID,
         })
+        if (!ok) throw new NotFoundError({ message: "Permission request not found" })
         return c.json(true)
       },
     )
@@ -60,8 +70,14 @@ export const PermissionRoutes = lazy(() =>
           },
         },
       }),
+      validator(
+        "query",
+        z.object({
+          sessionID: z.string().optional(),
+        }),
+      ),
       async (c) => {
-        const permissions = await PermissionNext.list()
+        const permissions = await PermissionNext.list(c.req.valid("query"))
         return c.json(permissions)
       },
     ),

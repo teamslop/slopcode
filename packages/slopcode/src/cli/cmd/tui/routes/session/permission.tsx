@@ -185,6 +185,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
             sdk.client.permission.reply({
               reply: "always",
               requestID: props.request.id,
+              sessionID: props.request.sessionID,
             })
           }}
         />
@@ -195,6 +196,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
             sdk.client.permission.reply({
               reply: "reject",
               requestID: props.request.id,
+              sessionID: props.request.sessionID,
               message: message || undefined,
             })
           }}

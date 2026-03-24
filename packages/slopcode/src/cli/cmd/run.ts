@@ -552,6 +552,7 @@ export const RunCommand = cmd({
             await sdk.permission.reply({
               requestID: permission.id,
               reply: "reject",
+              sessionID: permission.sessionID,
             })
           }
         }

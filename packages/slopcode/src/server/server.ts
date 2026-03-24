@@ -68,7 +68,19 @@ export namespace Server {
     }
   }
 
-  const match = (event: { type: string; properties?: unknown }, sessionID?: string) => {
+  const view = (event: { type: string; properties?: unknown }) => {
+    const props = event.properties
+    if (!record(props)) return
+    if (typeof props.viewID === "string") return props.viewID
+    if (typeof props.view_id === "string") return props.view_id
+    if (record(props.info) && typeof props.info.viewID === "string") return props.info.viewID
+  }
+
+  const match = (event: { type: string; properties?: unknown }, sessionID?: string, viewID?: string) => {
+    if (viewID) {
+      const current = view(event)
+      if (current && current !== viewID) return false
+    }
     if (!sessionID) return true
     const next = session(event)
     if (!next) return true
@@ -222,6 +234,7 @@ export namespace Server {
         .use(async (c, next) => {
           if (c.req.path === "/log") return next()
           const raw = c.req.query("directory") || c.req.header("x-slopcode-directory") || process.cwd()
+          const viewID = c.req.header("x-slopcode-view-id") || undefined
           const directory = (() => {
             try {
               return decodeURIComponent(raw)
@@ -231,6 +244,7 @@ export namespace Server {
           })()
           return Instance.provide({
             directory,
+            viewID,
             init: InstanceBootstrap,
             async fn() {
               return next()
@@ -534,6 +548,7 @@ export namespace Server {
           ),
           async (c) => {
             const input = c.req.valid("query")
+            const viewID = Instance.viewID
             log.info("event connected")
             DaemonRuntime.connect()
             c.header("X-Accel-Buffering", "no")
@@ -546,7 +561,7 @@ export namespace Server {
                 }),
               })
               const unsub = Bus.subscribeAll(async (event) => {
-                if (!match(event, input.sessionID)) return
+                if (!match(event, input.sessionID, viewID)) return
                 await stream.writeSSE({
                   data: JSON.stringify(event),
                 })

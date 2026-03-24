@@ -670,6 +670,104 @@ test("ask - checks all patterns and stops on first deny", async () => {
   })
 })
 
+test("list - isolates pending permissions by view id", async () => {
+  await using tmp = await tmpdir({ git: true })
+  let a!: Promise<void>
+  let b!: Promise<void>
+
+  await Instance.provide({
+    directory: tmp.path,
+    viewID: "view-a",
+    fn: async () => {
+      a = PermissionNext.ask({
+        id: "permission_view_a",
+        sessionID: "session_a",
+        permission: "bash",
+        patterns: ["ls"],
+        metadata: {},
+        always: [],
+        ruleset: [],
+      })
+      const pending = await PermissionNext.list()
+      expect(pending.map((item) => item.id)).toEqual(["permission_view_a"])
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    viewID: "view-b",
+    fn: async () => {
+      b = PermissionNext.ask({
+        id: "permission_view_b",
+        sessionID: "session_b",
+        permission: "edit",
+        patterns: ["foo.ts"],
+        metadata: {},
+        always: [],
+        ruleset: [],
+      })
+      const pending = await PermissionNext.list()
+      expect(pending.map((item) => item.id)).toEqual(["permission_view_b"])
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    viewID: "view-a",
+    fn: async () => {
+      expect((await PermissionNext.list()).map((item) => item.sessionID)).toEqual(["session_a"])
+      expect(await PermissionNext.list({ sessionID: "session_b" })).toEqual([])
+      await PermissionNext.reply({ requestID: "permission_view_a", sessionID: "session_a", reply: "once" })
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    viewID: "view-b",
+    fn: async () => {
+      expect((await PermissionNext.list()).map((item) => item.sessionID)).toEqual(["session_b"])
+      await PermissionNext.reply({ requestID: "permission_view_b", sessionID: "session_b", reply: "once" })
+    },
+  })
+
+  await expect(a).resolves.toBeUndefined()
+  await expect(b).resolves.toBeUndefined()
+})
+
+test("reply - ignores mismatched session ids", async () => {
+  await using tmp = await tmpdir({ git: true })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const askPromise = PermissionNext.ask({
+        id: "permission_scope_test",
+        sessionID: "session_a",
+        permission: "bash",
+        patterns: ["ls"],
+        metadata: {},
+        always: [],
+        ruleset: [],
+      })
+
+      const wrong = await PermissionNext.reply({
+        requestID: "permission_scope_test",
+        sessionID: "session_b",
+        reply: "reject",
+      })
+      expect(wrong).toBe(false)
+      expect((await PermissionNext.list({ sessionID: "session_a" })).length).toBe(1)
+
+      await PermissionNext.reply({
+        requestID: "permission_scope_test",
+        sessionID: "session_a",
+        reply: "once",
+      })
+
+      await expect(askPromise).resolves.toBeUndefined()
+    },
+  })
+})
+
 test("ask - allows all patterns when all match allow rules", async () => {
   await using tmp = await tmpdir({ git: true })
   await Instance.provide({

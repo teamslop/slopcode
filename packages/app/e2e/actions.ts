@@ -480,10 +480,10 @@ export async function clearSessionDockSeed(sdk: ReturnType<typeof createSdk>, se
   await Promise.all([
     ...questions
       .filter((item) => item.sessionID === sessionID)
-      .map((item) => sdk.question.reject({ requestID: item.id }).catch(() => undefined)),
+      .map((item) => sdk.question.reject({ requestID: item.id, sessionID }).catch(() => undefined)),
     ...permissions
       .filter((item) => item.sessionID === sessionID)
-      .map((item) => sdk.permission.reply({ requestID: item.id, reply: "reject" }).catch(() => undefined)),
+      .map((item) => sdk.permission.reply({ requestID: item.id, sessionID, reply: "reject" }).catch(() => undefined)),
   ])
 
   return true

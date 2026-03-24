@@ -205,6 +205,7 @@ export namespace Session {
       z.object({
         sessionID: z.string().optional(),
         error: MessageV2.Assistant.shape.error,
+        viewID: z.string().optional(),
       }),
     ),
   }

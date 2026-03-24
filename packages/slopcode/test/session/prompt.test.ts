@@ -467,4 +467,71 @@ describe("session.prompt queue mode", () => {
       },
     })
   })
+
+  test("serial prompt runtime is isolated across views on the same session", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        queue_mode: "serial",
+        agent: {
+          build: {
+            model: "slopcode/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "View Queue Test" })
+        const gateA = deferred<void>()
+        const gateB = deferred<void>()
+        let calls = 0
+
+        spyOn(LLM, "stream").mockImplementation(async () => {
+          calls++
+          if (calls === 1) return stream({ text: "view a done", finishReason: "stop", wait: gateA.promise })
+          if (calls === 2) return stream({ text: "view b done", finishReason: "stop", wait: gateB.promise })
+          throw new Error(`unexpected llm call ${calls}`)
+        })
+
+        let first!: Promise<MessageV2.WithParts>
+        let second!: Promise<MessageV2.WithParts>
+
+        await Instance.provide({
+          directory: tmp.path,
+          viewID: "view-a",
+          fn: async () => {
+            first = SessionPrompt.prompt({
+              sessionID: session.id,
+              agent: "build",
+              parts: [{ type: "text", text: "first prompt" }],
+            })
+          },
+        })
+
+        await Instance.provide({
+          directory: tmp.path,
+          viewID: "view-b",
+          fn: async () => {
+            second = SessionPrompt.prompt({
+              sessionID: session.id,
+              agent: "build",
+              parts: [{ type: "text", text: "second prompt" }],
+            })
+          },
+        })
+
+        await eventually(() => calls === 2)
+        gateA.resolve()
+        gateB.resolve()
+
+        const firstResult = await first
+        const secondResult = await second
+
+        expect(firstResult.info.id).not.toBe(secondResult.info.id)
+      },
+    })
+  })
 })
