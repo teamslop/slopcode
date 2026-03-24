@@ -122,7 +122,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                           </text>
                         }
                       >
-                        <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={40} />
+                        <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={80} />
                       </Show>
                     </box>
                     <box backgroundColor={bg(tab.id)} paddingRight={1}>
