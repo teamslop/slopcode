@@ -118,6 +118,18 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
       trim(key)
       return removed
     },
+    remove(key: string, match: (item: T) => boolean, input?: { error?: unknown }) {
+      const entry = state.get(key)
+      if (!entry) return [] as T[]
+      const error = input?.error ?? new DOMException("Aborted", "AbortError")
+      const removed = entry.queue.filter(match)
+      if (removed.length === 0) return [] as T[]
+      entry.queue = entry.queue.filter((item) => !match(item))
+      reject(removed, error)
+      notify(key)
+      trim(key)
+      return removed
+    },
     busy(key: string) {
       const entry = state.get(key)
       return !!entry && (!!entry.active || entry.queue.length > 0)

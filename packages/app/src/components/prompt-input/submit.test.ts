@@ -430,6 +430,49 @@ describe("prompt submit serial queue", () => {
     expect(snapshot.queue).toHaveLength(0)
   })
 
+  test("removes one queued prompt metadata item without affecting the rest", async () => {
+    paramsValue = { id: "session-1" }
+    storeFor(ROOT).config.queue_mode = "serial"
+    storeFor(ROOT).session_status["session-1"] = { type: "idle" }
+
+    const submit = createPromptSubmit({
+      info: () => ({ id: "session-1" }),
+      imageAttachments: () => [],
+      commentCount: () => 0,
+      mode: () => "normal",
+      working: () => false,
+      editor: () => undefined,
+      queueScroll: () => undefined,
+      promptLength: (value) => value.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0),
+      addToHistory: () => undefined,
+      resetHistoryNavigation: () => undefined,
+      setMode: () => undefined,
+      setPopover: () => undefined,
+      onSubmit: () => undefined,
+    })
+
+    const event = { preventDefault: () => undefined } as unknown as Event
+
+    promptValue = [{ type: "text", content: "first active", start: 0, end: 12 }]
+    await submit.handleSubmit(event)
+    await eventually(() => sentPrompts.length === 1)
+
+    promptValue = [{ type: "text", content: "second queued", start: 0, end: 13 }]
+    await submit.handleSubmit(event)
+    promptValue = [{ type: "text", content: "third queued", start: 0, end: 12 }]
+    await submit.handleSubmit(event)
+
+    await eventually(() => promptQueue.snapshot(promptQueueKey(ROOT, "session-1")).queue.length === 2)
+
+    const before = promptQueue.snapshot(promptQueueKey(ROOT, "session-1"))
+    promptQueue.remove(promptQueueKey(ROOT, "session-1"), (item) => item.summary === "second queued")
+    const after = promptQueue.snapshot(promptQueueKey(ROOT, "session-1"))
+
+    expect(before.queue.map((item) => item.summary)).toEqual(["second queued", "third queued"])
+    expect(after.active?.summary).toBe("first active")
+    expect(after.queue.map((item) => item.summary)).toEqual(["third queued"])
+  })
+
   test("injection keeps follow-up prompt dispatch immediate", async () => {
     paramsValue = { id: "session-1" }
     storeFor(ROOT).config.queue_mode = "injection"

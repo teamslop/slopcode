@@ -1965,6 +1965,10 @@ function PromptQueuePanel(props: { sessionID: string }) {
     promptQueue.clear(props.sessionID)
   }
 
+  const remove = (id: string) => {
+    promptQueue.remove(props.sessionID, (item) => item.id === id)
+  }
+
   return (
     <Show when={rows().length > 0}>
       <box
@@ -2012,10 +2016,22 @@ function PromptQueuePanel(props: { sessionID: string }) {
                 const fg = createMemo(() => selectedForeground(theme, bg()))
                 return (
                   <box flexDirection="column">
-                    <text fg={theme.text}>
-                      <span style={{ bg: bg(), fg: fg(), bold: true }}> {item.label} </span>
-                      <span> {item.summary}</span>
-                    </text>
+                    <box flexDirection="row" justifyContent="space-between">
+                      <text fg={theme.text}>
+                        <span style={{ bg: bg(), fg: fg(), bold: true }}> {item.label} </span>
+                        <span> {item.summary}</span>
+                      </text>
+                      <Show when={item.label === "QUEUED"}>
+                        <box
+                          onMouseUp={(evt) => {
+                            evt.stopPropagation()
+                            remove(item.id)
+                          }}
+                        >
+                          <text fg={theme.textMuted}>remove</text>
+                        </box>
+                      </Show>
+                    </box>
                     <Show when={item.detail}>
                       <text fg={theme.textMuted}>{item.detail}</text>
                     </Show>

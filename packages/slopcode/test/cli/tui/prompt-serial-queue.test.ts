@@ -190,6 +190,61 @@ describe("serial prompt queue", () => {
     done.first = true
     await eventually(() => !queue.busy("ses_1"))
   })
+
+  test("removes one queued item without affecting the rest", async () => {
+    const done = {
+      first: false,
+      second: false,
+      third: false,
+    }
+    const queue = createSerialQueue<{
+      key: string
+      id: string
+      label: string
+      ready: () => boolean
+      done: () => boolean
+      run: () => Promise<void>
+    }>({ poll_ms: 5 })
+
+    queue.push({
+      key: "ses_1",
+      id: "first",
+      label: "first",
+      ready: () => true,
+      done: () => done.first,
+      run: async () => {},
+    })
+    queue.push({
+      key: "ses_1",
+      id: "second",
+      label: "second",
+      ready: () => true,
+      done: () => done.second,
+      run: async () => {},
+    })
+    queue.push({
+      key: "ses_1",
+      id: "third",
+      label: "third",
+      ready: () => true,
+      done: () => done.third,
+      run: async () => {},
+    })
+
+    await eventually(() => queue.snapshot("ses_1").queue.length === 2)
+
+    queue.remove("ses_1", (item) => item.id === "second")
+
+    const snapshot = queue.snapshot("ses_1")
+    expect(snapshot.active?.id).toBe("first")
+    expect(snapshot.queue.map((item) => item.id)).toEqual(["third"])
+
+    done.first = true
+    await eventually(() => queue.snapshot("ses_1").active?.id === "third")
+
+    done.third = true
+    await eventually(() => !queue.busy("ses_1"))
+  })
 })
 
 

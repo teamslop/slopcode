@@ -94,6 +94,12 @@ export function PromptQueueDock() {
     promptQueue.clear(current)
   }
 
+  const remove = (id: string) => {
+    const current = key()
+    if (!current) return
+    promptQueue.remove(current, (item) => item.id === id)
+  }
+
   return (
     <Show when={rows().length > 0}>
       <DockTray
@@ -151,11 +157,11 @@ export function PromptQueueDock() {
               size="normal"
               variant="ghost"
               classList={{ "rotate-180": store.collapsed }}
-              onMouseDown={(event) => {
+              onMouseDown={(event: MouseEvent) => {
                 event.preventDefault()
                 event.stopPropagation()
               }}
-              onClick={(event) => {
+              onClick={(event: MouseEvent) => {
                 event.stopPropagation()
                 toggle()
               }}
@@ -183,6 +189,23 @@ export function PromptQueueDock() {
                     <div class="text-12-regular text-text-weak truncate">{item.detail}</div>
                   </Show>
                 </div>
+                <Show when={item.label === "Queued"}>
+                  <IconButton
+                    icon="close-small"
+                    size="normal"
+                    variant="ghost"
+                    class="size-6 shrink-0"
+                    onMouseDown={(event: MouseEvent) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                    }}
+                    onClick={(event: MouseEvent) => {
+                      event.stopPropagation()
+                      remove(item.id)
+                    }}
+                    aria-label="Remove queued prompt"
+                  />
+                </Show>
               </div>
             )}
           </For>
