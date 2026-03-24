@@ -14,6 +14,33 @@ type Row = {
   detail?: string
 }
 
+export function promptQueueVisible(input: { queue: PromptQueueItem[] }) {
+  return input.queue.length > 0
+}
+
+export function promptQueueRows(input: { active?: PromptQueueItem; queue: PromptQueueItem[] }) {
+  const active = input.active
+    ? [
+        {
+          id: input.active.id,
+          label: "Active",
+          summary: input.active.summary,
+          detail: input.active.detail,
+        },
+      ]
+    : []
+
+  return [
+    ...active,
+    ...input.queue.map((item: PromptQueueItem) => ({
+      id: item.id,
+      label: "Queued",
+      summary: item.summary,
+      detail: item.detail,
+    })),
+  ]
+}
+
 const LIMIT = 4
 
 export function PromptQueueDock() {
@@ -51,42 +78,20 @@ export function PromptQueueDock() {
 
   onCleanup(off)
 
-  const rows = createMemo<Row[]>(() => {
-    const active = store.active
-      ? [
-          {
-            id: store.active.id,
-            label: "Sending",
-            summary: store.active.summary,
-            detail: store.active.detail,
-          },
-        ]
-      : []
+  const rows = createMemo<Row[]>(() =>
+    promptQueueRows({
+      active: store.active,
+      queue: store.queue,
+    }),
+  )
 
-    return [
-      ...active,
-      ...store.queue.map((item: PromptQueueItem) => ({
-        id: item.id,
-        label: "Queued",
-        summary: item.summary,
-        detail: item.detail,
-      })),
-    ]
-  })
-
-  const visible = createMemo(() => rows().slice(0, LIMIT))
+  const items = createMemo(() => rows().slice(0, LIMIT))
   const hidden = createMemo(() => Math.max(0, rows().length - LIMIT))
-  const status = createMemo(() => {
-    const sending = store.active ? 1 : 0
-    const queued = store.queue.length
-    return [sending ? `${sending} sending` : undefined, queued ? `${queued} queued` : undefined]
-      .filter((item): item is string => !!item)
-      .join(" - ")
-  })
   const preview = createMemo(() => store.active?.summary ?? store.queue[0]?.summary ?? "")
   const clearable = createMemo(() => store.queue.length > 0)
+  const visible = createMemo(() => promptQueueVisible({ queue: store.queue }))
 
-  const toggle = () => setStore("collapsed", (value) => !value)
+  const toggle = () => setStore("collapsed", (value: boolean) => !value)
 
   const clear = () => {
     const current = key()
@@ -97,11 +102,11 @@ export function PromptQueueDock() {
   const remove = (id: string) => {
     const current = key()
     if (!current) return
-    promptQueue.remove(current, (item) => item.id === id)
+    promptQueue.remove(current, (item: PromptQueueItem) => item.id === id)
   }
 
   return (
-    <Show when={rows().length > 0}>
+    <Show when={visible()}>
       <DockTray
         data-component="prompt-queue-dock"
         class="mb-2"
@@ -129,9 +134,6 @@ export function PromptQueueDock() {
               </div>
             </Show>
           </div>
-          <Show when={status()}>
-            <span class="text-12-regular text-text-weak shrink-0">{status()}</span>
-          </Show>
           <div class="ml-auto flex items-center gap-1">
             <Show when={clearable()}>
               <Button
@@ -148,7 +150,7 @@ export function PromptQueueDock() {
                   clear()
                 }}
               >
-                Clear queued
+                Clear queue
               </Button>
             </Show>
             <IconButton
@@ -175,14 +177,14 @@ export function PromptQueueDock() {
           hidden={store.collapsed}
           class="border-t border-border-weak-base px-3 py-2 flex flex-col gap-2"
         >
-          <For each={visible()}>
+          <For each={items()}>
             {(item: Row) => (
               <div class="flex items-start gap-2 min-w-0">
                 <span
                   classList={{
                     "shrink-0 rounded-[6px] px-1.5 py-0.5 text-11-medium": true,
-                    "bg-surface-info-base text-text-info-base": item.label === "Sending",
-                    "bg-background-stronger text-text-weak": item.label !== "Sending",
+                    "bg-surface-info-base text-text-info-base": item.label === "Active",
+                    "bg-background-stronger text-text-weak": item.label !== "Active",
                   }}
                 >
                   {item.label}
