@@ -8,12 +8,14 @@ type Item = {
 
 type Entry<T extends Item> = {
   active?: T
+  paused?: T
   queue: T[]
   running: boolean
 }
 
 type Snapshot<T extends Item> = {
   active?: T
+  paused?: T
   queue: T[]
 }
 
@@ -27,6 +29,7 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
     const match = state.get(key)
     return {
       active: match?.active,
+      paused: match?.paused,
       queue: match ? [...match.queue] : [],
     }
   }
@@ -49,7 +52,7 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
 
   const trim = (key: string) => {
     const match = state.get(key)
-    if (!match || match.running || match.active || match.queue.length > 0) return
+    if (!match || match.running || match.active || match.paused || match.queue.length > 0) return
     state.delete(key)
   }
 
@@ -63,7 +66,7 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
     entry.running = true
 
     try {
-      while (entry.active || entry.queue.length > 0) {
+      while (entry.active || entry.paused || entry.queue.length > 0) {
         if (entry.active) {
           const current = entry.active
           while (entry.active === current && !current.done()) {
@@ -73,6 +76,11 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
             entry.active = undefined
             notify(key)
           }
+          continue
+        }
+
+        if (entry.paused) {
+          await sleep(poll)
           continue
         }
 
@@ -107,6 +115,45 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
       notify(item.key)
       void drain(item.key)
     },
+    unshift(item: T) {
+      ensure(item.key).queue.unshift(item)
+      notify(item.key)
+      void drain(item.key)
+    },
+    pause(key: string) {
+      const entry = state.get(key)
+      if (!entry?.active) return
+      entry.paused = entry.active
+      entry.active = undefined
+      notify(key)
+      return entry.paused
+    },
+    setPaused(item: T) {
+      const entry = ensure(item.key)
+      entry.paused = item
+      notify(item.key)
+      void drain(item.key)
+      return entry.paused
+    },
+    resume(key: string) {
+      const entry = state.get(key)
+      if (!entry?.paused || entry.active) return
+      entry.active = entry.paused
+      entry.paused = undefined
+      notify(key)
+      void drain(key)
+      return entry.active
+    },
+    clearPaused(key: string) {
+      const entry = state.get(key)
+      if (!entry?.paused) return
+      const item = entry.paused
+      entry.paused = undefined
+      notify(key)
+      trim(key)
+      void drain(key)
+      return item
+    },
     clear(key: string, input?: { active?: boolean; error?: unknown }) {
       const entry = state.get(key)
       if (!entry) return [] as T[]
@@ -132,7 +179,7 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
     },
     busy(key: string) {
       const entry = state.get(key)
-      return !!entry && (!!entry.active || entry.queue.length > 0)
+      return !!entry && (!!entry.active || !!entry.paused || entry.queue.length > 0)
     },
     queued(key: string) {
       return state.get(key)?.queue.length ?? 0

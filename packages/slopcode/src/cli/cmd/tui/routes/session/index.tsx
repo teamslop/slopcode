@@ -1902,6 +1902,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
   const renderer = useRenderer()
   const [store, setStore] = createStore({
     active: undefined as PromptQueueItem | undefined,
+    paused: undefined as PromptQueueItem | undefined,
     queue: [] as PromptQueueItem[],
     collapsed: false,
   })
@@ -1909,6 +1910,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
   const sync = () => {
     const next = promptQueue.snapshot(props.sessionID)
     setStore("active", next.active)
+    setStore("paused", next.paused)
     setStore("queue", next.queue)
   }
 
@@ -1935,8 +1937,22 @@ function PromptQueuePanel(props: { sessionID: string }) {
         ]
       : []
 
+    const paused = store.paused
+      ? [
+          {
+            id: store.paused.id,
+            label: "Paused",
+            mode: store.paused.mode,
+            agent: store.paused.agent,
+            summary: store.paused.summary,
+            detail: store.paused.detail,
+          },
+        ]
+      : []
+
     return [
       ...active,
+      ...paused,
       ...store.queue.map((item: PromptQueueItem) => ({
         id: item.id,
         label: "Queued",
@@ -1951,12 +1967,15 @@ function PromptQueuePanel(props: { sessionID: string }) {
   const visible = createMemo(() => rows().slice(0, QUEUE_VISIBLE_ITEMS))
   const hidden = createMemo(() => Math.max(0, rows().length - QUEUE_VISIBLE_ITEMS))
   const preview = createMemo(() => {
-    const text = store.active?.summary ?? store.queue[0]?.summary ?? ""
+    const text = store.active?.summary ?? store.paused?.summary ?? store.queue[0]?.summary ?? ""
     if (text.length <= 48) return text
     return text.slice(0, 45).trimEnd() + "..."
   })
 
-  const color = (item: QueueRow) => (item.mode === "shell" ? theme.primary : local.agent.color(item.agent))
+  const color = (item: QueueRow) => {
+    if (item.label === "Paused") return theme.textMuted
+    return item.mode === "shell" ? theme.primary : local.agent.color(item.agent)
+  }
 
   const toggle = () => {
     setStore("collapsed", (value) => !value)
@@ -1971,7 +1990,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
   }
 
   return (
-    <Show when={store.queue.length > 0}>
+    <Show when={!!store.paused || store.queue.length > 0}>
       <box
         backgroundColor={theme.backgroundPanel}
         marginBottom={1}
@@ -2011,7 +2030,9 @@ function PromptQueuePanel(props: { sessionID: string }) {
             <For each={visible()}>
               {(item: QueueRow) => {
                 const bg = createMemo(() => color(item))
-                const fg = createMemo(() => selectedForeground(theme, bg()))
+                const fg = createMemo(() =>
+                  item.label === "Paused" ? theme.textMuted : selectedForeground(theme, bg()),
+                )
                 return (
                   <box
                     flexDirection="column"
@@ -2021,7 +2042,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
                     paddingLeft={2}
                   >
                     <box flexDirection="row" justifyContent="space-between">
-                      <text fg={theme.text}>
+                      <text fg={item.label === "Paused" ? theme.textMuted : theme.text}>
                         <span style={{ bg: bg(), fg: fg(), bold: true }}> {item.label} </span>
                         <span style={{ fg: bg(), bold: true }}> {initial(item.agent)} </span>
                         <span> {item.summary}</span>
