@@ -1,5 +1,9 @@
 # slopcode database guide
 
+## Release
+
+- Before running the release flow or publishing to npm, rebase the release branch/worktree onto the latest remote base branch tip (`origin/dev` here, or `origin/main` in repos that use `main`) so npm publishes are cut from the current base.
+
 ## Database
 
 - **Schema**: Drizzle schema lives in `src/**/*.sql.ts`.
