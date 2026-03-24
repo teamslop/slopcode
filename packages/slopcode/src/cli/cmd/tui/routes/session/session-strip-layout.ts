@@ -54,6 +54,10 @@ export function sessionStripTabClose(hovered: boolean) {
   return hovered ? CLOSE : " "
 }
 
+export function sessionStripWidth(total: number, inset: number) {
+  return Math.max(0, total - inset * 2)
+}
+
 function tabWidth(tab: SessionStripTab, active: boolean) {
   return width(STATUS_SLOT + item(tab, active) + CLOSE_SLOT)
 }
