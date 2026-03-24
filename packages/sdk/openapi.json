@@ -181,6 +181,9 @@
                     "directory": {
                       "type": "string"
                     },
+                    "view_id": {
+                      "type": "string"
+                    },
                     "pid": {
                       "type": "integer",
                       "exclusiveMinimum": 0,
@@ -559,7 +562,8 @@
             "schema": {
               "type": "string",
               "pattern": "^ses.*"
-            }
+            },
+            "required": true
           }
         ],
         "summary": "List PTY sessions",
@@ -655,7 +659,8 @@
                     "type": "string",
                     "pattern": "^ses.*"
                   }
-                }
+                },
+                "required": ["sessionID"]
               }
             }
           }
@@ -693,7 +698,8 @@
             "schema": {
               "type": "string",
               "pattern": "^ses.*"
-            }
+            },
+            "required": true
           }
         ],
         "summary": "Get PTY session",
@@ -751,7 +757,8 @@
             "schema": {
               "type": "string",
               "pattern": "^ses.*"
-            }
+            },
+            "required": true
           }
         ],
         "summary": "Update PTY session",
@@ -835,7 +842,8 @@
             "schema": {
               "type": "string",
               "pattern": "^ses.*"
-            }
+            },
+            "required": true
           }
         ],
         "summary": "Remove PTY session",
@@ -6458,6 +6466,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            }
           }
         ],
         "summary": "Subscribe to events",
@@ -9058,9 +9074,13 @@
               },
               "exitCode": {
                 "type": "number"
+              },
+              "sessionID": {
+                "type": "string",
+                "pattern": "^ses.*"
               }
             },
-            "required": ["id", "exitCode"]
+            "required": ["id", "exitCode", "sessionID"]
           }
         },
         "required": ["type", "properties"]
@@ -9078,9 +9098,13 @@
               "id": {
                 "type": "string",
                 "pattern": "^pty.*"
+              },
+              "sessionID": {
+                "type": "string",
+                "pattern": "^ses.*"
               }
             },
-            "required": ["id"]
+            "required": ["id", "sessionID"]
           }
         },
         "required": ["type", "properties"]
