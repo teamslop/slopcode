@@ -5,6 +5,7 @@ import { upgrade } from "@/cli/upgrade"
 import { DaemonLauncher } from "@/daemon/launcher"
 import { TuiConfig } from "@/config/tui"
 import { Instance } from "@/project/instance"
+import { randomUUID } from "crypto"
 import path from "path"
 import { tui } from "./app"
 import { win32DisableProcessedInput, win32InstallCtrlCGuard } from "./win32"
@@ -84,9 +85,11 @@ export const TuiThreadCommand = cmd({
         network.mdns ||
         network.port !== 0 ||
         network.hostname !== "127.0.0.1"
+      const viewID = randomUUID()
 
       const daemon = await DaemonLauncher.ensure({
         directory: cwd,
+        viewID,
         network: expose ? network : undefined,
       })
 
@@ -94,6 +97,7 @@ export const TuiThreadCommand = cmd({
         url: daemon.url,
         config,
         directory: cwd,
+        viewID,
         headers: daemon.headers,
         args: {
           continue: args.continue,

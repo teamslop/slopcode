@@ -67,11 +67,8 @@ describe("getLegacyTerminalStorageKeys", () => {
     expect(getLegacyTerminalStorageKeys("/repo")).toEqual(["/repo/terminal.v1"])
   })
 
-  test("includes legacy session path before workspace path", () => {
-    expect(getLegacyTerminalStorageKeys("/repo", "session-123")).toEqual([
-      "/repo/terminal/session-123.v1",
-      "/repo/terminal.v1",
-    ])
+  test("keeps legacy session storage path isolated", () => {
+    expect(getLegacyTerminalStorageKeys("/repo", "session-123")).toEqual(["/repo/terminal/session-123.v1"])
   })
 })
 

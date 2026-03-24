@@ -30,12 +30,13 @@ export namespace DaemonLauncher {
     return parsed.data
   }
 
-  async function current(directory: string) {
-    const info = await DaemonRegistry.read(directory)
+  async function current(directory: string, viewID?: string) {
+    const info = await DaemonRegistry.read(directory, viewID)
     if (!info) return
     const health = await status(info)
     if (!health) return
     if (DaemonRegistry.normalize(health.directory) !== DaemonRegistry.normalize(directory)) return
+    if ((health.view_id ?? undefined) !== viewID) return
     return { info, health }
   }
 
@@ -75,6 +76,7 @@ export namespace DaemonLauncher {
 
   function launch(input: {
     directory: string
+    viewID?: string
     token: string
     idle_timeout_ms: number
     network?: Partial<NetworkOptions>
@@ -98,6 +100,7 @@ export namespace DaemonLauncher {
       "run",
       "--directory",
       input.directory,
+      ...(input.viewID ? ["--view-id", input.viewID] : []),
       "--token",
       input.token,
       "--idle-timeout-ms",
@@ -123,10 +126,10 @@ export namespace DaemonLauncher {
     child.unref()
   }
 
-  async function wait(directory: string, timeout = 10_000) {
+  async function wait(directory: string, viewID?: string, timeout = 10_000) {
     const start = Date.now()
     while (Date.now() - start < timeout) {
-      const match = await current(directory)
+      const match = await current(directory, viewID)
       if (match) return match
       await Bun.sleep(100)
     }
@@ -152,10 +155,10 @@ export namespace DaemonLauncher {
     return status.clients > 0 || status.busy || status.permissions > 0 || status.questions > 0 || status.pty > 0
   }
 
-  export async function ensure(input: { directory: string; network?: Partial<NetworkOptions> }) {
+  export async function ensure(input: { directory: string; network?: Partial<NetworkOptions>; viewID?: string }) {
     const directory = DaemonRegistry.normalize(input.directory)
     const next = await wanted(directory)
-    const ready = await current(directory)
+    const ready = await current(directory, input.viewID)
     if (ready && (!stale(ready.health, next) || active(ready.health))) {
       return {
         url: ready.info.url,
@@ -166,8 +169,8 @@ export namespace DaemonLauncher {
       await shutdown(ready.info)
       await Bun.sleep(150)
     }
-    await using _ = await DaemonRegistry.acquire(directory)
-    const second = await current(directory)
+    await using _ = await DaemonRegistry.acquire(directory, input.viewID)
+    const second = await current(directory, input.viewID)
     if (second && (!stale(second.health, next) || active(second.health))) {
       return {
         url: second.info.url,
@@ -181,11 +184,12 @@ export namespace DaemonLauncher {
     const token = randomUUID()
     launch({
       directory,
+      viewID: input.viewID,
       token,
       idle_timeout_ms: next.idle_timeout_ms,
       network: input.network,
     })
-    const started = await wait(directory)
+    const started = await wait(directory, input.viewID)
     return {
       url: started.info.url,
       headers: headers(started.info.token),

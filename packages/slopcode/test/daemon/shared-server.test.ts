@@ -13,8 +13,10 @@ Log.init({ print: false })
 const token = "test-daemon-token"
 const directoryHeader = "x-slopcode-directory"
 
-async function event(url: string, directory: string, signal: AbortSignal) {
-  const response = await fetch(new URL("/event", url), {
+async function event(url: string, directory: string, signal: AbortSignal, sessionID?: string) {
+  const next = new URL("/event", url)
+  if (sessionID) next.searchParams.set("sessionID", sessionID)
+  const response = await fetch(next, {
     signal,
     headers: {
       [DaemonAuth.Header]: token,
@@ -125,6 +127,49 @@ describe("shared daemon server", () => {
 
     firstAbort.abort()
     secondAbort.abort()
+    await Bun.sleep(50)
+    await server.stop(true)
+  })
+
+  test("filters session events when a session id is provided", async () => {
+    await using tmp = await tmpdir({ git: true })
+    const server = await Instance.provide({
+      directory: tmp.path,
+      init: InstanceBootstrap,
+      fn: async () => {
+        DaemonAuth.set(token)
+        DaemonRuntime.configure({
+          directory: tmp.path,
+          idle_timeout_ms: 60_000,
+          stop: async () => {
+            await server.stop(true)
+          },
+        })
+        return Server.listen({ hostname: "127.0.0.1", port: 0, daemonToken: token })
+      },
+    })
+
+    const allAbort = new AbortController()
+    const ownAbort = new AbortController()
+    const all = await event(server.url.toString(), tmp.path, allAbort.signal)
+    const own = await event(server.url.toString(), tmp.path, ownAbort.signal, "session_a")
+
+    expect((await next(all)).type).toBe("server.connected")
+    expect((await next(own)).type).toBe("server.connected")
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        SessionStatus.set("session_b", { type: "busy" })
+        SessionStatus.set("session_a", { type: "busy" })
+      },
+    })
+
+    expect((await next(all, "session.status")).properties.sessionID).toBe("session_b")
+    expect((await next(own, "session.status")).properties.sessionID).toBe("session_a")
+
+    allAbort.abort()
+    ownAbort.abort()
     await Bun.sleep(50)
     await server.stop(true)
   })

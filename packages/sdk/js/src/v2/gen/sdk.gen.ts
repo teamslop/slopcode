@@ -491,9 +491,9 @@ export class Pty extends HeyApiClient {
    * Get a list of all active pseudo-terminal (PTY) sessions managed by SlopCode.
    */
   public list<ThrowOnError extends boolean = false>(
-    parameters?: {
+    parameters: {
       directory?: string
-      sessionID?: string
+      sessionID: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -571,7 +571,7 @@ export class Pty extends HeyApiClient {
     parameters: {
       ptyID: string
       directory?: string
-      sessionID?: string
+      sessionID: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -603,7 +603,7 @@ export class Pty extends HeyApiClient {
     parameters: {
       ptyID: string
       directory?: string
-      sessionID?: string
+      sessionID: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -635,7 +635,7 @@ export class Pty extends HeyApiClient {
     parameters: {
       ptyID: string
       directory?: string
-      sessionID?: string
+      sessionID: string
       title?: string
       size?: {
         rows: number
@@ -3473,10 +3473,21 @@ export class Event extends HeyApiClient {
   public subscribe<ThrowOnError extends boolean = false>(
     parameters?: {
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
+          ],
+        },
+      ],
+    )
     return (options?.client ?? this.client).sse.get<EventSubscribeResponses, unknown, ThrowOnError>({
       url: "/event",
       ...options,

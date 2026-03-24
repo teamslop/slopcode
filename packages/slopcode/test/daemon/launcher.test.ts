@@ -44,4 +44,33 @@ describe("daemon launcher", () => {
 
     await eventually(async () => !(await DaemonRegistry.read(tmp.path)))
   }, 20000)
+
+  test("isolates daemons by cli view id", async () => {
+    await using tmp = await tmpdir({ git: true })
+    const a = await DaemonLauncher.ensure({ directory: tmp.path, viewID: "view-a" })
+    const one = await fetch(new URL("/daemon/status", a.url), {
+      headers: a.headers,
+    }).then((x) => x.json() as Promise<{ pid: number; view_id?: string }>)
+
+    const b = await DaemonLauncher.ensure({ directory: tmp.path, viewID: "view-b" })
+    const two = await fetch(new URL("/daemon/status", b.url), {
+      headers: b.headers,
+    }).then((x) => x.json() as Promise<{ pid: number; view_id?: string }>)
+
+    expect(one.view_id).toBe("view-a")
+    expect(two.view_id).toBe("view-b")
+    expect(a.url).not.toBe(b.url)
+    expect(a.headers[DaemonAuth.Header]).not.toBe(b.headers[DaemonAuth.Header])
+    expect(one.pid).not.toBe(two.pid)
+
+    try {
+      process.kill(one.pid, "SIGTERM")
+    } catch {}
+    try {
+      process.kill(two.pid, "SIGTERM")
+    } catch {}
+
+    await eventually(async () => !(await DaemonRegistry.read(tmp.path, "view-a")))
+    await eventually(async () => !(await DaemonRegistry.read(tmp.path, "view-b")))
+  }, 20000)
 })

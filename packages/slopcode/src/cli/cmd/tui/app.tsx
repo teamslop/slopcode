@@ -112,6 +112,7 @@ export function tui(input: {
   args: Args
   config: TuiConfig.Info
   directory?: string
+  viewID?: string
   fetch?: typeof fetch
   headers?: RequestInit["headers"]
   events?: EventSource
@@ -149,6 +150,7 @@ export function tui(input: {
                         <SDKProvider
                           url={input.url}
                           directory={input.directory}
+                          viewID={input.viewID}
                           fetch={input.fetch}
                           headers={input.headers}
                           events={input.events}

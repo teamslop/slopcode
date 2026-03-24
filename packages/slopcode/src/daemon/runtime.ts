@@ -17,6 +17,7 @@ export namespace DaemonRuntime {
     protocol: z.literal(PROTOCOL),
     version: z.string(),
     directory: z.string(),
+    view_id: z.string().optional(),
     pid: z.number().int().positive(),
     started_at: z.number().int().positive(),
     idle_timeout_ms: z.number().int().positive(),
@@ -31,6 +32,7 @@ export namespace DaemonRuntime {
   const state = {
     clients: 0,
     directory: "",
+    view_id: undefined as string | undefined,
     idle_timeout_ms: 30 * 60 * 1000,
     started_at: 0,
     shutting: false,
@@ -100,10 +102,16 @@ export namespace DaemonRuntime {
     state.unsubs.splice(0).forEach((off) => off())
   }
 
-  export function configure(input: { directory: string; idle_timeout_ms: number; stop: () => Promise<void> }) {
+  export function configure(input: {
+    directory: string
+    view_id?: string
+    idle_timeout_ms: number
+    stop: () => Promise<void>
+  }) {
     cleanup()
     state.clients = 0
     state.directory = input.directory
+    state.view_id = input.view_id
     state.idle_timeout_ms = input.idle_timeout_ms
     state.started_at = Date.now()
     state.shutting = false
@@ -111,6 +119,7 @@ export namespace DaemonRuntime {
     watch()
     log.info("configured", {
       directory: input.directory,
+      view_id: input.view_id,
       idle_timeout_ms: input.idle_timeout_ms,
     })
     void settle()
@@ -132,6 +141,7 @@ export namespace DaemonRuntime {
       protocol: PROTOCOL,
       version: Installation.VERSION,
       directory: state.directory,
+      view_id: state.view_id,
       pid: process.pid,
       started_at: state.started_at,
       idle_timeout_ms: state.idle_timeout_ms,

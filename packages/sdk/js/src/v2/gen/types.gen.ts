@@ -946,6 +946,7 @@ export type EventPtyExited = {
   properties: {
     id: string
     exitCode: number
+    sessionID: string
   }
 }
 
@@ -953,6 +954,7 @@ export type EventPtyDeleted = {
   type: "pty.deleted"
   properties: {
     id: string
+    sessionID: string
   }
 }
 
@@ -2073,6 +2075,7 @@ export type DaemonStatusResponses = {
     protocol: 1
     version: string
     directory: string
+    view_id?: string
     pid: number
     started_at: number
     idle_timeout_ms: number
@@ -2242,9 +2245,9 @@ export type ProjectUpdateResponse = ProjectUpdateResponses[keyof ProjectUpdateRe
 export type PtyListData = {
   body?: never
   path?: never
-  query?: {
+  query: {
     directory?: string
-    sessionID?: string
+    sessionID: string
   }
   url: "/pty"
 }
@@ -2267,7 +2270,7 @@ export type PtyCreateData = {
     env?: {
       [key: string]: string
     }
-    sessionID?: string
+    sessionID: string
   }
   path?: never
   query?: {
@@ -2299,9 +2302,9 @@ export type PtyRemoveData = {
   path: {
     ptyID: string
   }
-  query?: {
+  query: {
     directory?: string
-    sessionID?: string
+    sessionID: string
   }
   url: "/pty/{ptyID}"
 }
@@ -2329,9 +2332,9 @@ export type PtyGetData = {
   path: {
     ptyID: string
   }
-  query?: {
+  query: {
     directory?: string
-    sessionID?: string
+    sessionID: string
   }
   url: "/pty/{ptyID}"
 }
@@ -2365,9 +2368,9 @@ export type PtyUpdateData = {
   path: {
     ptyID: string
   }
-  query?: {
+  query: {
     directory?: string
-    sessionID?: string
+    sessionID: string
   }
   url: "/pty/{ptyID}"
 }
@@ -5049,6 +5052,7 @@ export type EventSubscribeData = {
   path?: never
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/event"
 }

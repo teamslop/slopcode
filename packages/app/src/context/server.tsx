@@ -103,7 +103,11 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
     const platform = usePlatform()
 
     const [store, setStore, _, ready] = persisted(
-      Persist.global("server", ["server.v3"]),
+      {
+        ...Persist.global("server", ["server.v3"]),
+        scope: platform.viewID?.(),
+        sync: false,
+      },
       createStore({
         list: [] as StoredServer[],
         projects: {} as Record<string, StoredProject[]>,

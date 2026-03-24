@@ -26,7 +26,7 @@ export const PtyRoutes = lazy(() =>
           },
         },
       }),
-      validator("query", Pty.AccessInput),
+      validator("query", Pty.ScopedInput),
       async (c) => {
         return c.json(Pty.list(c.req.valid("query")))
       },
@@ -74,7 +74,7 @@ export const PtyRoutes = lazy(() =>
         },
       }),
       validator("param", z.object({ ptyID: z.string() })),
-      validator("query", Pty.AccessInput),
+      validator("query", Pty.ScopedInput),
       async (c) => {
         const info = Pty.get(c.req.valid("param").ptyID, c.req.valid("query"))
         if (!info) {
@@ -102,7 +102,7 @@ export const PtyRoutes = lazy(() =>
         },
       }),
       validator("param", z.object({ ptyID: z.string() })),
-      validator("query", Pty.AccessInput),
+      validator("query", Pty.ScopedInput),
       validator("json", Pty.UpdateInput),
       async (c) => {
         const info = await Pty.update(c.req.valid("param").ptyID, c.req.valid("json"), c.req.valid("query"))
@@ -131,7 +131,7 @@ export const PtyRoutes = lazy(() =>
         },
       }),
       validator("param", z.object({ ptyID: z.string() })),
-      validator("query", Pty.AccessInput),
+      validator("query", Pty.ScopedInput),
       async (c) => {
         const info = Pty.get(c.req.valid("param").ptyID, c.req.valid("query"))
         if (!info) {
@@ -162,7 +162,7 @@ export const PtyRoutes = lazy(() =>
       validator("param", z.object({ ptyID: z.string() })),
       upgradeWebSocket((c) => {
         const id = c.req.param("ptyID")
-        const access = Pty.AccessInput.parse({ sessionID: c.req.query("sessionID") })
+        const access = Pty.ScopedInput.parse({ sessionID: c.req.query("sessionID") })
         const cursor = (() => {
           const value = c.req.query("cursor")
           if (!value) return

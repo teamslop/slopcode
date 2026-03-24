@@ -43,6 +43,7 @@ import { DaemonRoutes } from "./routes/daemon"
 import { MDNS } from "./mdns"
 import { DaemonAuth } from "@/daemon/auth"
 import { DaemonRuntime } from "@/daemon/runtime"
+import { Identifier } from "@/id/id"
 
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout https://github.com/vercel/ai/blob/2dc67e0ef538307f21368db32d5a12345d98831b/packages/ai/src/logger/log-warnings.ts#L85
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -53,6 +54,26 @@ export namespace Server {
   let _url: URL | undefined
   let _corsWhitelist: string[] = []
   let _daemonToken: string | undefined
+
+  const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
+
+  const session = (event: { type: string; properties?: unknown }) => {
+    const props = event.properties
+    if (!record(props)) return
+    if (typeof props.sessionID === "string") return props.sessionID
+    if (record(props.part) && typeof props.part.sessionID === "string") return props.part.sessionID
+    if (record(props.info)) {
+      if (typeof props.info.sessionID === "string") return props.info.sessionID
+      if (event.type.startsWith("session.") && typeof props.info.id === "string") return props.info.id
+    }
+  }
+
+  const match = (event: { type: string; properties?: unknown }, sessionID?: string) => {
+    if (!sessionID) return true
+    const next = session(event)
+    if (!next) return true
+    return next === sessionID
+  }
 
   export function url(): URL {
     return _url ?? new URL("http://localhost:4096")
@@ -505,7 +526,14 @@ export namespace Server {
               },
             },
           }),
+          validator(
+            "query",
+            z.object({
+              sessionID: Identifier.schema("session").optional(),
+            }),
+          ),
           async (c) => {
+            const input = c.req.valid("query")
             log.info("event connected")
             DaemonRuntime.connect()
             c.header("X-Accel-Buffering", "no")
@@ -518,6 +546,7 @@ export namespace Server {
                 }),
               })
               const unsub = Bus.subscribeAll(async (event) => {
+                if (!match(event, input.sessionID)) return
                 await stream.writeSSE({
                   data: JSON.stringify(event),
                 })

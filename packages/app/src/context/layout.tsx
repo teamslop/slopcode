@@ -160,7 +160,11 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
       }
     }
 
-    const target = Persist.global("layout", ["layout.v6"])
+    const target = {
+      ...Persist.global("layout", ["layout.v6"]),
+      scope: platform.viewID?.(),
+      sync: false,
+    }
     const [store, setStore, _, ready] = persisted(
       { ...target, migrate },
       createStore({

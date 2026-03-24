@@ -32,7 +32,7 @@ export function getTerminalCacheKey(dir: string, sessionID?: string) {
 
 export function getLegacyTerminalStorageKeys(dir: string, legacySessionID?: string) {
   if (!legacySessionID) return [`${dir}/terminal.v1`]
-  return [`${dir}/terminal/${legacySessionID}.v1`, `${dir}/terminal.v1`]
+  return [`${dir}/terminal/${legacySessionID}.v1`]
 }
 
 type TerminalSession = ReturnType<typeof createTerminalSession>
@@ -143,7 +143,7 @@ function createTerminalSession(sdk: TerminalSDK, dir: string, sessionID?: string
   }
 
   const [store, setStore, _, ready] = persisted(
-    Persist.scoped(dir, sessionID, "terminal", legacy),
+    Persist.session(dir, sessionID ?? WORKSPACE_KEY, "terminal", legacy),
     createStore<{
       active?: string
       all: LocalPTY[]
@@ -190,6 +190,10 @@ function createTerminalSession(sdk: TerminalSDK, dir: string, sessionID?: string
   }
 
   const sync = async () => {
+    if (!sessionID) {
+      mergeRemote([])
+      return
+    }
     const result = await sdk.client.pty.list({ sessionID }).catch((error: unknown) => {
       console.error("Failed to sync terminals", error)
       return undefined
@@ -249,6 +253,7 @@ function createTerminalSession(sdk: TerminalSDK, dir: string, sessionID?: string
       })
     },
     new() {
+      if (!sessionID) return
       const nextNumber = pickNextTerminalNumber()
 
       sdk.client.pty
@@ -270,6 +275,7 @@ function createTerminalSession(sdk: TerminalSDK, dir: string, sessionID?: string
         })
     },
     update(pty: Partial<LocalPTY> & { id: string }) {
+      if (!sessionID) return
       const index = store.all.findIndex((x) => x.id === pty.id)
       const previous = index >= 0 ? store.all[index] : undefined
       if (index >= 0) {
@@ -291,6 +297,7 @@ function createTerminalSession(sdk: TerminalSDK, dir: string, sessionID?: string
         })
     },
     async clone(id: string) {
+      if (!sessionID) return
       const index = store.all.findIndex((x) => x.id === id)
       const pty = store.all[index]
       if (!pty) return
@@ -341,6 +348,7 @@ function createTerminalSession(sdk: TerminalSDK, dir: string, sessionID?: string
       setStore("active", store.all[prevIndex]?.id)
     },
     async close(id: string) {
+      if (!sessionID) return
       const index = store.all.findIndex((f) => f.id === id)
       if (index !== -1) {
         batch(() => {

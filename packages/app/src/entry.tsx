@@ -54,6 +54,26 @@ const setStorage = (key: string, value: string | null) => {
 const readDefaultServerUrl = () => getStorage(DEFAULT_SERVER_URL_KEY)
 const writeDefaultServerUrl = (url: string | null) => setStorage(DEFAULT_SERVER_URL_KEY, url)
 
+const viewID = (() => {
+  const key = "slopcode.view-id"
+  let cached = ""
+  return () => {
+    if (cached) return cached
+    if (typeof sessionStorage === "undefined") {
+      cached = crypto.randomUUID()
+      return cached
+    }
+    const stored = sessionStorage.getItem(key)
+    if (stored) {
+      cached = stored
+      return cached
+    }
+    cached = crypto.randomUUID()
+    sessionStorage.setItem(key, cached)
+    return cached
+  }
+})()
+
 const notify: Platform["notify"] = async (title, description, href) => {
   if (!("Notification" in window)) return
 
@@ -102,6 +122,7 @@ if (!(root instanceof HTMLElement) && import.meta.env.DEV) {
 const platform: Platform = {
   platform: "web",
   version: pkg.version,
+  viewID,
   openLink,
   back,
   forward,

@@ -188,9 +188,11 @@ export const Terminal = (props: TerminalProps) => {
   }
 
   const pushSize = (cols: number, rows: number) => {
+    if (!local.pty.sessionID) return Promise.resolve()
     return sdk.client.pty
       .update({
         ptyID: local.pty.id,
+        sessionID: local.pty.sessionID,
         size: { cols, rows },
       })
       .catch((err) => {

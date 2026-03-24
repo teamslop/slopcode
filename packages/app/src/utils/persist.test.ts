@@ -112,6 +112,13 @@ describe("persisted cross-tab sync", () => {
     )
   })
 
+  test("scopes storage names and keys by view id", () => {
+    expect(persistTesting.scopedStorage({ storage: "slopcode.global.dat", scope: "view-1" })).toMatch(
+      /^slopcode\.global\.[^.]+\.dat$/,
+    )
+    expect(persistTesting.scopedKey({ key: "layout", scope: "view-1" })).toMatch(/^scope:[^:]+:layout$/)
+  })
+
   test("normalizes storage event payloads into merged store values", () => {
     expect(persistTesting.syncValue({ value: 1, nested: { ok: true } }, '{"value":2}')).toEqual({
       value: 2,

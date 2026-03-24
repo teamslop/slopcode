@@ -35,11 +35,16 @@ export const DaemonRunCommand = cmd({
         type: "number",
         demandOption: true,
         describe: "daemon idle timeout in milliseconds",
+      })
+      .option("view-id", {
+        type: "string",
+        describe: "isolated cli view id",
       }),
   handler: async (args) => {
     const directory = DaemonRegistry.normalize(args.directory)
     const idle_timeout_ms = args.idleTimeoutMs
     const token = args.token
+    const view_id = args.viewId
     const network = await resolveNetworkOptions(args)
     let done!: () => void
     const wait = new Promise<void>((resolve) => {
@@ -58,7 +63,7 @@ export const DaemonRunCommand = cmd({
           })
           const stop = async () => {
             await server.stop(true)
-            await DaemonRegistry.remove(directory)
+            await DaemonRegistry.remove(directory, view_id)
             done()
           }
           const exit = () => {
@@ -69,6 +74,7 @@ export const DaemonRunCommand = cmd({
           process.once("SIGHUP", exit)
           await DaemonRegistry.write({
             directory,
+            view_id,
             pid: process.pid,
             url: server.url.toString(),
             token,
@@ -79,6 +85,7 @@ export const DaemonRunCommand = cmd({
           })
           DaemonRuntime.configure({
             directory,
+            view_id,
             idle_timeout_ms,
             stop,
           })
@@ -89,7 +96,7 @@ export const DaemonRunCommand = cmd({
         },
       })
     } catch (error) {
-      await DaemonRegistry.remove(directory)
+      await DaemonRegistry.remove(directory, view_id)
       throw error
     }
   },

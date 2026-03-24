@@ -60,13 +60,19 @@ export namespace Pty {
 
   export type AccessInput = z.infer<typeof AccessInput>
 
+  export const ScopedInput = z.object({
+    sessionID: Identifier.schema("session"),
+  })
+
+  export type ScopedInput = z.infer<typeof ScopedInput>
+
   export const CreateInput = z.object({
     command: z.string().optional(),
     args: z.array(z.string()).optional(),
     cwd: z.string().optional(),
     title: z.string().optional(),
     env: z.record(z.string(), z.string()).optional(),
-    sessionID: Identifier.schema("session").optional(),
+    sessionID: Identifier.schema("session"),
   })
 
   export type CreateInput = z.infer<typeof CreateInput>
@@ -86,8 +92,14 @@ export namespace Pty {
   export const Event = {
     Created: BusEvent.define("pty.created", z.object({ info: Info })),
     Updated: BusEvent.define("pty.updated", z.object({ info: Info })),
-    Exited: BusEvent.define("pty.exited", z.object({ id: Identifier.schema("pty"), exitCode: z.number() })),
-    Deleted: BusEvent.define("pty.deleted", z.object({ id: Identifier.schema("pty") })),
+    Exited: BusEvent.define(
+      "pty.exited",
+      z.object({ id: Identifier.schema("pty"), exitCode: z.number(), sessionID: Identifier.schema("session") }),
+    ),
+    Deleted: BusEvent.define(
+      "pty.deleted",
+      z.object({ id: Identifier.schema("pty"), sessionID: Identifier.schema("session") }),
+    ),
   }
 
   interface ActiveSession {
@@ -100,7 +112,7 @@ export namespace Pty {
   }
 
   function allowed(info: Info, sessionID?: string) {
-    if (!info.sessionID) return true
+    if (sessionID === undefined) return true
     return info.sessionID === sessionID
   }
 
@@ -228,7 +240,7 @@ export namespace Pty {
         }
       }
       session.subscribers.clear()
-      Bus.publish(Event.Exited, { id, exitCode })
+      Bus.publish(Event.Exited, { id, exitCode, sessionID: session.info.sessionID! })
       state().delete(id)
     })
     Bus.publish(Event.Created, { info })
@@ -266,7 +278,7 @@ export namespace Pty {
     }
     session.subscribers.clear()
     state().delete(id)
-    Bus.publish(Event.Deleted, { id })
+    Bus.publish(Event.Deleted, { id, sessionID: session.info.sessionID! })
   }
 
   export function resize(id: string, cols: number, rows: number) {
