@@ -33,6 +33,10 @@ const PREV = "<"
 const NEXT = ">"
 const SEP_MARK = width(" ")
 
+function owners(...ids: Array<string | undefined>) {
+  return ids.filter((id): id is string => !!id)
+}
+
 type Slice = {
   start: number
   end: number
@@ -146,21 +150,24 @@ export function layoutSessionStripUnderlineSegments(
   const parts = [
     ...(layout.before > 0
       ? [
-          { width: width(PREV), owners: input.prevOwner ? [input.prevOwner] : [] },
-          { width: width(SEP), owners: [] as string[] },
+          { width: width(PREV), owners: owners(input.prevOwner) },
+          { width: width(SEP), owners: owners(input.prevOwner, layout.tabs[0]?.id) },
         ]
       : layout.tabs.length > 0
-        ? [{ width: width(SEP), owners: [] as string[] }]
+        ? [{ width: width(SEP), owners: owners(layout.tabs[0]?.id) }]
         : []),
-    ...layout.tabs.flatMap((tab) => [
+    ...layout.tabs.flatMap((tab, index) => [
       { width: tabWidth(tab, tab.id === input.active), owners: [tab.id] },
-      { width: width(SEP), owners: [] as string[] },
+      {
+        width: width(SEP),
+        owners: owners(tab.id, layout.tabs[index + 1]?.id ?? (layout.hidden > 0 ? undefined : input.nextOwner)),
+      },
     ]),
     ...(layout.hidden > 0 ? [{ width: width(`+${layout.hidden}`), owners: [] as string[] }] : []),
     ...(layout.after > 0
       ? [
-          { width: width(SEP), owners: [] as string[] },
-          { width: width(NEXT), owners: input.nextOwner ? [input.nextOwner] : [] },
+          { width: width(SEP), owners: owners(input.nextOwner) },
+          { width: width(NEXT), owners: owners(input.nextOwner) },
         ]
       : []),
   ]
@@ -172,7 +179,7 @@ export function layoutSessionStripUnderlineSegments(
     if (part.width <= 0) return []
     const text = full.slice(offset, offset + part.width).join("")
     offset += part.width
-    return [{ text, owners: [...new Set(part.owners)] }]
+    return [{ text, owners: Array.from(new Set(part.owners)) }]
   })
 }
 

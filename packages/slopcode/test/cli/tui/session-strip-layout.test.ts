@@ -205,7 +205,35 @@ describe("session strip layout", () => {
     })
 
     expect(segments.map((segment) => segment.text).join("")).toBe(result.underline)
-    expect(segments.map((segment) => segment.owners)).toEqual([[], ["a"], [], ["b"], [], []])
+    expect(segments.map((segment) => segment.owners)).toEqual([["a"], ["a"], ["a", "b"], ["b"], ["b", "__next__"], []])
+  })
+
+  test("shares separator ownership with adjacent controls", () => {
+    const result = layoutSessionStrip(
+      [
+        { id: "a", title: "A" },
+        { id: "b", title: "B" },
+        { id: "c", title: "C" },
+      ],
+      { active: "b", width: 13 },
+    )
+
+    const segments = layoutSessionStripUnderlineSegments(result, {
+      active: "b",
+      prevOwner: "__prev__",
+      nextOwner: "__next__",
+    })
+
+    expect(result.tabs.map((tab) => tab.id)).toEqual(["b"])
+    expect(segments.map((segment) => segment.owners)).toEqual([
+      ["__prev__"],
+      ["__prev__", "b"],
+      ["b"],
+      ["b"],
+      [],
+      ["__next__"],
+      ["__next__"],
+    ])
   })
 
   test("adds a leading boundary when the first visible tab is also the first tab", () => {
@@ -222,6 +250,6 @@ describe("session strip layout", () => {
     expect(result.before).toBe(0)
     expect(result.tabs.map((tab) => tab.id)).toEqual(["a", "b"])
     expect(segments[0]?.text).toBe("─┴─")
-    expect(segments[0]?.owners).toEqual([])
+    expect(segments[0]?.owners).toEqual(["a"])
   })
 })

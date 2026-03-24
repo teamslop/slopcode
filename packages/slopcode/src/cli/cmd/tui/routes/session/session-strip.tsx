@@ -46,8 +46,13 @@ export function SessionStripView(props: SessionStripViewProps) {
   const prev = "__prev__"
   const next = "__next__"
   const bg = (id: string) => (hover() === id ? props.colors.hover : props.colors.panel)
-  const underlineBg = (owners: string[]) =>
-    owners.some((id) => hover() === id) ? props.colors.hover : props.colors.panel
+  const owners = (...ids: Array<string | undefined>) => ids.filter((id): id is string => !!id)
+  const fill = (owners: string[]) => (owners.some((id) => hover() === id) ? props.colors.hover : props.colors.panel)
+  const sep = (owners: string[]) => (
+    <box backgroundColor={fill(owners)}>
+      <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
+    </box>
+  )
   const closeVisible = (id: string) => hover() === id
   const closeFg = (id: string) => (closeVisible(id) ? props.colors.text : props.colors.muted)
   const controlFg = (id: string) => (hover() === id ? props.colors.text : props.colors.muted)
@@ -74,21 +79,24 @@ export function SessionStripView(props: SessionStripViewProps) {
                   {SessionStripText.PREV}
                 </text>
               </box>
-              <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
+              {sep(owners(prev, props.tabs[0]?.id))}
             </>
           )}
         </Show>
-        <Show when={!props.prev && props.tabs.length > 0}>
-          <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
-        </Show>
+        <Show when={!props.prev && props.tabs.length > 0}>{sep(owners(props.tabs[0]?.id))}</Show>
         <For each={props.tabs}>
-          {(tab) => {
+          {(tab, index) => {
             const active = () => props.active === tab.id
             const fg = () => {
               if (active()) return props.colors.accent
               if (hover() === tab.id) return props.colors.text
               return props.colors.muted
             }
+            const shared = () =>
+              owners(
+                tab.id,
+                props.tabs[index() + 1]?.id ?? (props.hidden > 0 ? undefined : props.next ? next : undefined),
+              )
             return (
               <>
                 <box
@@ -141,7 +149,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                     </text>
                   </box>
                 </box>
-                <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
+                {sep(shared())}
               </>
             )
           }}
@@ -152,7 +160,7 @@ export function SessionStripView(props: SessionStripViewProps) {
         <Show when={props.next}>
           {(id) => (
             <>
-              <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
+              {sep(owners(next))}
               <box
                 backgroundColor={bg(next)}
                 onMouseOver={() => setHover(next)}
@@ -170,7 +178,7 @@ export function SessionStripView(props: SessionStripViewProps) {
       <box height={1} flexDirection="row" paddingLeft={INSET} paddingRight={INSET}>
         <For each={props.underlineSegments}>
           {(segment) => (
-            <box flexShrink={0} backgroundColor={underlineBg(segment.owners)}>
+            <box flexShrink={0} backgroundColor={fill(segment.owners)}>
               <text fg={props.colors.edge} wrapMode="none">
                 {segment.text}
               </text>
