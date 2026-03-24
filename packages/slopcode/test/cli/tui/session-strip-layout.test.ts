@@ -49,7 +49,7 @@ describe("session strip layout", () => {
   test("prefers a wider left-anchored window on ties", () => {
     const result = layoutSessionStrip(tabs, {
       active: "ses_2",
-      width: 28,
+      width: 31,
     })
 
     expect(result).toMatchObject({
@@ -65,7 +65,7 @@ describe("session strip layout", () => {
   test("falls back to a prefix when active is missing", () => {
     const result = layoutSessionStrip(tabs, {
       active: "ses_missing",
-      width: 26,
+      width: 29,
     })
 
     expect(result).toMatchObject({
@@ -115,9 +115,10 @@ describe("session strip layout", () => {
     ])
     expect(result.hidden).toBe(0)
     expect(result.underline).toHaveLength(20)
-    expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
-    expect(result.underline[6]).toBe("┴")
-    expect(result.underline[14]).toBe("┴")
+    expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(3)
+    expect(result.underline[1]).toBe("┴")
+    expect(result.underline[9]).toBe("┴")
+    expect(result.underline[17]).toBe("┴")
   })
 
   test("keeps joints aligned when the active marker shifts tab text", () => {
@@ -131,9 +132,10 @@ describe("session strip layout", () => {
 
     expect(result.hidden).toBe(0)
     expect(result.underline).toHaveLength(22)
-    expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
-    expect(result.underline[8]).toBe("┴")
-    expect(result.underline[16]).toBe("┴")
+    expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(3)
+    expect(result.underline[1]).toBe("┴")
+    expect(result.underline[11]).toBe("┴")
+    expect(result.underline[19]).toBe("┴")
   })
 
   test("adds a joint before the next control when tabs overflow", () => {
@@ -143,7 +145,7 @@ describe("session strip layout", () => {
         { id: "b", title: "B" },
         { id: "c", title: "Long" },
       ],
-      { width: 22 },
+      { width: 25 },
     )
 
     expect(result).toMatchObject({
@@ -157,11 +159,12 @@ describe("session strip layout", () => {
       prev: undefined,
       next: "c",
     })
-    expect(result.underline).toHaveLength(22)
-    expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(3)
-    expect(result.underline[6]).toBe("┴")
-    expect(result.underline[14]).toBe("┴")
-    expect(result.underline[19]).toBe("┴")
+    expect(result.underline).toHaveLength(25)
+    expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(4)
+    expect(result.underline[1]).toBe("┴")
+    expect(result.underline[9]).toBe("┴")
+    expect(result.underline[17]).toBe("┴")
+    expect(result.underline[22]).toBe("┴")
   })
 
   test("adds a joint after the previous control when tabs are hidden on the left", () => {
@@ -202,6 +205,23 @@ describe("session strip layout", () => {
     })
 
     expect(segments.map((segment) => segment.text).join("")).toBe(result.underline)
-    expect(segments.map((segment) => segment.owners)).toEqual([["a"], [], ["b"], [], []])
+    expect(segments.map((segment) => segment.owners)).toEqual([[], ["a"], [], ["b"], [], []])
+  })
+
+  test("adds a leading boundary when the first visible tab is also the first tab", () => {
+    const result = layoutSessionStrip(
+      [
+        { id: "a", title: "A" },
+        { id: "b", title: "B" },
+      ],
+      { width: 20 },
+    )
+
+    const segments = layoutSessionStripUnderlineSegments(result, {})
+
+    expect(result.before).toBe(0)
+    expect(result.tabs.map((tab) => tab.id)).toEqual(["a", "b"])
+    expect(segments[0]?.text).toBe("─┴─")
+    expect(segments[0]?.owners).toEqual([])
   })
 })

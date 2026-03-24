@@ -78,6 +78,9 @@ export function SessionStripView(props: SessionStripViewProps) {
             </>
           )}
         </Show>
+        <Show when={!props.prev && props.tabs.length > 0}>
+          <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
+        </Show>
         <For each={props.tabs}>
           {(tab) => {
             const active = () => props.active === tab.id
