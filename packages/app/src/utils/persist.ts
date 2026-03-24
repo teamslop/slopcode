@@ -1,8 +1,8 @@
 import { Platform, usePlatform } from "@/context/platform"
 import { makePersisted, type AsyncStorage, type SyncStorage } from "@solid-primitives/storage"
 import { checksum } from "@slopcode-ai/util/encode"
-import { createResource, type Accessor } from "solid-js"
-import type { SetStoreFunction, Store } from "solid-js/store"
+import { createResource, onCleanup, type Accessor } from "solid-js"
+import { reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 
 type InitType = Promise<string> | string | null
 type PersistedWithReady<T> = [Store<T>, SetStoreFunction<T>, InitType, Accessor<boolean>]
@@ -209,6 +209,18 @@ function workspaceStorage(dir: string) {
   return `slopcode.workspace.${head}.${sum}.dat`
 }
 
+function localStorageKey(config: PersistTarget) {
+  if (!config.storage) return config.key
+  return `${config.storage}:${config.key}`
+}
+
+function syncValue<T>(defaults: T, newValue: string | null, migrate?: (value: unknown) => unknown) {
+  if (newValue === null) return snapshot(defaults)
+  const next = normalize(defaults, newValue, migrate)
+  if (next === undefined) return
+  return JSON.parse(next) as T
+}
+
 function localStorageWithPrefix(prefix: string): SyncStorage {
   const base = `${prefix}:`
   const scope = `prefix:${prefix}`
@@ -298,8 +310,10 @@ function localStorageDirect(): SyncStorage {
 
 export const PersistTesting = {
   localStorageDirect,
+  localStorageKey,
   localStorageWithPrefix,
   normalize,
+  syncValue,
 }
 
 export const Persist = {
@@ -458,6 +472,19 @@ export function persisted<T>(
     },
     { initialValue: !isAsync },
   )
+
+  if (!isDesktop && typeof window !== "undefined") {
+    const key = localStorageKey(config)
+    const sync = (event: StorageEvent) => {
+      if (event.storageArea !== localStorage) return
+      if (event.key !== key) return
+      const next = syncValue(defaults, event.newValue, config.migrate)
+      if (next === undefined) return
+      setState(next as T)
+    }
+    window.addEventListener("storage", sync)
+    onCleanup(() => window.removeEventListener("storage", sync))
+  }
 
   return [state, setState, init, () => ready() === true]
 }
