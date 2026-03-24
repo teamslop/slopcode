@@ -43,11 +43,7 @@ const mode = prep ? "prep" : only ? "publish" : "full"
 console.log("=== publishing ===\n")
 
 if (mode !== "publish") {
-  const pkgjsons = await Array.fromAsync(
-    new Bun.Glob("**/package.json").scan({
-      absolute: true,
-    }),
-  ).then((arr) =>
+  const pkgjsons = await Array.fromAsync(new Bun.Glob("**/package.json").scan()).then((arr) =>
     arr.filter((x) => !x.includes("node_modules") && !x.includes("dist") && !x.split(/[\\/]/).includes("tmp")),
   )
 
@@ -71,7 +67,7 @@ if (mode !== "publish") {
 const forceBuild = process.env.SLOPCODE_FORCE_BUILD === "true"
 const skipBuild = process.env.SLOPCODE_SKIP_BUILD === "true"
 const buildLocal = async () => {
-  const dist = await Array.fromAsync(new Bun.Glob("*/package.json").scan({ cwd: "./packages/slopcode/dist" }))
+  const dist = await Array.fromAsync(new Bun.Glob("packages/slopcode/dist/*/package.json").scan())
   if (!forceBuild && dist.length > 0) {
     console.log("build: using existing ./packages/slopcode/dist bundle")
     return
