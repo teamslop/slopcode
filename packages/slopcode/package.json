@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "0.1.207",
+  "version": "0.1.208",
   "name": "slopcode",
   "type": "module",
   "license": "MIT",
