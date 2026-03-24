@@ -22,7 +22,7 @@ export type SessionStripUnderlineSegment = {
 }
 
 const SEP_GLYPH = "│"
-const SEP = ` ${SEP_GLYPH} `
+const SEP = SEP_GLYPH
 const ACTIVE = "* "
 const CLOSE = "X"
 const CLOSE_SLOT = ` ${CLOSE}`
@@ -31,7 +31,7 @@ const RULE = "─"
 const JOINT = "┴"
 const PREV = "<"
 const NEXT = ">"
-const SEP_MARK = width(" ")
+const SEP_MARK = 0
 
 function owners(...ids: Array<string | undefined>) {
   return ids.filter((id): id is string => !!id)

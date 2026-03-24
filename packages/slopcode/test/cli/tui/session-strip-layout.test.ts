@@ -116,9 +116,9 @@ describe("session strip layout", () => {
     expect(result.hidden).toBe(0)
     expect(result.underline).toHaveLength(20)
     expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(3)
-    expect(result.underline[1]).toBe("┴")
-    expect(result.underline[9]).toBe("┴")
-    expect(result.underline[17]).toBe("┴")
+    expect(result.underline[0]).toBe("┴")
+    expect(result.underline[6]).toBe("┴")
+    expect(result.underline[12]).toBe("┴")
   })
 
   test("keeps joints aligned when the active marker shifts tab text", () => {
@@ -133,9 +133,9 @@ describe("session strip layout", () => {
     expect(result.hidden).toBe(0)
     expect(result.underline).toHaveLength(22)
     expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(3)
-    expect(result.underline[1]).toBe("┴")
-    expect(result.underline[11]).toBe("┴")
-    expect(result.underline[19]).toBe("┴")
+    expect(result.underline[0]).toBe("┴")
+    expect(result.underline[8]).toBe("┴")
+    expect(result.underline[14]).toBe("┴")
   })
 
   test("adds a joint before the next control when tabs overflow", () => {
@@ -145,7 +145,7 @@ describe("session strip layout", () => {
         { id: "b", title: "B" },
         { id: "c", title: "Long" },
       ],
-      { width: 25 },
+      { width: 17 },
     )
 
     expect(result).toMatchObject({
@@ -159,12 +159,12 @@ describe("session strip layout", () => {
       prev: undefined,
       next: "c",
     })
-    expect(result.underline).toHaveLength(25)
+    expect(result.underline).toHaveLength(17)
     expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(4)
-    expect(result.underline[1]).toBe("┴")
-    expect(result.underline[9]).toBe("┴")
-    expect(result.underline[17]).toBe("┴")
-    expect(result.underline[22]).toBe("┴")
+    expect(result.underline[0]).toBe("┴")
+    expect(result.underline[6]).toBe("┴")
+    expect(result.underline[12]).toBe("┴")
+    expect(result.underline[15]).toBe("┴")
   })
 
   test("adds a joint after the previous control when tabs are hidden on the left", () => {
@@ -186,8 +186,8 @@ describe("session strip layout", () => {
       next: undefined,
     })
     expect(Array.from(result.underline).filter((x) => x === "┴")).toHaveLength(2)
-    expect(result.underline[2]).toBe("┴")
-    expect(result.underline[12]).toBe("┴")
+    expect(result.underline[1]).toBe("┴")
+    expect(result.underline[9]).toBe("┴")
   })
 
   test("splits underline into hover-aware segments without changing the text", () => {
@@ -249,7 +249,7 @@ describe("session strip layout", () => {
 
     expect(result.before).toBe(0)
     expect(result.tabs.map((tab) => tab.id)).toEqual(["a", "b"])
-    expect(segments[0]?.text).toBe("─┴─")
+    expect(segments[0]?.text).toBe("┴")
     expect(segments[0]?.owners).toEqual(["a"])
   })
 })

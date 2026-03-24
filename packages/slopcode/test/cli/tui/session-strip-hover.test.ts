@@ -11,7 +11,9 @@ describe("session strip hover", () => {
     const idle = sessionStripTabLabel(tab, true) + " " + sessionStripTabClose(false) + SessionStripText.SEP
     const hovered = sessionStripTabLabel(tab, true) + " " + sessionStripTabClose(true) + SessionStripText.SEP
 
+    expect(SessionStripText.SEP).toBe("│")
+
     expect(idle).not.toContain("HoverTarget X")
-    expect(hovered).toContain("HoverTarget X")
+    expect(hovered).toContain("HoverTarget X│")
   })
 })
