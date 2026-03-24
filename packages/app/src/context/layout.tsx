@@ -39,6 +39,10 @@ type SessionView = {
   reviewOpen?: string[]
   pendingMessage?: string
   pendingMessageAt?: number
+  messageId?: string
+  turnStart?: number
+  mobileTab?: "session" | "changes"
+  changes?: "session" | "turn"
 }
 
 type TabHandoff = {
@@ -693,6 +697,23 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           setStore("review", "panelOpened", next)
         }
 
+        function updateView(next: (draft: SessionView) => void) {
+          const session = key()
+          const current = store.sessionView[session]
+          if (!current) {
+            setStore(
+              "sessionView",
+              session,
+              produce<SessionView>((draft) => {
+                draft.scroll = {}
+                next(draft)
+              }),
+            )
+            return
+          }
+          setStore("sessionView", session, produce(next))
+        }
+
         return {
           scroll(tab: string) {
             return scroll.scroll(key(), tab)
@@ -740,6 +761,35 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
               if (same(current.reviewOpen, open)) return
               setStore("sessionView", session, "reviewOpen", open)
             },
+          },
+          messageId: createMemo(() => s().messageId),
+          setMessageId(messageId: string | undefined) {
+            if (s().messageId === messageId) return
+            updateView((draft) => {
+              draft.messageId = messageId
+            })
+          },
+          turnStart: createMemo(() => s().turnStart ?? 0),
+          hasTurnStart: createMemo(() => s().turnStart !== undefined),
+          setTurnStart(turnStart: number) {
+            if ((s().turnStart ?? 0) === turnStart) return
+            updateView((draft) => {
+              draft.turnStart = turnStart
+            })
+          },
+          mobileTab: createMemo(() => s().mobileTab ?? "session"),
+          setMobileTab(tab: "session" | "changes") {
+            if ((s().mobileTab ?? "session") === tab) return
+            updateView((draft) => {
+              draft.mobileTab = tab
+            })
+          },
+          changes: createMemo(() => s().changes ?? "session"),
+          setChanges(changes: "session" | "turn") {
+            if ((s().changes ?? "session") === changes) return
+            updateView((draft) => {
+              draft.changes = changes
+            })
           },
         }
       },

@@ -6,6 +6,7 @@ import { createSimpleContext } from "@slopcode-ai/ui/context"
 import { useGlobalSync } from "./global-sync"
 import { useSDK } from "./sdk"
 import type { Message, Part } from "@slopcode-ai/sdk/v2/client"
+import type { SessionHistory } from "./global-sync/types"
 
 function sortParts(parts: Part[]) {
   return parts.filter((part) => !!part?.id).sort((a, b) => cmp(a.id, b.id))
@@ -110,8 +111,6 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     const inflightDiff = new Map<string, Promise<void>>()
     const inflightTodo = new Map<string, Promise<void>>()
     const [meta, setMeta] = createStore({
-      limit: {} as Record<string, number>,
-      complete: {} as Record<string, boolean>,
       loading: {} as Record<string, boolean>,
     })
 
@@ -125,6 +124,22 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     const limitFor = (count: number) => {
       if (count <= messagePageSize) return messagePageSize
       return Math.ceil(count / messagePageSize) * messagePageSize
+    }
+
+    const persistHistory = (directory: string, sessionID: string, store: Child[0]) => {
+      const messages = store.message[sessionID]
+      const history = store.history[sessionID]
+      if (!messages || !history) {
+        globalSync.history.write(directory, sessionID, undefined)
+        return
+      }
+
+      globalSync.history.write(directory, sessionID, {
+        message: messages,
+        part: Object.fromEntries(messages.map((message) => [message.id, sortParts(store.part[message.id] ?? [])])),
+        limit: history.limit,
+        complete: history.complete,
+      } satisfies SessionHistory)
     }
 
     const fetchMessages = async (input: { client: typeof sdk.client; sessionID: string; limit: number }) => {
@@ -162,9 +177,12 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             for (const message of next.part) {
               input.setStore("part", message.id, reconcile(message.part, { key: "id" }))
             }
-            setMeta("limit", key, input.limit)
-            setMeta("complete", key, next.complete)
+            input.setStore("history", input.sessionID, {
+              limit: input.limit,
+              complete: next.complete,
+            })
           })
+          persistHistory(input.directory, input.sessionID, target(input.directory)[0])
         })
         .finally(() => {
           setMeta("loading", key, false)
@@ -194,12 +212,14 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         get: getSession,
         optimistic: {
           add(input: { directory?: string; sessionID: string; message: Message; parts: Part[] }) {
-            const [, setStore] = target(input.directory)
+            const [store, setStore] = target(input.directory)
             setOptimisticAdd(setStore as (...args: unknown[]) => void, input)
+            persistHistory(input.directory ?? sdk.directory, input.sessionID, store)
           },
           remove(input: { directory?: string; sessionID: string; messageID: string }) {
-            const [, setStore] = target(input.directory)
+            const [store, setStore] = target(input.directory)
             setOptimisticRemove(setStore as (...args: unknown[]) => void, input)
+            persistHistory(input.directory ?? sdk.directory, input.sessionID, store)
           },
         },
         addOptimisticMessage(input: {
@@ -217,12 +237,13 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             agent: input.agent,
             model: input.model,
           }
-          const [, setStore] = target()
+          const [store, setStore] = target()
           setOptimisticAdd(setStore as (...args: unknown[]) => void, {
             sessionID: input.sessionID,
             message,
             parts: input.parts,
           })
+          persistHistory(sdk.directory, input.sessionID, store)
         },
         async sync(sessionID: string) {
           const directory = sdk.directory
@@ -235,11 +256,11 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           })()
 
           const hasMessages = store.message[sessionID] !== undefined
-          const hydrated = meta.limit[key] !== undefined
+          const hydrated = store.history[sessionID] !== undefined
           if (hasSession && hasMessages && hydrated) return
 
           const count = store.message[sessionID]?.length ?? 0
-          const limit = hydrated ? (meta.limit[key] ?? messagePageSize) : limitFor(count)
+          const limit = store.history[sessionID]?.limit ?? limitFor(count)
 
           const sessionReq = hasSession
             ? Promise.resolve()
@@ -314,10 +335,10 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         history: {
           more(sessionID: string) {
             const store = current()[0]
-            const key = keyFor(sdk.directory, sessionID)
+            const history = store.history[sessionID]
             if (store.message[sessionID] === undefined) return false
-            if (meta.limit[key] === undefined) return false
-            if (meta.complete[key]) return false
+            if (!history) return false
+            if (history.complete) return false
             return true
           },
           loading(sessionID: string) {
@@ -327,12 +348,12 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           async loadMore(sessionID: string, count = messagePageSize) {
             const directory = sdk.directory
             const client = sdk.client
-            const [, setStore] = globalSync.child(directory)
+            const [store, setStore] = globalSync.child(directory)
             const key = keyFor(directory, sessionID)
             if (meta.loading[key]) return
-            if (meta.complete[key]) return
+            if (store.history[sessionID]?.complete) return
 
-            const currentLimit = meta.limit[key] ?? messagePageSize
+            const currentLimit = store.history[sessionID]?.limit ?? messagePageSize
             await loadMessages({
               directory,
               client,
