@@ -1922,7 +1922,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
       ? [
           {
             id: store.active.id,
-            label: "SENDING",
+            label: "Active",
             mode: store.active.mode,
             summary: store.active.summary,
             detail: store.active.detail,
@@ -1934,7 +1934,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
       ...active,
       ...store.queue.map((item: PromptQueueItem) => ({
         id: item.id,
-        label: "QUEUED",
+        label: "Queued",
         mode: item.mode,
         summary: item.summary,
         detail: item.detail,
@@ -1944,13 +1944,6 @@ function PromptQueuePanel(props: { sessionID: string }) {
 
   const visible = createMemo(() => rows().slice(0, QUEUE_VISIBLE_ITEMS))
   const hidden = createMemo(() => Math.max(0, rows().length - QUEUE_VISIBLE_ITEMS))
-  const status = createMemo(() => {
-    const sending = store.active ? 1 : 0
-    const queued = store.queue.length
-    return [sending ? `${sending} sending` : undefined, queued ? `${queued} queued` : undefined]
-      .filter((item): item is string => !!item)
-      .join(" · ")
-  })
   const preview = createMemo(() => {
     const text = store.active?.summary ?? store.queue[0]?.summary ?? ""
     if (text.length <= 48) return text
@@ -1990,7 +1983,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
               toggle()
             }}
           >
-            <text fg={theme.textMuted}># Queue{status() ? ` · ${status()}` : ""}</text>
+            <text fg={theme.textMuted}># Queue</text>
             <Show when={store.collapsed && preview()}>
               <text fg={theme.text}>{preview()}</text>
             </Show>
@@ -2011,7 +2004,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
           <box paddingLeft={3} paddingRight={3} flexDirection="column" gap={1}>
             <For each={visible()}>
               {(item: QueueRow) => {
-                const bg = createMemo(() => (item.label === "SENDING" ? theme.primary : theme.secondary))
+                const bg = createMemo(() => (item.label === "Active" ? theme.primary : theme.secondary))
                 const fg = createMemo(() => selectedForeground(theme, bg()))
                 return (
                   <box
@@ -2026,7 +2019,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
                         <span style={{ bg: bg(), fg: fg(), bold: true }}> {item.label} </span>
                         <span> {item.summary}</span>
                       </text>
-                      <Show when={item.label === "QUEUED"}>
+                      <Show when={item.label === "Queued"}>
                         <box
                           onMouseUp={(evt) => {
                             evt.stopPropagation()
