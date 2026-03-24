@@ -2001,7 +2001,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
           </Show>
         </box>
         <Show when={!store.collapsed}>
-          <box paddingLeft={3} paddingRight={3} flexDirection="column" gap={1}>
+          <box paddingLeft={3} paddingRight={3} flexDirection="column">
             <For each={visible()}>
               {(item: QueueRow) => {
                 const bg = createMemo(() => (item.label === "Active" ? theme.primary : theme.secondary))
