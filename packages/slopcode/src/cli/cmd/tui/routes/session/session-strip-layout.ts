@@ -151,7 +151,7 @@ export function layoutSessionStripUnderlineSegments(
         ]
       : layout.tabs.length > 0
         ? [{ width: width(SEP), owners: [] as string[] }]
-      : []),
+        : []),
     ...layout.tabs.flatMap((tab) => [
       { width: tabWidth(tab, tab.id === input.active), owners: [tab.id] },
       { width: width(SEP), owners: [] as string[] },
