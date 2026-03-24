@@ -15,7 +15,7 @@ import {
   type SessionStripTab,
   type SessionStripUnderlineSegment,
 } from "./session-strip-layout"
-import { createBlockSpinner } from "../../ui/spinner.ts"
+import { SPINNER_FRAMES, SPINNER_INTERVAL } from "../../component/spinner"
 
 const MAX_TITLE = 15
 const INSET = 0
@@ -35,7 +35,6 @@ type SessionStripViewProps = {
     success: RGBA
     text: RGBA
     muted: RGBA
-    warning: RGBA
   }
   open(id: string): void
   close(id: string): void
@@ -56,12 +55,6 @@ export function SessionStripView(props: SessionStripViewProps) {
   const closeVisible = (id: string) => hover() === id
   const closeFg = (id: string) => (closeVisible(id) ? props.colors.text : props.colors.muted)
   const controlFg = (id: string) => (hover() === id ? props.colors.text : props.colors.muted)
-  const spinnerDef = createMemo(() =>
-    createBlockSpinner({
-      color: props.colors.warning,
-      width: 1,
-    }),
-  )
 
   return (
     <box flexShrink={0} flexDirection="column" backgroundColor={props.colors.panel}>
@@ -122,7 +115,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                           </text>
                         }
                       >
-                        <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={80} />
+                        <spinner color={props.colors.muted} frames={SPINNER_FRAMES} interval={SPINNER_INTERVAL} />
                       </Show>
                     </box>
                     <box backgroundColor={bg(tab.id)} paddingRight={1}>
@@ -222,7 +215,6 @@ export function SessionStrip() {
     success: theme.success,
     text: theme.text,
     muted: theme.textMuted,
-    warning: theme.warning,
   }))
 
   return (
