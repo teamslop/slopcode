@@ -17,7 +17,7 @@ export const product = {
     schemes: ["slopcode://", "opencode://"],
   },
   share: {
-    default_url: "https://opncd.ai",
+    default_url: "https://slopcode.dev",
     dev_url: "https://dev.slopcode.ai",
   },
   github: {
