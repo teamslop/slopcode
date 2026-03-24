@@ -3952,6 +3952,13 @@
               "type": "string"
             },
             "required": true
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "summary": "Respond to permission request",
@@ -4025,6 +4032,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "summary": "List pending permissions",
@@ -4059,6 +4073,13 @@
           {
             "in": "query",
             "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
             "schema": {
               "type": "string"
             }
@@ -4107,6 +4128,13 @@
               "type": "string"
             },
             "required": true
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "summary": "Reply to question request",
@@ -4188,6 +4216,13 @@
               "type": "string"
             },
             "required": true
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "summary": "Reject question request",
@@ -5519,6 +5554,9 @@
                 "properties": {
                   "text": {
                     "type": "string"
+                  },
+                  "viewID": {
+                    "type": "string"
                   }
                 },
                 "required": ["text"]
@@ -5843,6 +5881,9 @@
                     "description": "Duration in milliseconds",
                     "default": 5000,
                     "type": "number"
+                  },
+                  "viewID": {
+                    "type": "string"
                   }
                 },
                 "required": ["message", "variant"]
@@ -5980,6 +6021,9 @@
                     "description": "Session ID to navigate to",
                     "type": "string",
                     "pattern": "^ses"
+                  },
+                  "viewID": {
+                    "type": "string"
                   }
                 },
                 "required": ["sessionID"]
@@ -8040,54 +8084,6 @@
         },
         "required": ["type", "properties"]
       },
-      "PermissionRequest": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^per.*"
-          },
-          "sessionID": {
-            "type": "string",
-            "pattern": "^ses.*"
-          },
-          "permission": {
-            "type": "string"
-          },
-          "patterns": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "metadata": {
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {}
-          },
-          "always": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "tool": {
-            "type": "object",
-            "properties": {
-              "messageID": {
-                "type": "string"
-              },
-              "callID": {
-                "type": "string"
-              }
-            },
-            "required": ["messageID", "callID"]
-          }
-        },
-        "required": ["id", "sessionID", "permission", "patterns", "metadata", "always"]
-      },
       "Event.permission.asked": {
         "type": "object",
         "properties": {
@@ -8096,7 +8092,55 @@
             "const": "permission.asked"
           },
           "properties": {
-            "$ref": "#/components/schemas/PermissionRequest"
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^per.*"
+              },
+              "sessionID": {
+                "type": "string",
+                "pattern": "^ses.*"
+              },
+              "permission": {
+                "type": "string"
+              },
+              "patterns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "metadata": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "always": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "tool": {
+                "type": "object",
+                "properties": {
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "callID": {
+                    "type": "string"
+                  }
+                },
+                "required": ["messageID", "callID"]
+              },
+              "viewID": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "sessionID", "permission", "patterns", "metadata", "always"]
           }
         },
         "required": ["type", "properties"]
@@ -8120,6 +8164,9 @@
               "reply": {
                 "type": "string",
                 "enum": ["once", "always", "reject"]
+              },
+              "viewID": {
+                "type": "string"
               }
             },
             "required": ["sessionID", "requestID", "reply"]
@@ -8185,6 +8232,9 @@
               },
               "status": {
                 "$ref": "#/components/schemas/SessionStatus"
+              },
+              "viewID": {
+                "type": "string"
               }
             },
             "required": ["sessionID", "status"]
@@ -8203,6 +8253,9 @@
             "type": "object",
             "properties": {
               "sessionID": {
+                "type": "string"
+              },
+              "viewID": {
                 "type": "string"
               }
             },
@@ -8254,39 +8307,6 @@
         },
         "required": ["question", "header", "options"]
       },
-      "QuestionRequest": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^que.*"
-          },
-          "sessionID": {
-            "type": "string",
-            "pattern": "^ses.*"
-          },
-          "questions": {
-            "description": "Questions to ask",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/QuestionInfo"
-            }
-          },
-          "tool": {
-            "type": "object",
-            "properties": {
-              "messageID": {
-                "type": "string"
-              },
-              "callID": {
-                "type": "string"
-              }
-            },
-            "required": ["messageID", "callID"]
-          }
-        },
-        "required": ["id", "sessionID", "questions"]
-      },
       "Event.question.asked": {
         "type": "object",
         "properties": {
@@ -8295,7 +8315,40 @@
             "const": "question.asked"
           },
           "properties": {
-            "$ref": "#/components/schemas/QuestionRequest"
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^que.*"
+              },
+              "sessionID": {
+                "type": "string",
+                "pattern": "^ses.*"
+              },
+              "questions": {
+                "description": "Questions to ask",
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QuestionInfo"
+                }
+              },
+              "tool": {
+                "type": "object",
+                "properties": {
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "callID": {
+                    "type": "string"
+                  }
+                },
+                "required": ["messageID", "callID"]
+              },
+              "viewID": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "sessionID", "questions"]
           }
         },
         "required": ["type", "properties"]
@@ -8327,6 +8380,9 @@
                 "items": {
                   "$ref": "#/components/schemas/QuestionAnswer"
                 }
+              },
+              "viewID": {
+                "type": "string"
               }
             },
             "required": ["sessionID", "requestID", "answers"]
@@ -8348,6 +8404,9 @@
                 "type": "string"
               },
               "requestID": {
+                "type": "string"
+              },
+              "viewID": {
                 "type": "string"
               }
             },
@@ -8465,6 +8524,9 @@
             "properties": {
               "text": {
                 "type": "string"
+              },
+              "viewID": {
+                "type": "string"
               }
             },
             "required": ["text"]
@@ -8509,6 +8571,9 @@
                     "type": "string"
                   }
                 ]
+              },
+              "viewID": {
+                "type": "string"
               }
             },
             "required": ["command"]
@@ -8540,6 +8605,9 @@
                 "description": "Duration in milliseconds",
                 "default": 5000,
                 "type": "number"
+              },
+              "viewID": {
+                "type": "string"
               }
             },
             "required": ["message", "variant"]
@@ -8561,6 +8629,9 @@
                 "description": "Session ID to navigate to",
                 "type": "string",
                 "pattern": "^ses"
+              },
+              "viewID": {
+                "type": "string"
               }
             },
             "required": ["sessionID"]
@@ -8881,6 +8952,9 @@
                     "$ref": "#/components/schemas/APIError"
                   }
                 ]
+              },
+              "viewID": {
+                "type": "string"
               }
             }
           }
@@ -11104,6 +11178,87 @@
           }
         },
         "required": ["type", "prompt", "description", "agent"]
+      },
+      "PermissionRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^per.*"
+          },
+          "sessionID": {
+            "type": "string",
+            "pattern": "^ses.*"
+          },
+          "permission": {
+            "type": "string"
+          },
+          "patterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "always": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tool": {
+            "type": "object",
+            "properties": {
+              "messageID": {
+                "type": "string"
+              },
+              "callID": {
+                "type": "string"
+              }
+            },
+            "required": ["messageID", "callID"]
+          }
+        },
+        "required": ["id", "sessionID", "permission", "patterns", "metadata", "always"]
+      },
+      "QuestionRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^que.*"
+          },
+          "sessionID": {
+            "type": "string",
+            "pattern": "^ses.*"
+          },
+          "questions": {
+            "description": "Questions to ask",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionInfo"
+            }
+          },
+          "tool": {
+            "type": "object",
+            "properties": {
+              "messageID": {
+                "type": "string"
+              },
+              "callID": {
+                "type": "string"
+              }
+            },
+            "required": ["messageID", "callID"]
+          }
+        },
+        "required": ["id", "sessionID", "questions"]
       },
       "ProviderAuthMethod": {
         "type": "object",
