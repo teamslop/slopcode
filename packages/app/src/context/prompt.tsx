@@ -317,7 +317,7 @@ export const { use: usePrompt, provider: PromptProvider } = createSimpleContext(
               value: createPromptSession(dir, id),
               dispose,
             })),
-          )
+          )!
         : createRoot((dispose) => ({
             value: createPromptSession(dir, id),
             dispose,
