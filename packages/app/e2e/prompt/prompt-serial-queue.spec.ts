@@ -207,15 +207,15 @@ test("serial queue delays second prompt_async request until first turn completes
       await expect(page.getByText("Mock Tool")).toBeVisible()
 
       const prompt = page.locator(promptSelector)
-      await prompt.click()
-      await page.keyboard.type("Start the serial queue test")
-      await page.keyboard.press("Enter")
+      await prompt.fill("Start the serial queue test")
+      await expect(prompt).toContainText("Start the serial queue test")
+      await page.getByRole("button", { name: "Send" }).click()
 
       await expect.poll(() => requests.length, { timeout: 30_000 }).toBe(1)
 
-      await prompt.click()
-      await page.keyboard.type(`Reply with exactly ${secondToken}`)
-      await page.keyboard.press("Enter")
+      await prompt.fill(`Reply with exactly ${secondToken}`)
+      await expect(prompt).toContainText(secondToken)
+      await page.getByRole("button", { name: "Send" }).click()
 
       await expect.poll(() => requests.length, { timeout: 1_500 }).toBe(1)
       await expect.poll(async () => await assistantText(sdk, session.id), { timeout: 90_000 }).toContain(firstToken)
