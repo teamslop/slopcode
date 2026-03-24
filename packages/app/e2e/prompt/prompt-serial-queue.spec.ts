@@ -196,6 +196,15 @@ test("serial queue delays second prompt_async request until first turn completes
     try {
       await page.goto(sessionPath(directory, session.id))
       await expect(page.locator(promptSelector)).toBeVisible()
+      await page.evaluate(
+        (model) => {
+          localStorage.setItem("slopcode.global.dat:model", JSON.stringify({ recent: [model], user: [], variant: {} }))
+        },
+        { providerID, modelID },
+      )
+      await page.reload()
+      await expect(page.locator(promptSelector)).toBeVisible()
+      await expect(page.getByText("Mock Tool")).toBeVisible()
 
       const prompt = page.locator(promptSelector)
       await prompt.click()
