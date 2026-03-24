@@ -19,6 +19,8 @@ import type {
   ConfigProvidersResponses,
   ConfigUpdateErrors,
   ConfigUpdateResponses,
+  DaemonShutdownResponses,
+  DaemonStatusResponses,
   EventSubscribeResponses,
   EventTuiCommandExecute,
   EventTuiPromptAppend,
@@ -307,6 +309,32 @@ export class Global extends HeyApiClient {
   private _config?: Config
   get config(): Config {
     return (this._config ??= new Config({ client: this.client }))
+  }
+}
+
+export class Daemon extends HeyApiClient {
+  /**
+   * Get daemon status
+   *
+   * Get local daemon status.
+   */
+  public status<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).get<DaemonStatusResponses, unknown, ThrowOnError>({
+      url: "/daemon/status",
+      ...options,
+    })
+  }
+
+  /**
+   * Shutdown daemon
+   *
+   * Shutdown the local daemon.
+   */
+  public shutdown<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).post<DaemonShutdownResponses, unknown, ThrowOnError>({
+      url: "/daemon/shutdown",
+      ...options,
+    })
   }
 }
 
@@ -3468,6 +3496,11 @@ export class SlopcodeClient extends HeyApiClient {
   private _global?: Global
   get global(): Global {
     return (this._global ??= new Global({ client: this.client }))
+  }
+
+  private _daemon?: Daemon
+  get daemon(): Daemon {
+    return (this._daemon ??= new Daemon({ client: this.client }))
   }
 
   private _auth?: Auth

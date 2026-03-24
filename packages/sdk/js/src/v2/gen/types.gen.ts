@@ -1039,6 +1039,16 @@ export type ServerConfig = {
   cors?: Array<string>
 }
 
+/**
+ * Shared local daemon configuration for TUI sessions
+ */
+export type DaemonConfig = {
+  /**
+   * Idle timeout in milliseconds before the shared local daemon exits (default: 1800000).
+   */
+  idle_timeout_ms?: number
+}
+
 export type PermissionActionConfig = "ask" | "allow" | "deny"
 
 export type PermissionObjectConfig = {
@@ -1309,6 +1319,7 @@ export type Config = {
   $schema?: string
   logLevel?: LogLevel
   server?: ServerConfig
+  daemon?: DaemonConfig
   /**
    * Command configuration, see https://slopcode.dev/docs/commands
    */
@@ -2046,6 +2057,51 @@ export type GlobalDisposeResponses = {
 }
 
 export type GlobalDisposeResponse = GlobalDisposeResponses[keyof GlobalDisposeResponses]
+
+export type DaemonStatusData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/daemon/status"
+}
+
+export type DaemonStatusResponses = {
+  /**
+   * Daemon status
+   */
+  200: {
+    protocol: 1
+    version: string
+    directory: string
+    pid: number
+    started_at: number
+    idle_timeout_ms: number
+    clients: number
+    busy: boolean
+    permissions: number
+    questions: number
+    pty: number
+    shutting_down: boolean
+  }
+}
+
+export type DaemonStatusResponse = DaemonStatusResponses[keyof DaemonStatusResponses]
+
+export type DaemonShutdownData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/daemon/shutdown"
+}
+
+export type DaemonShutdownResponses = {
+  /**
+   * Daemon shutdown requested
+   */
+  200: boolean
+}
+
+export type DaemonShutdownResponse = DaemonShutdownResponses[keyof DaemonShutdownResponses]
 
 export type AuthRemoveData = {
   body?: never
