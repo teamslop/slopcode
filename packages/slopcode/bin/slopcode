@@ -149,7 +149,8 @@ function names(prefix) {
   return [base]
 }
 
-const resolvedNames = Array.from(new Set([...names("slopcode-bin"), ...names("slopcode")]))
+const packageNames = names("slopcode-bin")
+const resolvedNames = Array.from(new Set([...packageNames, ...names("slopcode")]))
 
 function resolveBinary() {
   for (const name of resolvedNames) {
@@ -186,7 +187,7 @@ const resolved = resolveBinary() || findBinary(scriptDir)
 if (!resolved) {
   console.error(
     "It seems that your package manager failed to install the right version of the slopcode CLI for your platform. You can try manually installing " +
-      resolvedNames.map((n) => `\"${n}\"`).join(" or ") +
+      packageNames.map((n) => `\"${n}\"`).join(" or ") +
       " package",
   )
   process.exit(1)
