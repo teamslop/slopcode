@@ -33,35 +33,39 @@ Add highlights before publishing. Delete this section if no highlights.
 
 `
 
+const prep = process.env.SLOPCODE_PREPARE_ONLY === "true"
+const only = process.env.SLOPCODE_PUBLISH_ONLY === "true"
+if (prep && only) {
+  throw new Error("SLOPCODE_PREPARE_ONLY and SLOPCODE_PUBLISH_ONLY cannot both be true")
+}
+const mode = prep ? "prep" : only ? "publish" : "full"
+
 console.log("=== publishing ===\n")
 
-const pkgjsons = await Array.fromAsync(
-  new Bun.Glob("**/package.json").scan({
-    absolute: true,
-  }),
-).then((arr) =>
-  arr.filter((x) => !x.includes("node_modules") && !x.includes("dist") && !x.split(/[\\/]/).includes("tmp")),
-)
+if (mode !== "publish") {
+  const pkgjsons = await Array.fromAsync(
+    new Bun.Glob("**/package.json").scan({
+      absolute: true,
+    }),
+  ).then((arr) =>
+    arr.filter((x) => !x.includes("node_modules") && !x.includes("dist") && !x.split(/[\\/]/).includes("tmp")),
+  )
 
-for (const file of pkgjsons) {
-  let pkg = await Bun.file(file).text()
-  pkg = pkg.replaceAll(/"version": "[^"]+"/g, `"version": "${Script.version}"`)
-  console.log("updated:", file)
-  await Bun.file(file).write(pkg)
-}
+  for (const file of pkgjsons) {
+    let pkg = await Bun.file(file).text()
+    pkg = pkg.replaceAll(/"version": "[^"]+"/g, `"version": "${Script.version}"`)
+    console.log("updated:", file)
+    await Bun.file(file).write(pkg)
+  }
 
-const extensionToml = fileURLToPath(new URL("../packages/extensions/zed/extension.toml", import.meta.url))
-let toml = await Bun.file(extensionToml).text()
-toml = toml.replace(/^version = "[^"]+"/m, `version = "${Script.version}"`)
-toml = toml.replaceAll(/releases\/download\/v[^/]+\//g, `releases/download/v${Script.version}/`)
-console.log("updated:", extensionToml)
-await Bun.file(extensionToml).write(toml)
+  const extensionToml = fileURLToPath(new URL("../packages/extensions/zed/extension.toml", import.meta.url))
+  let toml = await Bun.file(extensionToml).text()
+  toml = toml.replace(/^version = "[^"]+"/m, `version = "${Script.version}"`)
+  toml = toml.replaceAll(/releases\/download\/v[^/]+\//g, `releases/download/v${Script.version}/`)
+  console.log("updated:", extensionToml)
+  await Bun.file(extensionToml).write(toml)
 
-await $`bun install`
-
-if (Script.release && !Script.preview) {
-  const release = await releaseInfo()
-  process.env.GH_REPO = release.repo
+  await $`bun install`
 }
 
 const forceBuild = process.env.SLOPCODE_FORCE_BUILD === "true"
@@ -85,7 +89,7 @@ const buildLocal = async () => {
 // await import(`../packages/sdk/js/script/build.ts`)
 
 if (Script.release) {
-  if (!Script.preview) {
+  if (!Script.preview && mode !== "publish") {
     const dirty = (await $`git status --porcelain`.text()).trim().length > 0
     if (dirty) {
       await $`git commit -am "release: v${Script.version}"`
@@ -105,19 +109,27 @@ if (Script.release) {
     await $`git cherry-pick HEAD..origin/dev`.nothrow()
     await $`git push origin HEAD --tags --no-verify --force-with-lease`
     await new Promise((resolve) => setTimeout(resolve, 5_000))
+    const release = await releaseInfo()
+    process.env.GH_REPO = release.repo
   }
 
   // Non-npm publishing channels are intentionally disabled for npm-only rollout.
   // await import(`../packages/desktop/scripts/finalize-latest-json.ts`)
 }
 
-await buildLocal()
+if (mode !== "publish") {
+  await buildLocal()
+}
 
-console.log("\n=== cli ===\n")
-await import(`../packages/slopcode/script/publish.ts`)
+if (mode === "prep") {
+  console.log("\n=== local prepare complete ===\n")
+} else {
+  console.log("\n=== cli ===\n")
+  await import(`../packages/slopcode/script/publish.ts`)
 
-if (Script.release && !Script.preview) {
-  await $`gh release edit v${Script.version} --draft=false --repo ${process.env.GH_REPO}`
+  if (Script.release && !Script.preview) {
+    await $`gh release edit v${Script.version} --draft=false --repo ${process.env.GH_REPO}`
+  }
 }
 
 // Non-npm publishing channels are intentionally disabled for npm-only rollout.

@@ -15,6 +15,7 @@ import {
 import "opentui-spinner/solid"
 import path from "path"
 import { Filesystem } from "@/util/filesystem"
+import { createSerialQueue } from "@slopcode-ai/util/serial-queue"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
 import { useSessionTabs } from "@tui/context/session-tabs"
@@ -36,7 +37,7 @@ import { useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Editor } from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import { Clipboard } from "../../util/clipboard"
-import type { FilePart } from "@slopcode-ai/sdk/v2"
+import type { FilePart, Message } from "@slopcode-ai/sdk/v2"
 import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
 import { Locale } from "@/util/locale"
@@ -76,6 +77,41 @@ export type PromptRef = {
 
 const PLACEHOLDERS = ["Fix a TODO in the codebase", "What is the tech stack of this project?", "Fix broken tests"]
 const SHELL_PLACEHOLDERS = ["ls -la", "git status", "pwd"]
+
+type QueueStore = {
+  message: {
+    [sessionID: string]: Message[] | undefined
+  }
+  session_status: {
+    [sessionID: string]: { type: string } | undefined
+  }
+}
+
+const prompts = createSerialQueue<{
+  key: string
+  ready: () => boolean
+  done: () => boolean
+  run: () => Promise<void>
+  reject: (error: unknown) => void
+}>()
+
+const idle = (store: QueueStore, sessionID: string) => (store.session_status[sessionID]?.type ?? "idle") === "idle"
+
+const assistants = (messages: Message[], messageID: string) =>
+  messages.filter((item) => item.role === "assistant" && item.parentID === messageID)
+
+const finished = (message: Message) => {
+  if (message.role !== "assistant") return false
+  if (!message.time.completed) return false
+  if (message.error) return true
+  if (!message.finish) return false
+  return !["tool-calls", "unknown"].includes(message.finish)
+}
+
+const done = (store: QueueStore, sessionID: string, messageID: string) => {
+  if (!idle(store, sessionID)) return false
+  return assistants(store.message[sessionID] ?? [], messageID).some(finished)
+}
 
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
@@ -347,6 +383,7 @@ export function Prompt(props: PromptProps) {
           }, 5000)
 
           if (store.interrupt >= 2) {
+            prompts.clear(props.sessionID, { active: true })
             runSafe(
               sdk.client.session.abort({
                 sessionID: props.sessionID,
@@ -767,6 +804,7 @@ export function Prompt(props: PromptProps) {
         })()
     const messageID = Identifier.ascending("message")
     let inputText = store.prompt.input
+    const queueMode = sync.data.config.queue_mode ?? "serial"
 
     // Expand pasted text inline before submitting
     const allExtmarks = input.extmarks.getAllForTypeId(promptPartTypeId)
@@ -837,8 +875,8 @@ export function Prompt(props: PromptProps) {
         }),
       )
     } else {
-      runSafe(
-        sdk.client.session.promptAsync({
+      const send = async () => {
+        await sdk.client.session.promptAsync({
           sessionID,
           ...selectedModel,
           messageID,
@@ -856,8 +894,23 @@ export function Prompt(props: PromptProps) {
               ...x,
             })),
           ],
-        }),
-      )
+        })
+      }
+
+      if (queueMode === "serial") {
+        prompts.push({
+          key: sessionID,
+          ready: () => idle(sync.data as QueueStore, sessionID),
+          done: () => done(sync.data as QueueStore, sessionID, messageID),
+          run: send,
+          reject: (error) => {
+            if (abort(error)) return
+            console.error("Prompt request failed", error)
+          },
+        })
+      } else {
+        runSafe(send())
+      }
     }
     history.append(
       {

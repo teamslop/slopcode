@@ -3,15 +3,90 @@ import type { Prompt } from "@/context/prompt"
 
 let createPromptSubmit: typeof import("./submit").createPromptSubmit
 
+const ROOT = "/repo/main"
+
 const createdClients: string[] = []
 const createdSessions: string[] = []
+const sentPrompts: Array<{ directory: string; sessionID: string; messageID: string; text: string }> = []
 const sentShell: string[] = []
 const syncedDirectories: string[] = []
 const historyTargets: Array<{ dir?: string; id?: string } | undefined> = []
+const stores = new Map<string, Store>()
 
+let paramsValue: { id?: string } = {}
 let selected = "/repo/worktree-a"
+let promptValue: Prompt = [{ type: "text", content: "ls", start: 0, end: 2 }]
 
-const promptValue: Prompt = [{ type: "text", content: "ls", start: 0, end: 2 }]
+type Store = {
+  command: { name: string }[]
+  config: { queue_mode?: "serial" | "injection" }
+  message: Record<string, any[] | undefined>
+  session_status: Record<string, { type: string } | undefined>
+  todo: Record<string, any[] | undefined>
+}
+
+const storeFor = (directory: string) => {
+  const match = stores.get(directory)
+  if (match) return match
+  const next: Store = {
+    command: [],
+    config: {},
+    message: {},
+    session_status: {},
+    todo: {},
+  }
+  stores.set(directory, next)
+  return next
+}
+
+const setPath = (target: Record<string, any>, path: (string | number)[], value: unknown) => {
+  const last = path[path.length - 1]
+  if (last === undefined) return
+  const parent = path.slice(0, -1).reduce((acc, part, index) => {
+    const next = path[index + 1]
+    acc[part] ??= typeof next === "number" ? [] : {}
+    return acc[part]
+  }, target)
+  parent[last] = value
+}
+
+const messages = (directory: string, sessionID: string) => {
+  const store = storeFor(directory)
+  store.message[sessionID] ??= []
+  return store.message[sessionID]!
+}
+
+const complete = (directory: string, sessionID: string, messageID: string) => {
+  const list = messages(directory, sessionID)
+  const index = list.findIndex((item) => item.id === messageID)
+  const next = {
+    id: `assistant-${messageID}`,
+    role: "assistant",
+    sessionID,
+    parentID: messageID,
+    finish: "stop",
+    time: {
+      created: Date.now(),
+      completed: Date.now(),
+    },
+  }
+  if (index === -1) {
+    list.push(next)
+    return
+  }
+  const stop = list.findIndex((item, itemIndex) => itemIndex > index && item.role === "user")
+  const insert = stop === -1 ? list.length : stop
+  list.splice(insert, 0, next)
+}
+
+const eventually = async (check: () => boolean | Promise<boolean>, timeout = 2000) => {
+  const start = Date.now()
+  while (Date.now() - start < timeout) {
+    if (await check()) return
+    await Bun.sleep(10)
+  }
+  throw new Error("condition not met")
+}
 
 const clientFor = (directory: string) => {
   createdClients.push(directory)
@@ -26,6 +101,15 @@ const clientFor = (directory: string) => {
         return { data: undefined }
       },
       prompt: async () => ({ data: undefined }),
+      promptAsync: async (input: any) => {
+        sentPrompts.push({
+          directory,
+          sessionID: input.sessionID,
+          messageID: input.messageID,
+          text: input.parts.find((part: { type: string }) => part.type === "text")?.text ?? "",
+        })
+        return { data: undefined }
+      },
       command: async () => ({ data: undefined }),
       abort: async () => ({ data: undefined }),
     },
@@ -36,11 +120,11 @@ const clientFor = (directory: string) => {
 }
 
 beforeAll(async () => {
-  const rootClient = clientFor("/repo/main")
+  const rootClient = clientFor(ROOT)
 
   mock.module("@solidjs/router", () => ({
     useNavigate: () => () => undefined,
-    useParams: () => ({}),
+    useParams: () => paramsValue,
   }))
 
   mock.module("@slopcode-ai/sdk/v2/client", () => ({
@@ -94,7 +178,7 @@ beforeAll(async () => {
   mock.module("@/context/sdk", () => ({
     useSDK: () => {
       const sdk = {
-        directory: "/repo/main",
+        directory: ROOT,
         client: rootClient,
         url: "http://localhost:4096",
         createClient(opts: any) {
@@ -107,14 +191,22 @@ beforeAll(async () => {
 
   mock.module("@/context/sync", () => ({
     useSync: () => ({
-      data: { command: [] },
+      data: storeFor(ROOT),
       session: {
         optimistic: {
-          add: () => undefined,
-          remove: () => undefined,
+          add(input: { directory?: string; sessionID: string; message: any }) {
+            messages(input.directory ?? ROOT, input.sessionID).push(input.message)
+          },
+          remove(input: { directory?: string; sessionID: string; messageID: string }) {
+            const list = messages(input.directory ?? ROOT, input.sessionID)
+            const index = list.findIndex((item) => item.id === input.messageID)
+            if (index !== -1) list.splice(index, 1)
+          },
         },
       },
-      set: () => undefined,
+      set(...args: any[]) {
+        setPath(storeFor(ROOT) as unknown as Record<string, any>, args.slice(0, -1), args.at(-1))
+      },
     }),
   }))
 
@@ -122,7 +214,16 @@ beforeAll(async () => {
     useGlobalSync: () => ({
       child: (directory: string) => {
         syncedDirectories.push(directory)
-        return [{}, () => undefined]
+        const store = storeFor(directory)
+        return [
+          store,
+          (...args: any[]) => setPath(store as unknown as Record<string, any>, args.slice(0, -1), args.at(-1)),
+        ] as const
+      },
+      todo: {
+        set(sessionID: string, value: any[]) {
+          storeFor(ROOT).todo[sessionID] = value
+        },
       },
     }),
   }))
@@ -146,10 +247,14 @@ beforeAll(async () => {
 beforeEach(() => {
   createdClients.length = 0
   createdSessions.length = 0
+  sentPrompts.length = 0
   sentShell.length = 0
   syncedDirectories.length = 0
   historyTargets.length = 0
+  stores.clear()
+  paramsValue = {}
   selected = "/repo/worktree-a"
+  promptValue = [{ type: "text", content: "ls", start: 0, end: 2 }]
 })
 
 describe("prompt submit worktree selection", () => {
@@ -183,10 +288,87 @@ describe("prompt submit worktree selection", () => {
     expect(createdClients).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
     expect(createdSessions).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
     expect(sentShell).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
-    expect(syncedDirectories).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
+    expect(syncedDirectories).toEqual(["/repo/worktree-a", "/repo/worktree-a", "/repo/worktree-b", "/repo/worktree-b"])
     expect(historyTargets).toEqual([
       { dir: "/repo/worktree-a", id: "session-1" },
       { dir: "/repo/worktree-b", id: "session-2" },
     ])
+  })
+})
+
+describe("prompt submit serial queue", () => {
+  test("serial sends one queued prompt at a time after the previous turn finishes", async () => {
+    paramsValue = { id: "session-1" }
+    storeFor(ROOT).config.queue_mode = "serial"
+    storeFor(ROOT).session_status["session-1"] = { type: "idle" }
+
+    const submit = createPromptSubmit({
+      info: () => ({ id: "session-1" }),
+      imageAttachments: () => [],
+      commentCount: () => 0,
+      mode: () => "normal",
+      working: () => false,
+      editor: () => undefined,
+      queueScroll: () => undefined,
+      promptLength: (value) => value.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0),
+      addToHistory: () => undefined,
+      resetHistoryNavigation: () => undefined,
+      setMode: () => undefined,
+      setPopover: () => undefined,
+      onSubmit: () => undefined,
+    })
+
+    const event = { preventDefault: () => undefined } as unknown as Event
+
+    promptValue = [{ type: "text", content: "first", start: 0, end: 5 }]
+    await submit.handleSubmit(event)
+    await eventually(() => sentPrompts.length === 1)
+
+    promptValue = [{ type: "text", content: "second", start: 0, end: 6 }]
+    await submit.handleSubmit(event)
+    await Bun.sleep(50)
+
+    expect(sentPrompts).toHaveLength(1)
+    expect(sentPrompts[0].text).toBe("first")
+
+    complete(ROOT, "session-1", sentPrompts[0].messageID)
+
+    await eventually(() => sentPrompts.length === 2)
+    expect(sentPrompts[1].text).toBe("second")
+
+    complete(ROOT, "session-1", sentPrompts[1].messageID)
+    await Bun.sleep(50)
+  })
+
+  test("injection keeps follow-up prompt dispatch immediate", async () => {
+    paramsValue = { id: "session-1" }
+    storeFor(ROOT).config.queue_mode = "injection"
+    storeFor(ROOT).session_status["session-1"] = { type: "idle" }
+
+    const submit = createPromptSubmit({
+      info: () => ({ id: "session-1" }),
+      imageAttachments: () => [],
+      commentCount: () => 0,
+      mode: () => "normal",
+      working: () => false,
+      editor: () => undefined,
+      queueScroll: () => undefined,
+      promptLength: (value) => value.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0),
+      addToHistory: () => undefined,
+      resetHistoryNavigation: () => undefined,
+      setMode: () => undefined,
+      setPopover: () => undefined,
+      onSubmit: () => undefined,
+    })
+
+    const event = { preventDefault: () => undefined } as unknown as Event
+
+    promptValue = [{ type: "text", content: "first", start: 0, end: 5 }]
+    await submit.handleSubmit(event)
+    promptValue = [{ type: "text", content: "second", start: 0, end: 6 }]
+    await submit.handleSubmit(event)
+
+    await eventually(() => sentPrompts.length === 2)
+    expect(sentPrompts.map((item) => item.text)).toEqual(["first", "second"])
   })
 })

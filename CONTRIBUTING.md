@@ -84,9 +84,9 @@ Then run it with:
 
 Replace `<platform>` with your platform (e.g., `darwin-arm64`, `linux-x64`).
 
-### Releasing locally
+### Releasing
 
-Local releases are the default path now. Run them from a clean worktree:
+Trigger releases from a clean worktree:
 
 ```bash
 bun run release patch
@@ -95,7 +95,9 @@ bun run release major
 bun run release 1.2.3
 ```
 
-This flow creates the draft GitHub release if needed, builds the CLI locally when `packages/slopcode/dist` is missing, and then publishes from your machine. Use `.github/workflows/publish.yml` only as a manual fallback.
+`bun run release` updates version metadata, creates the release commit and tag, builds the CLI locally, uploads the prebuilt release assets to GitHub, and then dispatches `.github/workflows/publish.yml` on `dev` to publish those artifacts via npm trusted publishing.
+
+Once the published npm packages trust `teamslop/slopcode/.github/workflows/publish.yml`, no local OTP or npm token is needed. GitHub Actions only handles the publish step and release finalization. Use the Actions UI only if you want to trigger the workflow manually.
 
 - Core pieces:
   - `packages/slopcode`: SlopCode core business logic & server.

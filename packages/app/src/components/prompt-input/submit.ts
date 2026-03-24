@@ -1,6 +1,7 @@
 import type { Message } from "@slopcode-ai/sdk/v2/client"
 import { showToast } from "@slopcode-ai/ui/toast"
 import { base64Encode } from "@slopcode-ai/util/encode"
+import { createSerialQueue } from "@slopcode-ai/util/serial-queue"
 import { useNavigate, useParams } from "@solidjs/router"
 import type { Accessor } from "solid-js"
 import type { FileSelection } from "@/context/file"
@@ -22,6 +23,41 @@ type PendingPrompt = {
 }
 
 const pending = new Map<string, PendingPrompt>()
+
+type Store = {
+  message: Record<string, Message[] | undefined>
+  session_status: Record<string, { type: string } | undefined>
+}
+
+const prompts = createSerialQueue<{
+  key: string
+  ready: () => boolean
+  done: () => boolean
+  run: () => Promise<void>
+  reject: (error: unknown) => void
+}>()
+
+const key = (directory: string, sessionID: string) => `${directory}\n${sessionID}`
+
+const idle = (store: Store, sessionID: string) => (store.session_status[sessionID]?.type ?? "idle") === "idle"
+
+const assistants = (messages: Message[], messageID: string) =>
+  messages.filter((item) => item.role === "assistant" && item.parentID === messageID)
+
+const finished = (message: Message) => {
+  if (message.role !== "assistant") return false
+  if (!message.time.completed) return false
+  if (message.error) return true
+  if (!message.finish) return false
+  return !["tool-calls", "unknown"].includes(message.finish)
+}
+
+const done = (store: Store, sessionID: string, messageID: string) => {
+  if (!idle(store, sessionID)) return false
+  return assistants(store.message[sessionID] ?? [], messageID).some(finished)
+}
+
+const aborted = (error: unknown) => error instanceof DOMException && error.name === "AbortError"
 
 type PromptSubmitInput = {
   info: Accessor<{ id: string } | undefined>
@@ -73,6 +109,8 @@ export function createPromptSubmit(input: PromptSubmitInput) {
   const abort = async () => {
     const sessionID = params.id
     if (!sessionID) return Promise.resolve()
+
+    prompts.clear(key(sdk.directory, sessionID), { active: true })
 
     globalSync.todo.set(sessionID, [])
     const [, setStore] = globalSync.child(sdk.directory)
@@ -206,6 +244,9 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       return
     }
 
+    const [sessionStore] = globalSync.child(sessionDirectory)
+    const queueMode = sessionStore.config.queue_mode ?? "serial"
+
     input.addToHistory(currentPrompt, mode, { dir: sessionDirectory, id: session.id })
     input.resetHistoryNavigation()
 
@@ -331,6 +372,24 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     clearInput()
     addOptimisticMessage()
 
+    const fail = (error: unknown) => {
+      pending.delete(session.id)
+      if (aborted(error)) {
+        removeOptimisticMessage()
+        return
+      }
+      if (sessionDirectory === projectDirectory) {
+        sync.set("session_status", session.id, { type: "idle" })
+      }
+      showToast({
+        title: language.t("prompt.toast.promptSendFailed.title"),
+        description: errorMessage(error),
+      })
+      removeOptimisticMessage()
+      restoreCommentItems(commentItems)
+      restoreInput()
+    }
+
     const waitForWorktree = async () => {
       const worktree = WorktreeState.get(sessionDirectory)
       if (!worktree || worktree.status !== "pending") return true
@@ -399,19 +458,18 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       })
     }
 
-    void send().catch((err) => {
-      pending.delete(session.id)
-      if (sessionDirectory === projectDirectory) {
-        sync.set("session_status", session.id, { type: "idle" })
-      }
-      showToast({
-        title: language.t("prompt.toast.promptSendFailed.title"),
-        description: errorMessage(err),
+    if (queueMode === "serial") {
+      prompts.push({
+        key: key(sessionDirectory, session.id),
+        ready: () => idle(sessionStore as Store, session.id),
+        done: () => done(sessionStore as Store, session.id, messageID),
+        run: send,
+        reject: fail,
       })
-      removeOptimisticMessage()
-      restoreCommentItems(commentItems)
-      restoreInput()
-    })
+      return
+    }
+
+    void send().catch(fail)
   }
 
   return {
