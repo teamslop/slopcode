@@ -87,7 +87,6 @@ type QueueStore = {
   }
 }
 
-
 const idle = (store: QueueStore, sessionID: string) => (store.session_status[sessionID]?.type ?? "idle") === "idle"
 
 const assistants = (messages: Message[], messageID: string) =>

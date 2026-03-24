@@ -170,7 +170,11 @@ export function PromptQueueDock() {
           </div>
         </div>
 
-        <div data-slot="prompt-queue-list" hidden={store.collapsed} class="border-t border-border-weak-base px-3 py-2 flex flex-col gap-2">
+        <div
+          data-slot="prompt-queue-list"
+          hidden={store.collapsed}
+          class="border-t border-border-weak-base px-3 py-2 flex flex-col gap-2"
+        >
           <For each={visible()}>
             {(item: Row) => (
               <div class="flex items-start gap-2 min-w-0">

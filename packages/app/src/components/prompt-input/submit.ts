@@ -29,8 +29,6 @@ type Store = {
   session_status: Record<string, { type: string } | undefined>
 }
 
-
-
 const idle = (store: Store, sessionID: string) => (store.session_status[sessionID]?.type ?? "idle") === "idle"
 
 const assistants = (messages: Message[], messageID: string) =>

@@ -1944,10 +1944,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
   const status = createMemo(() => {
     const sending = store.active ? 1 : 0
     const queued = store.queue.length
-    return [
-      sending ? `${sending} sending` : undefined,
-      queued ? `${queued} queued` : undefined,
-    ]
+    return [sending ? `${sending} sending` : undefined, queued ? `${queued} queued` : undefined]
       .filter((item): item is string => !!item)
       .join(" · ")
   })

@@ -111,13 +111,15 @@ describe("serial prompt queue", () => {
       run: () => Promise<void>
     }>({ poll_ms: 5 })
 
-    const off = queue.subscribe((key: string, snapshot: { active?: { label: string }; queue: Array<{ label: string }> }) => {
-      if (key !== "ses_1") return
-      seen.push({
-        active: snapshot.active?.label,
-        queue: snapshot.queue.map((item) => item.label),
-      })
-    })
+    const off = queue.subscribe(
+      (key: string, snapshot: { active?: { label: string }; queue: Array<{ label: string }> }) => {
+        if (key !== "ses_1") return
+        seen.push({
+          active: snapshot.active?.label,
+          queue: snapshot.queue.map((item) => item.label),
+        })
+      },
+    )
 
     queue.push({
       key: "ses_1",
@@ -246,5 +248,3 @@ describe("serial prompt queue", () => {
     await eventually(() => !queue.busy("ses_1"))
   })
 })
-
-

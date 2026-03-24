@@ -389,7 +389,10 @@ describe("prompt submit serial queue", () => {
     expect(snapshot.queue[0]?.summary).toBe("second prompt waiting in queue")
 
     complete(ROOT, "session-1", sentPrompts[0].messageID)
-    await eventually(() => promptQueue.snapshot(promptQueueKey(ROOT, "session-1")).active?.summary === "second prompt waiting in queue")
+    await eventually(
+      () =>
+        promptQueue.snapshot(promptQueueKey(ROOT, "session-1")).active?.summary === "second prompt waiting in queue",
+    )
   })
 
   test("clears queued prompt metadata without dropping the active item", async () => {
