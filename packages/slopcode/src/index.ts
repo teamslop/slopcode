@@ -35,6 +35,7 @@ import { Global } from "./global"
 import { JsonMigration } from "./storage/json-migration"
 import { Database } from "./storage/db"
 import { ConsoleCommand } from "./cli/cmd/console"
+import { DaemonCommand } from "./cli/cmd/daemon"
 import { Flag } from "./flag/flag"
 
 process.on("unhandledRejection", (e) => {
@@ -175,6 +176,7 @@ let cli = yargs(hideBin(process.argv))
   .completion("completion", "generate shell completion script")
   .command(AcpCommand)
   .command(McpCommand)
+  .command(DaemonCommand)
   .command(TuiThreadCommand)
   .command(AttachCommand)
   .command(RunCommand)

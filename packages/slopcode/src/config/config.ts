@@ -233,6 +233,9 @@ export namespace Config {
     }
 
     result.queue_mode ??= "serial"
+    result.daemon = {
+      idle_timeout_ms: result.daemon?.idle_timeout_ms ?? 30 * 60 * 1000,
+    }
     result.plugin = deduplicatePlugins(result.plugin ?? [])
 
     return {
@@ -945,6 +948,20 @@ export namespace Config {
       ref: "ServerConfig",
     })
 
+  export const Daemon = z
+    .object({
+      idle_timeout_ms: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Idle timeout in milliseconds before the shared local daemon exits (default: 1800000)."),
+    })
+    .strict()
+    .meta({
+      ref: "DaemonConfig",
+    })
+
   export const Layout = z.enum(["auto", "stretch"]).meta({
     ref: "LayoutConfig",
   })
@@ -1008,6 +1025,7 @@ export namespace Config {
       $schema: z.string().optional().describe("JSON schema reference for configuration validation"),
       logLevel: Log.Level.optional().describe("Log level"),
       server: Server.optional().describe("Server configuration for slopcode serve and web commands"),
+      daemon: Daemon.optional().describe("Shared local daemon configuration for TUI sessions"),
       command: z
         .record(z.string(), Command)
         .optional()

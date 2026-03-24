@@ -336,7 +336,7 @@ export function Session() {
 
   createEffect(async () => {
     await sync.session
-      .sync(route.sessionID)
+      .sync(route.sessionID, true)
       .then(() => {
         if (scroll) scroll.scrollBy(100_000)
       })

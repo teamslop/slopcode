@@ -39,7 +39,10 @@ import { errors } from "./error"
 import { QuestionRoutes } from "./routes/question"
 import { PermissionRoutes } from "./routes/permission"
 import { GlobalRoutes } from "./routes/global"
+import { DaemonRoutes } from "./routes/daemon"
 import { MDNS } from "./mdns"
+import { DaemonAuth } from "@/daemon/auth"
+import { DaemonRuntime } from "@/daemon/runtime"
 
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout https://github.com/vercel/ai/blob/2dc67e0ef538307f21368db32d5a12345d98831b/packages/ai/src/logger/log-warnings.ts#L85
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -49,6 +52,7 @@ export namespace Server {
 
   let _url: URL | undefined
   let _corsWhitelist: string[] = []
+  let _daemonToken: string | undefined
 
   export function url(): URL {
     return _url ?? new URL("http://localhost:4096")
@@ -81,6 +85,7 @@ export namespace Server {
           // Allow CORS preflight requests to succeed without auth.
           // Browser clients sending Authorization headers will preflight with OPTIONS.
           if (c.req.method === "OPTIONS") return next()
+          if (_daemonToken && DaemonAuth.valid(c.req.header(DaemonAuth.Header))) return next()
           const password = Flag.SLOPCODE_SERVER_PASSWORD
           if (!password) return next()
           const username = Flag.SLOPCODE_SERVER_USERNAME ?? "slopcode"
@@ -130,6 +135,7 @@ export namespace Server {
           }),
         )
         .route("/global", GlobalRoutes())
+        .route("/daemon", DaemonRoutes())
         .put(
           "/auth/:providerID",
           describeRoute({
@@ -501,6 +507,7 @@ export namespace Server {
           }),
           async (c) => {
             log.info("event connected")
+            DaemonRuntime.connect()
             c.header("X-Accel-Buffering", "no")
             c.header("X-Content-Type-Options", "nosniff")
             return streamSSE(c, async (stream) => {
@@ -533,6 +540,7 @@ export namespace Server {
                 stream.onAbort(() => {
                   clearInterval(heartbeat)
                   unsub()
+                  DaemonRuntime.disconnect()
                   resolve()
                   log.info("event disconnected")
                 })
@@ -579,8 +587,11 @@ export namespace Server {
     mdns?: boolean
     mdnsDomain?: string
     cors?: string[]
+    daemonToken?: string
   }) {
     _corsWhitelist = opts.cors ?? []
+    _daemonToken = opts.daemonToken
+    DaemonAuth.set(opts.daemonToken)
 
     const args = {
       hostname: opts.hostname,
@@ -615,6 +626,8 @@ export namespace Server {
     const originalStop = server.stop.bind(server)
     server.stop = async (closeActiveConnections?: boolean) => {
       if (shouldPublishMDNS) MDNS.unpublish()
+      _daemonToken = undefined
+      DaemonAuth.set(undefined)
       return originalStop(closeActiveConnections)
     }
 

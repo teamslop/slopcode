@@ -106,10 +106,66 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     const sdk = useSDK()
     const kv = useKV()
     const [autoaccept] = kv.signal<"none" | "edit">("permission_auto_accept", "edit")
+    const fullSyncedSessions = new Set<string>()
+
+    function groupPermission(list: PermissionRequest[]) {
+      return list.reduce<Record<string, PermissionRequest[]>>((acc, item) => {
+        ;(acc[item.sessionID] ??= []).push(item)
+        return acc
+      }, {})
+    }
+
+    function groupQuestion(list: QuestionRequest[]) {
+      return list.reduce<Record<string, QuestionRequest[]>>((acc, item) => {
+        ;(acc[item.sessionID] ??= []).push(item)
+        return acc
+      }, {})
+    }
+
+    async function syncSession(sessionID: string, force = false) {
+      if (!force && fullSyncedSessions.has(sessionID)) return
+      const [session, messages, todo, diff] = await Promise.all([
+        sdk.client.session.get({ sessionID }, { throwOnError: true }),
+        sdk.client.session.messages({ sessionID, limit: 100 }),
+        sdk.client.session.todo({ sessionID }),
+        sdk.client.session.diff({ sessionID }),
+      ])
+      setStore(
+        produce((draft) => {
+          const match = Binary.search(draft.session, sessionID, (s) => s.id)
+          if (match.found) draft.session[match.index] = session.data!
+          if (!match.found) draft.session.splice(match.index, 0, session.data!)
+          draft.todo[sessionID] = todo.data ?? []
+          draft.message[sessionID] = messages.data!.map((x) => x.info)
+          for (const message of messages.data!) {
+            draft.part[message.info.id] = message.parts
+          }
+          draft.session_diff[sessionID] = diff.data ?? []
+        }),
+      )
+      fullSyncedSessions.add(sessionID)
+    }
+
+    async function refresh() {
+      const [permission, question, status] = await Promise.all([
+        sdk.client.permission.list().then((x) => x.data ?? []),
+        sdk.client.question.list().then((x) => x.data ?? []),
+        sdk.client.session.status().then((x) => x.data ?? {}),
+      ])
+      batch(() => {
+        setStore("permission", reconcile(groupPermission(permission)))
+        setStore("question", reconcile(groupQuestion(question)))
+        setStore("session_status", reconcile(status))
+      })
+      await Promise.all(Object.keys(store.message).map((sessionID) => syncSession(sessionID, true)))
+    }
 
     sdk.event.listen((e) => {
       const event = e.details
       switch (event.type) {
+        case "server.connected":
+          void refresh()
+          break
         case "server.instance.disposed":
           bootstrap()
           break
@@ -412,14 +468,12 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           // non-blocking
           Promise.all([
             ...(args.continue ? [] : [sessionListPromise.then((sessions) => setStore("session", reconcile(sessions)))]),
+            refresh(),
             sdk.client.command.list().then((x) => setStore("command", reconcile(x.data ?? []))),
             sdk.client.lsp.status().then((x) => setStore("lsp", reconcile(x.data!))),
             sdk.client.mcp.status().then((x) => setStore("mcp", reconcile(x.data!))),
             sdk.client.experimental.resource.list().then((x) => setStore("mcp_resource", reconcile(x.data ?? {}))),
             sdk.client.formatter.status().then((x) => setStore("formatter", reconcile(x.data!))),
-            sdk.client.session.status().then((x) => {
-              setStore("session_status", reconcile(x.data!))
-            }),
             sdk.client.provider.auth().then((x) => setStore("provider_auth", reconcile(x.data ?? {}))),
             sdk.client.vcs.get().then((x) => setStore("vcs", reconcile(x.data))),
             sdk.client.path.get().then((x) => setStore("path", reconcile(x.data!))),
@@ -441,7 +495,6 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       bootstrap()
     })
 
-    const fullSyncedSessions = new Set<string>()
     const result = {
       data: store,
       set: setStore,
@@ -468,28 +521,8 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           if (last.role === "user") return "working"
           return last.time.completed ? "idle" : "working"
         },
-        async sync(sessionID: string) {
-          if (fullSyncedSessions.has(sessionID)) return
-          const [session, messages, todo, diff] = await Promise.all([
-            sdk.client.session.get({ sessionID }, { throwOnError: true }),
-            sdk.client.session.messages({ sessionID, limit: 100 }),
-            sdk.client.session.todo({ sessionID }),
-            sdk.client.session.diff({ sessionID }),
-          ])
-          setStore(
-            produce((draft) => {
-              const match = Binary.search(draft.session, sessionID, (s) => s.id)
-              if (match.found) draft.session[match.index] = session.data!
-              if (!match.found) draft.session.splice(match.index, 0, session.data!)
-              draft.todo[sessionID] = todo.data ?? []
-              draft.message[sessionID] = messages.data!.map((x) => x.info)
-              for (const message of messages.data!) {
-                draft.part[message.info.id] = message.parts
-              }
-              draft.session_diff[sessionID] = diff.data ?? []
-            }),
-          )
-          fullSyncedSessions.add(sessionID)
+        async sync(sessionID: string, force = false) {
+          await syncSession(sessionID, force)
         },
       },
       bootstrap,
