@@ -1888,6 +1888,7 @@ export function Session() {
 type QueueRow = {
   id: string
   label: string
+  mode: "normal" | "shell"
   summary: string
   detail?: string
 }
@@ -1922,6 +1923,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
           {
             id: store.active.id,
             label: "SENDING",
+            mode: store.active.mode,
             summary: store.active.summary,
             detail: store.active.detail,
           },
@@ -1933,6 +1935,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
       ...store.queue.map((item: PromptQueueItem) => ({
         id: item.id,
         label: "QUEUED",
+        mode: item.mode,
         summary: item.summary,
         detail: item.detail,
       })),
@@ -1954,6 +1957,8 @@ function PromptQueuePanel(props: { sessionID: string }) {
     return text.slice(0, 45).trimEnd() + "..."
   })
 
+  const color = (item: QueueRow) => (item.mode === "shell" ? theme.primary : theme.secondary)
+
   const toggle = () => {
     setStore("collapsed", (value) => !value)
   }
@@ -1967,11 +1972,8 @@ function PromptQueuePanel(props: { sessionID: string }) {
   }
 
   return (
-    <Show when={rows().length > 0}>
+    <Show when={store.queue.length > 0}>
       <box
-        border={["left"]}
-        customBorderChars={SplitBorder.customBorderChars}
-        borderColor={theme.background}
         backgroundColor={theme.backgroundPanel}
         marginBottom={1}
         paddingTop={1}
@@ -2001,7 +2003,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
                 clear()
               }}
             >
-              <text fg={theme.textMuted}>Clear queued</text>
+              <text fg={theme.textMuted}>Clear queue</text>
             </box>
           </Show>
         </box>
@@ -2012,7 +2014,13 @@ function PromptQueuePanel(props: { sessionID: string }) {
                 const bg = createMemo(() => (item.label === "SENDING" ? theme.primary : theme.secondary))
                 const fg = createMemo(() => selectedForeground(theme, bg()))
                 return (
-                  <box flexDirection="column">
+                  <box
+                    flexDirection="column"
+                    border={["left"]}
+                    customBorderChars={SplitBorder.customBorderChars}
+                    borderColor={color(item)}
+                    paddingLeft={2}
+                  >
                     <box flexDirection="row" justifyContent="space-between">
                       <text fg={theme.text}>
                         <span style={{ bg: bg(), fg: fg(), bold: true }}> {item.label} </span>

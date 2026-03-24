@@ -897,6 +897,7 @@ export function Prompt(props: PromptProps) {
         promptQueue.push({
           key: sessionID,
           id: messageID,
+          mode: store.mode,
           summary: queued.summary,
           detail: queued.detail,
           ready: () => idle(sync.data as QueueStore, sessionID),

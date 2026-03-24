@@ -3,6 +3,7 @@ import { createSerialQueue } from "@slopcode-ai/util/serial-queue"
 export type PromptQueueItem = {
   key: string
   id: string
+  mode: "normal" | "shell"
   summary: string
   detail?: string
   ready: () => boolean
