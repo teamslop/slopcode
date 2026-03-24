@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   layoutSessionStrip,
   layoutSessionStripUnderlineSegments,
+  sessionStripWidth,
 } from "../../../src/cli/cmd/tui/routes/session/session-strip-layout"
 
 const tabs = [
@@ -92,6 +93,11 @@ describe("session strip layout", () => {
       next: undefined,
       underline: "",
     })
+  })
+
+  test("keeps the full terminal width when the strip inset is zero", () => {
+    expect(sessionStripWidth(80, 0)).toBe(80)
+    expect(sessionStripWidth(3, 2)).toBe(0)
   })
 
   test("draws joints under tab separators including the closing divider", () => {

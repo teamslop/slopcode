@@ -10,6 +10,7 @@ import {
   layoutSessionStripUnderlineSegments,
   sessionStripTabClose,
   sessionStripTabLabel,
+  sessionStripWidth,
   SessionStripText,
   type SessionStripTab,
   type SessionStripUnderlineSegment,
@@ -17,7 +18,7 @@ import {
 import { createBlockSpinner } from "../../ui/spinner.ts"
 
 const MAX_TITLE = 15
-const HORIZONTAL_PADDING = 4
+const INSET = 0
 
 type SessionStripViewProps = {
   tabs: SessionStripTab[]
@@ -59,7 +60,7 @@ export function SessionStripView(props: SessionStripViewProps) {
 
   return (
     <box flexShrink={0} flexDirection="column" backgroundColor={props.colors.panel}>
-      <box height={1} flexDirection="row" paddingLeft={2} paddingRight={2}>
+      <box height={1} flexDirection="row" paddingLeft={INSET} paddingRight={INSET}>
         <Show when={props.prev}>
           {(id) => (
             <>
@@ -163,7 +164,7 @@ export function SessionStripView(props: SessionStripViewProps) {
           )}
         </Show>
       </box>
-      <box height={1} flexDirection="row" paddingLeft={2} paddingRight={2}>
+      <box height={1} flexDirection="row" paddingLeft={INSET} paddingRight={INSET}>
         <For each={props.underlineSegments}>
           {(segment) => (
             <box flexShrink={0} backgroundColor={underlineBg(segment.owners)}>
@@ -192,7 +193,7 @@ export function SessionStrip() {
   const layout = createMemo(() =>
     layoutSessionStrip(items(), {
       active: tabs.active(),
-      width: Math.max(0, dimensions().width - HORIZONTAL_PADDING),
+      width: sessionStripWidth(dimensions().width, INSET),
     }),
   )
   const underlineSegments = createMemo(() =>
