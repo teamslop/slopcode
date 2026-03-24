@@ -1330,7 +1330,7 @@ function requirePrism() {
                 clone = []
                 visited[id] = clone
                 /** @type {Array} */
-                ;/** @type {any} */ (o).forEach(function (v, i) {
+                /** @type {any} */ ;(o).forEach(function (v, i) {
                   clone[i] = deepClone(v, visited)
                 })
 
