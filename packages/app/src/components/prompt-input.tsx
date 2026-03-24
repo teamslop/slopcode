@@ -33,7 +33,6 @@ import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { DialogSelectModelUnpaid } from "@/components/dialog-select-model-unpaid"
 import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
-import { Persist, persisted } from "@/utils/persist"
 import { usePermission } from "@/context/permission"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
@@ -45,7 +44,6 @@ import {
   prependHistoryEntry,
   type PromptHistoryComment,
   type PromptHistoryEntry,
-  type PromptHistoryStoredEntry,
   promptLength,
 } from "./prompt-input/history"
 import { createPromptSubmit } from "./prompt-input/submit"
@@ -54,6 +52,7 @@ import { PromptContextItems } from "./prompt-input/context-items"
 import { PromptImageAttachments } from "./prompt-input/image-attachments"
 import { PromptDragOverlay } from "./prompt-input/drag-overlay"
 import { promptPlaceholder } from "./prompt-input/placeholder"
+import { PromptQueueDock } from "./prompt-input/queue-dock"
 import { ImagePreview } from "@slopcode-ai/ui/image-preview"
 
 interface PromptInputProps {
@@ -113,6 +112,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   let fileInputRef: HTMLInputElement | undefined
   let scrollRef!: HTMLDivElement
   let slashPopoverRef!: HTMLDivElement
+  let ghostTimer: ReturnType<typeof setTimeout> | undefined
+  let ghostRequest = 0
 
   const mirror = { input: false }
   const inset = 44
@@ -244,6 +245,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     draggingType: "image" | "@mention" | null
     mode: "normal" | "shell"
     applyingHistory: boolean
+    ghost: string
   }>({
     popover: null,
     historyIndex: -1,
@@ -252,7 +254,18 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     draggingType: null,
     mode: "normal",
     applyingHistory: false,
+    ghost: "",
   })
+
+  createEffect(
+    on(
+      sessionKey,
+      () => {
+        resetHistoryNavigation(true)
+      },
+      { defer: true },
+    ),
+  )
 
   const commentCount = createMemo(() => {
     if (store.mode === "shell") return 0
@@ -272,23 +285,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     if (!messages) return false
     return messages.some((m) => m.role === "user")
   })
-
-  const [history, setHistory] = persisted(
-    Persist.global("prompt-history", ["prompt-history.v1"]),
-    createStore<{
-      entries: PromptHistoryStoredEntry[]
-    }>({
-      entries: [],
-    }),
-  )
-  const [shellHistory, setShellHistory] = persisted(
-    Persist.global("prompt-history-shell", ["prompt-history-shell.v1"]),
-    createStore<{
-      entries: PromptHistoryStoredEntry[]
-    }>({
-      entries: [],
-    }),
-  )
 
   const suggest = createMemo(() => !hasUserPrompt())
 
@@ -394,6 +390,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const pick = () => fileInputRef?.click()
 
   const setMode = (mode: "normal" | "shell") => {
+    clearGhost()
     setStore("mode", mode)
     setStore("popover", null)
     requestAnimationFrame(() => editorRef?.focus())
@@ -430,6 +427,17 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   ])
 
   const closePopover = () => setStore("popover", null)
+  const clearGhost = () => {
+    setStore("ghost", "")
+    removeGhostNode()
+  }
+
+  const acceptGhost = () => {
+    if (!store.ghost) return false
+    addPart({ type: "text", content: store.ghost, start: 0, end: 0 })
+    clearGhost()
+    return true
+  }
 
   const resetHistoryNavigation = (force = false) => {
     if (!force && (store.historyIndex < 0 || store.applyingHistory)) return
@@ -483,8 +491,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const [composing, setComposing] = createSignal(false)
   const isImeComposing = (event: KeyboardEvent) => event.isComposing || composing() || event.keyCode === 229
 
+  onCleanup(() => {
+    if (ghostTimer) clearTimeout(ghostTimer)
+  })
+
   const handleBlur = () => {
     closePopover()
+    clearGhost()
     setComposing(false)
   }
 
@@ -649,6 +662,30 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     }
   }
 
+  const removeGhostNode = () => {
+    const node = editorRef.querySelector('[data-ghost="true"]')
+    if (node) node.remove()
+  }
+
+  const renderGhostNode = () => {
+    removeGhostNode()
+    if (!store.ghost || store.popover || store.mode !== "normal") return
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0 || !selection.isCollapsed || !editorRef.contains(selection.anchorNode))
+      return
+    const cursor = getCursorPosition(editorRef)
+    const textLength = promptLength(prompt.current().filter((part) => part.type !== "image"))
+    if (cursor !== textLength) return
+
+    const node = document.createElement("span")
+    node.dataset.ghost = "true"
+    node.setAttribute("contenteditable", "false")
+    node.style.color = "var(--color-text-weak)"
+    node.style.pointerEvents = "none"
+    node.textContent = store.ghost
+    editorRef.appendChild(node)
+  }
+
   createEffect(
     on(
       () => sync.data.command,
@@ -709,6 +746,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     ),
   )
 
+  createEffect(() => {
+    store.ghost
+    store.popover
+    store.mode
+    prompt.current()
+    requestAnimationFrame(renderGhostNode)
+  })
+
   const parseFromDOM = (): Prompt => {
     const parts: Prompt = []
     let position = 0
@@ -756,6 +801,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       if (node.nodeType !== Node.ELEMENT_NODE) return
 
       const el = node as HTMLElement
+      if (el.dataset.ghost === "true") {
+        return
+      }
       if (el.dataset.type === "file") {
         flushText()
         pushFile(el)
@@ -792,6 +840,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
 
   const handleInput = () => {
+    clearGhost()
     const rawParts = parseFromDOM()
     const images = imageAttachments()
     const cursorPosition = getCursorPosition(editorRef)
@@ -838,6 +887,77 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     prompt.set([...rawParts, ...images], cursorPosition)
     queueScroll()
   }
+
+  createEffect(() => {
+    const config = sync.data.config.autocomplete
+
+    if (config?.enabled === false) {
+      clearGhost()
+      return
+    }
+
+    const id = params.id
+    if (!id || store.mode !== "normal" || store.popover || !isFocused()) {
+      clearGhost()
+      return
+    }
+
+    const current = prompt.current()
+    if (current.some((part) => part.type !== "text")) {
+      clearGhost()
+      return
+    }
+
+    const text = current
+      .filter((part): part is Extract<ContentPart, { type: "text" }> => part.type === "text")
+      .map((part) => part.content)
+      .join("")
+    const selection = window.getSelection()
+    if (
+      !selection ||
+      selection.rangeCount === 0 ||
+      !selection.isCollapsed ||
+      !editorRef.contains(selection.anchorNode)
+    ) {
+      clearGhost()
+      return
+    }
+
+    const cursor = getCursorPosition(editorRef)
+    if (cursor !== text.length || text.trim().length < (config?.min_prefix_chars ?? 6)) {
+      clearGhost()
+      return
+    }
+
+    if (ghostTimer) clearTimeout(ghostTimer)
+    const requestID = ++ghostRequest
+    ghostTimer = setTimeout(async () => {
+      const currentModel = local.model.current()
+      const currentAgent = local.agent.current()
+      if (!currentModel || !currentAgent) return
+      const response = await sdk.client.session
+        .autocomplete({
+          sessionID: id,
+          model: {
+            providerID: currentModel.provider.id,
+            modelID: currentModel.id,
+          },
+          agent: currentAgent.name,
+          variant: local.model.variant.current(),
+          mode: "normal",
+          prefix: text,
+        })
+        .catch(() => undefined)
+      if (!response?.data) return
+      if (requestID !== ghostRequest) return
+      const completion = response.data.completion
+      if (!completion || /\n/.test(completion)) {
+        clearGhost()
+        return
+      }
+      setStore("ghost", completion)
+    }, config?.debounce_ms ?? 120)
+  })
 
   const addPart = (part: ContentPart) => {
     if (part.type === "image") return false
@@ -920,18 +1040,17 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return true
   }
 
-  const addToHistory = (prompt: Prompt, mode: "normal" | "shell") => {
-    const currentHistory = mode === "shell" ? shellHistory : history
-    const setCurrentHistory = mode === "shell" ? setShellHistory : setHistory
-    const next = prependHistoryEntry(currentHistory.entries, prompt, mode === "shell" ? [] : historyComments())
-    if (next === currentHistory.entries) return
-    setCurrentHistory("entries", next)
+  const addToHistory = (value: Prompt, mode: "normal" | "shell", target?: { dir?: string; id?: string }) => {
+    const entries = prompt.history.entries(mode, target)
+    const next = prependHistoryEntry(entries, value, mode === "shell" ? [] : historyComments())
+    if (next === entries) return
+    prompt.history.set(mode, next, target)
   }
 
   const navigateHistory = (direction: "up" | "down") => {
     const result = navigatePromptHistory({
       direction,
-      entries: store.mode === "shell" ? shellHistory.entries : history.entries,
+      entries: store.mode === "shell" ? prompt.history.shell() : prompt.history.normal(),
       historyIndex: store.historyIndex,
       currentPrompt: prompt.current(),
       currentComments: historyComments(),
@@ -1014,6 +1133,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     }
 
     if (event.key === "Escape") {
+      if (store.ghost) {
+        clearGhost()
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+
       if (store.popover) {
         closePopover()
         event.preventDefault()
@@ -1062,6 +1188,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
     if (event.key === "Enter" && isImeComposing(event)) {
       return
+    }
+
+    if (event.key === "Tab" && !store.popover && store.ghost) {
+      if (acceptGhost()) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
     }
 
     const ctrl = event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey
@@ -1121,6 +1255,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
     // Note: Shift+Enter is handled earlier, before IME check
     if (event.key === "Enter" && !event.shiftKey) {
+      clearGhost()
       handleSubmit(event)
     }
   }
@@ -1149,6 +1284,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         commandKeybind={command.keybind}
         t={(key) => language.t(key as Parameters<typeof language.t>[0])}
       />
+      <PromptQueueDock />
       <DockShellForm
         onSubmit={handleSubmit}
         classList={{
@@ -1220,7 +1356,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               onKeyDown={handleKeyDown}
               classList={{
                 "select-text": true,
-                "w-full pl-3 pr-2 pt-2 pb-11 text-14-regular text-text-strong focus:outline-none whitespace-pre-wrap": true,
+                "w-full pl-3 pr-2 pt-5 pb-11 text-14-regular text-text-strong focus:outline-none whitespace-pre-wrap": true,
                 "[&_[data-type=file]]:text-syntax-property": true,
                 "[&_[data-type=agent]]:text-syntax-type": true,
                 "font-mono!": store.mode === "shell",
@@ -1228,7 +1364,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
             />
             <Show when={!prompt.dirty()}>
               <div
-                class="absolute top-0 inset-x-0 pl-3 pr-2 pt-2 pb-11 text-14-regular text-text-weak pointer-events-none whitespace-nowrap truncate"
+                class="absolute top-0 inset-x-0 pl-3 pr-2 pt-5 pb-11 text-14-regular text-text-weak pointer-events-none whitespace-nowrap truncate"
                 classList={{ "font-mono!": store.mode === "shell" }}
               >
                 {placeholder()}
@@ -1353,7 +1489,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       </DockShellForm>
       <Show when={store.mode === "normal" || store.mode === "shell"}>
         <DockTray attach="top">
-          <div class="px-1.75 pt-5.5 pb-2 flex items-center gap-2 min-w-0">
+          <div class="px-1.75 pt-6 pb-1 flex items-center gap-2 min-w-0">
             <div class="flex items-center gap-1.5 min-w-0 flex-1">
               <Show when={store.mode === "shell"}>
                 <div class="h-7 flex items-center gap-1.5 max-w-[160px] min-w-0" style={{ padding: "0 4px 0 8px" }}>

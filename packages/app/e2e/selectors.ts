@@ -44,6 +44,8 @@ export const projectWorkspacesToggleSelector = (slug: string) =>
   `[data-action="project-workspaces-toggle"][data-project="${slug}"]`
 
 export const titlebarRightSelector = "#slopcode-titlebar-right"
+export const sessionTitlebarSearchSelector = '[data-action="session-titlebar-search"]'
+export const sessionTitleSelector = "[data-session-title]"
 
 export const popoverBodySelector = '[data-slot="popover-body"]'
 

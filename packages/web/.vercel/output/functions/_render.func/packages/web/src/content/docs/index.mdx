@@ -1,0 +1,79 @@
+---
+title: Intro
+description: Quick setup for your first SlopCode session.
+---
+
+[SlopCode](/) is an open source coding agent focused on terminal workflows.
+This page gets you from install to first prompt quickly.
+
+---
+
+## Install
+
+Use the install script.
+
+```bash
+curl -fsSL https://slopcode.dev/install | bash
+```
+
+Prefer a package manager? Use one of these commands.
+
+```bash
+npm install -g slopcode
+bun install -g slopcode
+brew install slopcode
+curl -fsSL https://teamslop.github.io/apt-slopcode/install.sh | sudo bash
+```
+
+---
+
+## Connect
+
+Run `/connect` and choose the provider you already use.
+You can switch providers later at any time.
+
+```txt frame="none"
+/connect
+```
+
+---
+
+## Start
+
+Open a project and launch SlopCode.
+
+```bash
+cd /path/to/project
+slopcode
+```
+
+Initialize project instructions once.
+
+```txt frame="none"
+/init
+```
+
+Commit the generated `AGENTS.md` file so future sessions keep the same context.
+
+---
+
+## Prompt
+
+Ask for one concrete task and include file paths when useful.
+Short, specific prompts usually give better edits.
+
+```txt frame="none" "@src/api.ts"
+Add request logging to @src/api.ts and include a unit test
+```
+
+---
+
+## Explore
+
+Read these next pages when you need more control.
+
+- [CLI](/docs/cli)
+- [Providers](/docs/providers)
+- [Configuration](/docs/config)
+- [Tools](/docs/tools)
+- [Troubleshooting](/docs/troubleshooting)

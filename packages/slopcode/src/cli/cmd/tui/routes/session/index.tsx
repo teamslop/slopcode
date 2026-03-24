@@ -7,27 +7,30 @@ import {
   For,
   Match,
   on,
+  onCleanup,
   Show,
   Switch,
   useContext,
 } from "solid-js"
+import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import path from "path"
 import { useRoute, useRouteData } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { SplitBorder } from "@tui/component/border"
 import { Spinner } from "@tui/component/spinner"
-import { selectedForeground, useTheme } from "@tui/context/theme"
+import "@tui/component/diff-color"
+import { selectedForeground, tint, useTheme } from "@tui/context/theme"
 import {
   BoxRenderable,
   ScrollBoxRenderable,
-  addDefaultParsers,
   MacOSScrollAccel,
   type ScrollAcceleration,
   TextAttributes,
   RGBA,
 } from "@opentui/core"
 import { Prompt, type PromptRef } from "@tui/component/prompt"
+import { promptQueue, type PromptQueueItem } from "@tui/component/prompt/queue"
 import type { AssistantMessage, Part, ToolPart, UserMessage, TextPart, ReasoningPart } from "@slopcode-ai/sdk/v2"
 import { useLocal } from "@tui/context/local"
 import { Locale } from "@/util/locale"
@@ -51,6 +54,7 @@ import { useCommandDialog } from "@tui/component/dialog-command"
 import type { DialogContext } from "@tui/ui/dialog"
 import { useKeybind } from "@tui/context/keybind"
 import { Header } from "./header"
+import { SessionStrip } from "./session-strip"
 import { parsePatch } from "diff"
 import { useDialog } from "../../ui/dialog"
 import { TodoItem } from "../../component/todo-item"
@@ -63,7 +67,6 @@ import { DialogSessionRename } from "../../component/dialog-session-rename"
 import { Sidebar } from "./sidebar"
 import { Flag } from "@/flag/flag"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
-import parsers from "../../../../../../parsers-config.ts"
 import { Clipboard } from "../../util/clipboard"
 import { Toast, useToast } from "../../ui/toast"
 import { useKV } from "../../context/kv.tsx"
@@ -79,9 +82,12 @@ import { QuestionPrompt } from "./question"
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
+import { ensureDefaultParsers } from "@/cli/render/parsers"
+import { segmentRichText } from "@/cli/render/segment"
+import { RichSegments } from "@/cli/render/tui"
 import { useTuiConfig } from "../../context/tui-config"
 
-addDefaultParsers(parsers.parsers)
+ensureDefaultParsers()
 
 const CUSTOM_TOOL_PARTS = new Set([
   "bash",
@@ -100,6 +106,109 @@ const CUSTOM_TOOL_PARTS = new Set([
   "question",
   "skill",
 ])
+const BASH_EXPAND_LINES = 10
+const GENERIC_EXPAND_LINES = 3
+const EDIT_EXPAND_LINES = 40
+const PATCH_EXPAND_LINES = 60
+const PATCH_FILE_PREVIEW_LINES = 20
+const WRITE_EXPAND_LINES = 60
+const REASONING_EXPAND_LINES = 18
+const REASONING_EXPAND_CHARS = 1200
+const OUTPUT_EXPAND_LINES = 20
+const TODO_EXPAND_ITEMS = 8
+const QUESTION_EXPAND_ITEMS = 4
+const QUEUE_VISIBLE_ITEMS = 4
+
+const OUTPUT_EXPAND_TOOL_PARTS = new Set([
+  "read",
+  "grep",
+  "list",
+  "glob",
+  "webfetch",
+  "codesearch",
+  "websearch",
+  "skill",
+])
+
+function lines(text: string) {
+  if (!text.trim()) return 0
+  return text.split("\n").length
+}
+
+function clip(text: string, max: number) {
+  const all = text.split("\n")
+  if (all.length <= max) return text
+  return [...all.slice(0, max), "…"].join("\n")
+}
+
+function canExpandReasoning(text: string) {
+  return lines(text) > REASONING_EXPAND_LINES || text.length > REASONING_EXPAND_CHARS
+}
+
+function patchlines(metadata: Record<string, unknown>) {
+  const files = Array.isArray(metadata.files) ? metadata.files : []
+  return files.reduce((sum, file) => {
+    if (!file || typeof file !== "object" || !("diff" in file)) return sum
+    const diff = typeof file.diff === "string" ? file.diff : ""
+    return sum + lines(diff)
+  }, 0)
+}
+
+function completedOutput(part: ToolPart) {
+  if (part.state.status !== "completed") return ""
+  return part.state.output.trim()
+}
+
+function canExpand(part: ToolPart, metadata: Record<string, unknown>, generic: boolean) {
+  if (part.tool === "bash") {
+    const output = typeof metadata.output === "string" ? stripAnsi(metadata.output.trim()) : ""
+    return lines(output) > BASH_EXPAND_LINES
+  }
+
+  if (part.tool === "edit") {
+    const diff = typeof metadata.diff === "string" ? metadata.diff : ""
+    return lines(diff) > EDIT_EXPAND_LINES
+  }
+
+  if (part.tool === "apply_patch") {
+    return patchlines(metadata) > PATCH_EXPAND_LINES
+  }
+
+  if (part.tool === "write") {
+    if (part.state.status !== "completed") return false
+    const content =
+      typeof (part.state.input as any)?.content === "string" ? (part.state.input as any).content.trim() : ""
+    return lines(content) > WRITE_EXPAND_LINES
+  }
+
+  if (part.tool === "todowrite") {
+    if (part.state.status !== "completed") return false
+    const todos = (part.state.input as any)?.todos
+    if (!Array.isArray(todos)) return false
+    return todos.length > TODO_EXPAND_ITEMS
+  }
+
+  if (part.tool === "question") {
+    if (part.state.status !== "completed") return false
+    const questions = (part.state.input as any)?.questions
+    if (!Array.isArray(questions)) return false
+    return questions.length > QUESTION_EXPAND_ITEMS
+  }
+
+  if (part.tool === "task") {
+    if (part.state.status !== "completed") return false
+    return lines(completedOutput(part)) > OUTPUT_EXPAND_LINES
+  }
+
+  if (OUTPUT_EXPAND_TOOL_PARTS.has(part.tool)) {
+    return lines(completedOutput(part)) > OUTPUT_EXPAND_LINES
+  }
+
+  if (CUSTOM_TOOL_PARTS.has(part.tool)) return false
+  if (!generic) return false
+  if (part.state.status !== "completed") return false
+  return lines(part.state.output.trim()) > GENERIC_EXPAND_LINES
+}
 
 class CustomSpeedScroll implements ScrollAcceleration {
   constructor(private speed: number) {}
@@ -120,6 +229,8 @@ const context = createContext<{
   showDetails: () => boolean
   showGenericToolOutput: () => boolean
   isHistoryPartSelected: (id: string) => boolean
+  isHistoryPromptSelected: (id: string) => boolean
+  isHistoryTimeline: () => boolean
   diffWrapMode: () => "word" | "none"
   isToolExpanded: (id: string) => boolean
   toggleToolExpanded: (id: string) => void
@@ -181,12 +292,15 @@ export function Session() {
   const [showGenericToolOutput, setShowGenericToolOutput] = kv.signal("generic_tool_output_visibility", false)
   const [history, setHistory] = createSignal(false)
   const [historyPart, setHistoryPart] = createSignal<string>()
+  const [historyPrompt, setHistoryPrompt] = createSignal<string>()
+  const [target, setTarget] = createSignal<"prompt" | "timeline">("prompt")
   const [expandedToolParts, setExpandedToolParts] = createSignal<Record<string, boolean>>({})
 
   type HistoryTrace = {
     partID: string
+    promptID: string
     anchorID: string
-    kind: "tool" | "reasoning"
+    kind: "text" | "tool" | "reasoning"
     childSessionID?: string
     expandable: boolean
     y: number
@@ -214,9 +328,15 @@ export function Session() {
     return new CustomSpeedScroll(3)
   })
 
+  const follow = createMemo(() => !history() || target() === "prompt")
+  const busy = createMemo(() => {
+    const status = sync.data.session_status?.[route.sessionID]
+    return status ? status.type !== "idle" : false
+  })
+
   createEffect(async () => {
     await sync.session
-      .sync(route.sessionID)
+      .sync(route.sessionID, true)
       .then(() => {
         if (scroll) scroll.scrollBy(100_000)
       })
@@ -275,21 +395,21 @@ export function Session() {
     }))
   }
 
-  const isHistoryPartSelected = (id: string) => history() && historyPart() === id
+  const isHistoryTimeline = () => history() && target() === "timeline"
+  const isHistoryPartSelected = (id: string) => isHistoryTimeline() && historyPart() === id
+  const isHistoryPromptSelected = (id: string) => isHistoryTimeline() && !historyPart() && historyPrompt() === id
 
   function setHistoryMode(value: boolean) {
     if (history() === value) return
     setHistory(value)
     setHistoryPart(undefined)
+    setHistoryPrompt(undefined)
+    setTarget(value ? "timeline" : "prompt")
+
+    if (value) return
 
     const current = promptRef.current
     if (!current) return
-
-    if (value) {
-      current.blur()
-      return
-    }
-
     if (session()?.parentID) return
     if (permissions().length > 0 || questions().length > 0) return
     current.focus()
@@ -299,12 +419,26 @@ export function Session() {
     setHistoryMode(!history())
   }
 
+  function focusPrompt() {
+    if (session()?.parentID) return false
+    if (permissions().length > 0 || questions().length > 0) return false
+    const current = promptRef.current
+    if (!current) return false
+    setHistoryPart(undefined)
+    setHistoryPrompt(undefined)
+    setTarget("prompt")
+    current.focus()
+    return true
+  }
+
   createEffect(
     on(
       () => route.sessionID,
       () => {
         setHistoryMode(false)
         setHistoryPart(undefined)
+        setHistoryPrompt(undefined)
+        setTarget("prompt")
         setExpandedToolParts({})
       },
       { defer: true },
@@ -334,6 +468,14 @@ export function Session() {
   useKeyboard((evt) => {
     if (dialog.stack.length > 0) return
 
+    const handleAppExit = () => {
+      if (!keybind.match("app_exit", evt)) return false
+      if (renderer.getSelection()?.getSelectedText()) return false
+      exit()
+      evt.preventDefault()
+      return true
+    }
+
     if (keybind.match("history_mode_toggle", evt)) {
       const current = promptRef.current
 
@@ -347,6 +489,26 @@ export function Session() {
     }
 
     if (history()) {
+      if (handleAppExit()) return
+
+      if (keybind.match("session_interrupt", evt)) {
+        if (sync.data.session_status?.[route.sessionID]?.type === "idle") return
+        command.trigger("session.interrupt")
+        evt.preventDefault()
+        return
+      }
+
+      if (target() !== "prompt" && keybind.match("input_submit", evt)) {
+        setHistoryMode(false)
+        evt.preventDefault()
+        return
+      }
+
+      if (keybind.match("agent_cycle", evt)) {
+        setHistoryMode(false)
+        return
+      }
+
       if (keybind.match("history_previous", evt)) {
         scrollToPrompt("prev")
         evt.preventDefault()
@@ -354,24 +516,35 @@ export function Session() {
       }
 
       if (keybind.match("history_next", evt)) {
-        scrollToPrompt("next")
+        if (target() === "prompt" && evt.name === "down") return
+        if (!scrollToPrompt("next")) focusPrompt()
         evt.preventDefault()
         return
       }
 
       if (evt.name === "left") {
-        moveHistoryTrace("prev")
+        if (target() === "prompt") {
+          const latestPrompt = promptIDs().at(-1)
+          if (!focusLatestHistoryTrace(latestPrompt)) focusPromptByID(latestPrompt)
+          evt.preventDefault()
+          return
+        }
+
+        if (!moveHistoryTrace("prev")) focusPromptByID(currentPromptID())
         evt.preventDefault()
         return
       }
 
       if (evt.name === "right") {
-        moveHistoryTrace("next")
+        if (target() === "prompt") return
+
+        if (!moveHistoryTrace("next") && !busy()) focusPrompt()
         evt.preventDefault()
         return
       }
 
       if (evt.name === "space") {
+        if (target() === "prompt") return
         historyAction()
         evt.preventDefault()
         return
@@ -379,8 +552,7 @@ export function Session() {
     }
 
     if (!session()?.parentID) return
-    if (!keybind.match("app_exit", evt)) return
-    exit()
+    handleAppExit()
   })
 
   const visiblePrompts = () => {
@@ -400,33 +572,72 @@ export function Session() {
       .sort((a, b) => a.y - b.y)
   }
 
-  const findCurrentVisiblePrompt = () => {
-    const prompts = visiblePrompts()
-    if (prompts.length === 0) return null
-    const top = scroll.y + 1
-    return [...prompts].reverse().find((item) => item.y <= top)?.id ?? prompts[0]?.id ?? null
+  const promptIDs = () => visiblePrompts().map((item) => item.id)
+
+  const focusPromptByID = (id?: string) => {
+    if (!id) return false
+    const child = scroll.getChildren().find((item) => item.id === id)
+    if (!child) return false
+    setHistoryPart(undefined)
+    setHistoryPrompt(id)
+    setTarget("timeline")
+    scroll.scrollBy(child.y - scroll.y - 1)
+    return true
   }
 
-  const findNextVisiblePrompt = (direction: "next" | "prev") => {
+  const currentPromptID = () => {
     const prompts = visiblePrompts()
-    if (prompts.length === 0) return null
-    const top = scroll.y
+    if (prompts.length === 0) return undefined
 
-    if (direction === "next") {
-      return prompts.find((item) => item.y > top + 1)?.id ?? null
+    if (target() === "prompt") {
+      return prompts.at(-1)?.id
     }
 
-    return [...prompts].reverse().find((item) => item.y < top - 1)?.id ?? null
+    const selected = historyPart()
+    if (selected) {
+      const trace = historyTraceList().find((item) => item.partID === selected)
+      if (trace) return trace.promptID
+    }
+
+    const chosen = historyPrompt()
+    if (chosen && prompts.some((item) => item.id === chosen)) {
+      return chosen
+    }
+
+    const top = scroll.y + 1
+    return [...prompts].reverse().find((item) => item.y <= top)?.id ?? prompts[0]?.id
   }
 
   const scrollToPrompt = (direction: "next" | "prev") => {
-    const targetID = findNextVisiblePrompt(direction)
-    if (!targetID) return
+    const prompts = promptIDs()
+    if (prompts.length === 0) return false
 
-    const child = scroll.getChildren().find((item) => item.id === targetID)
-    if (!child) return
-    setHistoryPart(undefined)
-    scroll.scrollBy(child.y - scroll.y - 1)
+    const selected = historyPart()
+    if (selected) {
+      const trace = historyTraceList().find((item) => item.partID === selected)
+      if (trace) {
+        const index = prompts.findIndex((item) => item === trace.promptID)
+        if (index < 0) return false
+        const next = direction === "next" ? prompts[index + 1] : prompts[index - 1]
+        if (!next) return false
+        return focusPromptByID(next)
+      }
+      setHistoryPart(undefined)
+    }
+
+    if (target() === "prompt" && direction === "prev") {
+      return focusPromptByID(prompts.at(-1))
+    }
+
+    const current = currentPromptID()
+    if (!current) return false
+
+    const index = prompts.findIndex((item) => item === current)
+    if (index < 0) return false
+
+    const next = direction === "next" ? prompts[index + 1] : prompts[index - 1]
+    if (!next) return false
+    return focusPromptByID(next)
   }
 
   const historyTraces = (promptID: string): HistoryTrace[] => {
@@ -456,6 +667,25 @@ export function Session() {
     for (const message of turns) {
       const parts = sync.data.part[message.id] ?? []
       for (const part of parts) {
+        if (part.type === "text") {
+          const text = part.text.trim()
+          if (part.synthetic || part.ignored || !text) continue
+
+          const anchorID = "text-" + part.id
+          const anchor = anchors.get(anchorID)
+          if (!anchor) continue
+
+          result.push({
+            partID: part.id,
+            promptID,
+            anchorID,
+            kind: "text",
+            expandable: false,
+            y: anchor.y,
+          })
+          continue
+        }
+
         if (part.type === "reasoning") {
           const text = part.text.replace("[REDACTED]", "").trim()
           if (!showThinking() || !text) continue
@@ -466,9 +696,10 @@ export function Session() {
 
           result.push({
             partID: part.id,
+            promptID,
             anchorID,
             kind: "reasoning",
-            expandable: false,
+            expandable: canExpandReasoning(text),
             y: anchor.y,
           })
           continue
@@ -481,28 +712,15 @@ export function Session() {
         const anchor = anchors.get(anchorID)
         if (!anchor) continue
 
-        const metadata = part.state.status === "pending" ? {} : (part.state.metadata ?? {})
+        const metadata = (part.state.status === "pending" ? {} : (part.state.metadata ?? {})) as Record<string, unknown>
         const childSessionID =
           part.tool === "task" && typeof metadata.sessionId === "string" ? metadata.sessionId : undefined
 
-        const expandable = (() => {
-          if (part.tool === "bash") {
-            const output = typeof metadata.output === "string" ? stripAnsi(metadata.output.trim()) : ""
-            if (!output) return false
-            return output.split("\n").length > 10
-          }
-
-          if (CUSTOM_TOOL_PARTS.has(part.tool)) return false
-          if (!showGenericToolOutput()) return false
-          if (part.state.status !== "completed") return false
-
-          const output = part.state.output.trim()
-          if (!output) return false
-          return output.split("\n").length > 3
-        })()
+        const expandable = canExpand(part, metadata, showGenericToolOutput())
 
         result.push({
           partID: part.id,
+          promptID,
           anchorID,
           kind: "tool",
           childSessionID,
@@ -515,48 +733,91 @@ export function Session() {
     return result.sort((a, b) => a.y - b.y)
   }
 
+  const historyTraceList = () => {
+    const prompts = messages().flatMap((message) => {
+      if (message.role !== "user") return []
+      return [message.id]
+    })
+    return prompts.flatMap((id) => historyTraces(id)).sort((a, b) => a.y - b.y)
+  }
+
   const focusHistoryTrace = (trace: HistoryTrace) => {
-    setHistoryPart(trace.partID)
     const child = scroll.getChildren().find((item) => item.id === trace.anchorID)
-    if (!child) return
+    if (!child) return false
+    setHistoryPrompt(trace.promptID)
+    setHistoryPart(trace.partID)
+    setTarget("timeline")
     scroll.scrollBy(child.y - scroll.y - 1)
+    return true
+  }
+
+  const focusLatestHistoryTrace = (promptID?: string) => {
+    if (!promptID) return false
+    const latest = [...historyTraceList()].reverse().find((item) => item.promptID === promptID)
+    if (!latest) return false
+    return focusHistoryTrace(latest)
   }
 
   const moveHistoryTrace = (direction: "next" | "prev") => {
-    const promptID = findCurrentVisiblePrompt()
-    if (!promptID) return
-
-    const traces = historyTraces(promptID)
-    if (traces.length === 0) return
+    const traces = historyTraceList()
+    const promptID = currentPromptID()
+    if (traces.length === 0) {
+      return focusPromptByID(promptID)
+    }
 
     const selectedID = historyPart()
-    const selected = selectedID ? traces.findIndex((item) => item.partID === selectedID) : -1
-    if (selected >= 0) {
-      const index = direction === "next" ? selected + 1 : selected - 1
-      const target = traces[index]
-      if (!target) return
-      focusHistoryTrace(target)
-      return
+    if (selectedID) {
+      const trace = traces.find((item) => item.partID === selectedID)
+      if (trace) {
+        const group = traces.filter((item) => item.promptID === trace.promptID)
+        const index = group.findIndex((item) => item.partID === selectedID)
+        if (index < 0) return false
+
+        if (direction === "next") {
+          const next = group[index + 1]
+          if (next) return focusHistoryTrace(next)
+
+          const prompts = promptIDs()
+          const promptIndex = prompts.findIndex((item) => item === trace.promptID)
+          if (promptIndex < 0) return false
+
+          const nextPrompt = prompts[promptIndex + 1]
+          if (!nextPrompt) return false
+          return focusPromptByID(nextPrompt)
+        }
+
+        const prev = group[index - 1]
+        if (prev) return focusHistoryTrace(prev)
+        return focusPromptByID(trace.promptID)
+      }
+
+      setHistoryPart(undefined)
     }
 
-    const top = scroll.y + 1
+    if (!promptID) {
+      const edge = direction === "next" ? traces[0] : traces.at(-1)
+      if (!edge) return false
+      return focusHistoryTrace(edge)
+    }
+
     if (direction === "next") {
-      const next = traces.find((item) => item.y > top)
-      if (!next) return
-      focusHistoryTrace(next)
-      return
+      const first = traces.find((item) => item.promptID === promptID)
+      if (first) return focusHistoryTrace(first)
+      return focusPromptByID(promptID)
     }
 
-    const prev = [...traces].reverse().find((item) => item.y < top)
-    if (!prev) return
-    focusHistoryTrace(prev)
+    const prompts = promptIDs()
+    const index = prompts.findIndex((item) => item === promptID)
+    if (index < 0) return false
+    const prevPrompt = prompts[index - 1]
+    if (!prevPrompt) return focusPromptByID(promptID)
+    const last = [...traces].reverse().find((item) => item.promptID === prevPrompt)
+    if (last) return focusHistoryTrace(last)
+    return focusPromptByID(prevPrompt)
   }
 
   const historyAction = () => {
-    const promptID = findCurrentVisiblePrompt()
-    if (!promptID) return
-
-    const traces = historyTraces(promptID)
+    const traces = historyTraceList()
     if (traces.length === 0) return
 
     const current = (() => {
@@ -571,19 +832,39 @@ export function Session() {
     })()
 
     if (!current) return
+    setHistoryPrompt(current.promptID)
     setHistoryPart(current.partID)
+    setTarget("timeline")
 
-    if (current.childSessionID) {
-      navigate({
-        type: "session",
-        sessionID: current.childSessionID,
-      })
+    if (current.expandable) {
+      toggleToolExpanded(current.partID)
       return
     }
 
-    if (!current.expandable) return
-    toggleToolExpanded(current.partID)
+    if (!current.childSessionID) return
+    navigate({
+      type: "session",
+      sessionID: current.childSessionID,
+      source: "child",
+    })
   }
+
+  createEffect(() => {
+    if (!history()) return
+    if (!scroll || scroll.isDestroyed) return
+
+    const traces = historyTraceList()
+    const prompts = promptIDs()
+    const selectedPart = historyPart()
+    if (selectedPart && !traces.some((item) => item.partID === selectedPart)) {
+      setHistoryPart(undefined)
+    }
+
+    const selectedPrompt = historyPrompt()
+    if (selectedPrompt && !prompts.includes(selectedPrompt)) {
+      setHistoryPrompt(prompts.at(-1))
+    }
+  })
 
   // Helper: Find next visible message boundary in direction
   const findNextVisibleMessage = (direction: "next" | "prev"): string | null => {
@@ -647,6 +928,7 @@ export function Session() {
       navigate({
         type: "session",
         sessionID: next.id,
+        source: "child",
       })
     }
   }
@@ -663,6 +945,7 @@ export function Session() {
       navigate({
         type: "session",
         sessionID: sessions[next].id,
+        source: "child",
       })
     }
   }
@@ -773,6 +1056,52 @@ export function Session() {
       onSelect: (dialog) => {
         toggleHistoryMode()
         dialog.clear()
+      },
+    },
+    {
+      title: "History previous prompt",
+      value: "session.history.previous",
+      category: "Session",
+      hidden: true,
+      enabled: history(),
+      onSelect: () => {
+        scrollToPrompt("prev")
+      },
+    },
+    {
+      title: "History next prompt",
+      value: "session.history.next",
+      category: "Session",
+      hidden: true,
+      enabled: history(),
+      onSelect: () => {
+        if (!scrollToPrompt("next")) focusPrompt()
+      },
+    },
+    {
+      title: "History previous trace",
+      value: "session.history.left",
+      category: "Session",
+      hidden: true,
+      enabled: history(),
+      onSelect: () => {
+        if (target() === "prompt") {
+          const latestPrompt = promptIDs().at(-1)
+          if (!focusLatestHistoryTrace(latestPrompt)) focusPromptByID(latestPrompt)
+          return
+        }
+        if (!moveHistoryTrace("prev")) focusPromptByID(currentPromptID())
+      },
+    },
+    {
+      title: "History next trace",
+      value: "session.history.right",
+      category: "Session",
+      hidden: true,
+      enabled: history(),
+      onSelect: () => {
+        if (target() === "prompt") return
+        if (!moveHistoryTrace("next") && !busy()) focusPrompt()
       },
     },
     {
@@ -1269,6 +1598,7 @@ export function Session() {
           navigate({
             type: "session",
             sessionID: parentID,
+            source: "switch",
           })
         }
         dialog.clear()
@@ -1363,6 +1693,8 @@ export function Session() {
         showDetails,
         showGenericToolOutput,
         isHistoryPartSelected,
+        isHistoryPromptSelected,
+        isHistoryTimeline,
         diffWrapMode,
         isToolExpanded,
         toggleToolExpanded,
@@ -1371,152 +1703,162 @@ export function Session() {
       }}
     >
       <box flexDirection="row">
-        <box flexGrow={1} paddingBottom={1} paddingTop={1} paddingLeft={2} paddingRight={2} gap={1}>
-          <Show when={session()}>
-            <Show when={showHeader() && (!sidebarVisible() || !wide())}>
-              <Header />
-            </Show>
-            <scrollbox
-              ref={(r) => (scroll = r)}
-              viewportOptions={{
-                paddingRight: showScrollbar() ? 1 : 0,
-              }}
-              verticalScrollbarOptions={{
-                paddingLeft: 1,
-                visible: showScrollbar(),
-                trackOptions: {
-                  backgroundColor: theme.backgroundElement,
-                  foregroundColor: theme.border,
-                },
-              }}
-              stickyScroll={true}
-              stickyStart="bottom"
-              flexGrow={1}
-              scrollAcceleration={scrollAcceleration()}
-            >
-              <For each={messages()}>
-                {(message, index) => (
-                  <Switch>
-                    <Match when={message.id === revert()?.messageID}>
-                      {(function () {
-                        const command = useCommandDialog()
-                        const [hover, setHover] = createSignal(false)
-                        const dialog = useDialog()
+        <box flexGrow={1}>
+          <SessionStrip />
+          <box flexGrow={1} paddingTop={1} paddingLeft={2} paddingRight={2} gap={1}>
+            <Show when={session()}>
+              <Show when={showHeader() && (!sidebarVisible() || !wide())}>
+                <Header />
+              </Show>
+              <scrollbox
+                ref={(r) => (scroll = r)}
+                viewportOptions={{
+                  paddingRight: showScrollbar() ? 1 : 0,
+                }}
+                verticalScrollbarOptions={{
+                  paddingLeft: 1,
+                  visible: showScrollbar(),
+                  trackOptions: {
+                    backgroundColor: theme.backgroundElement,
+                    foregroundColor: theme.border,
+                  },
+                }}
+                stickyScroll={follow()}
+                stickyStart="bottom"
+                flexGrow={1}
+                scrollAcceleration={scrollAcceleration()}
+              >
+                <For each={messages()}>
+                  {(message, index) => (
+                    <Switch>
+                      <Match when={message.id === revert()?.messageID}>
+                        {(function () {
+                          const command = useCommandDialog()
+                          const [hover, setHover] = createSignal(false)
+                          const dialog = useDialog()
 
-                        const handleUnrevert = async () => {
-                          const confirmed = await DialogConfirm.show(
-                            dialog,
-                            "Confirm Redo",
-                            "Are you sure you want to restore the reverted messages?",
-                          )
-                          if (confirmed) {
-                            command.trigger("session.redo")
+                          const handleUnrevert = async () => {
+                            const confirmed = await DialogConfirm.show(
+                              dialog,
+                              "Confirm Redo",
+                              "Are you sure you want to restore the reverted messages?",
+                            )
+                            if (confirmed) {
+                              command.trigger("session.redo")
+                            }
                           }
-                        }
 
-                        return (
-                          <box
-                            onMouseOver={() => setHover(true)}
-                            onMouseOut={() => setHover(false)}
-                            onMouseUp={handleUnrevert}
-                            marginTop={1}
-                            flexShrink={0}
-                            border={["left"]}
-                            customBorderChars={SplitBorder.customBorderChars}
-                            borderColor={theme.backgroundPanel}
-                          >
+                          return (
                             <box
-                              paddingTop={1}
-                              paddingBottom={1}
-                              paddingLeft={2}
-                              backgroundColor={hover() ? theme.backgroundElement : theme.backgroundPanel}
+                              onMouseOver={() => setHover(true)}
+                              onMouseOut={() => setHover(false)}
+                              onMouseUp={handleUnrevert}
+                              marginTop={1}
+                              flexShrink={0}
+                              border={["left"]}
+                              customBorderChars={SplitBorder.customBorderChars}
+                              borderColor={theme.backgroundPanel}
                             >
-                              <text fg={theme.textMuted}>{revert()!.reverted.length} message reverted</text>
-                              <text fg={theme.textMuted}>
-                                <span style={{ fg: theme.text }}>{keybind.print("messages_redo")}</span> or /redo to
-                                restore
-                              </text>
-                              <Show when={revert()!.diffFiles?.length}>
-                                <box marginTop={1}>
-                                  <For each={revert()!.diffFiles}>
-                                    {(file) => (
-                                      <text fg={theme.text}>
-                                        {file.filename}
-                                        <Show when={file.additions > 0}>
-                                          <span style={{ fg: theme.diffAdded }}> +{file.additions}</span>
-                                        </Show>
-                                        <Show when={file.deletions > 0}>
-                                          <span style={{ fg: theme.diffRemoved }}> -{file.deletions}</span>
-                                        </Show>
-                                      </text>
-                                    )}
-                                  </For>
-                                </box>
-                              </Show>
+                              <box
+                                paddingTop={1}
+                                paddingBottom={1}
+                                paddingLeft={2}
+                                backgroundColor={hover() ? theme.backgroundElement : theme.backgroundPanel}
+                              >
+                                <text fg={theme.textMuted}>{revert()!.reverted.length} message reverted</text>
+                                <text fg={theme.textMuted}>
+                                  <span style={{ fg: theme.text }}>{keybind.print("messages_redo")}</span> or /redo to
+                                  restore
+                                </text>
+                                <Show when={revert()!.diffFiles?.length}>
+                                  <box marginTop={1}>
+                                    <For each={revert()!.diffFiles}>
+                                      {(file) => (
+                                        <text fg={theme.text}>
+                                          {file.filename}
+                                          <Show when={file.additions > 0}>
+                                            <span style={{ fg: theme.diffAdded }}> +{file.additions}</span>
+                                          </Show>
+                                          <Show when={file.deletions > 0}>
+                                            <span style={{ fg: theme.diffRemoved }}> -{file.deletions}</span>
+                                          </Show>
+                                        </text>
+                                      )}
+                                    </For>
+                                  </box>
+                                </Show>
+                              </box>
                             </box>
-                          </box>
-                        )
-                      })()}
-                    </Match>
-                    <Match when={revert()?.messageID && message.id >= revert()!.messageID}>
-                      <></>
-                    </Match>
-                    <Match when={message.role === "user"}>
-                      <UserMessage
-                        index={index()}
-                        onMouseUp={() => {
-                          if (renderer.getSelection()?.getSelectedText()) return
-                          dialog.replace(() => (
-                            <DialogMessage
-                              messageID={message.id}
-                              sessionID={route.sessionID}
-                              setPrompt={(promptInfo) => prompt.set(promptInfo)}
-                            />
-                          ))
-                        }}
-                        message={message as UserMessage}
-                        parts={sync.data.part[message.id] ?? []}
-                        pending={pending()}
-                      />
-                    </Match>
-                    <Match when={message.role === "assistant"}>
-                      <AssistantMessage
-                        last={lastAssistant()?.id === message.id}
-                        message={message as AssistantMessage}
-                        parts={sync.data.part[message.id] ?? []}
-                      />
-                    </Match>
-                  </Switch>
-                )}
-              </For>
-            </scrollbox>
-            <box flexShrink={0}>
-              <Show when={permissions().length > 0}>
-                <PermissionPrompt request={permissions()[0]} />
-              </Show>
-              <Show when={permissions().length === 0 && questions().length > 0}>
-                <QuestionPrompt request={questions()[0]} />
-              </Show>
-              <Prompt
-                visible={!session()?.parentID && permissions().length === 0 && questions().length === 0}
-                historyMode={history()}
-                ref={(r) => {
-                  prompt = r
-                  promptRef.set(r)
-                  // Apply initial prompt when prompt component mounts (e.g., from fork)
-                  if (route.initialPrompt) {
-                    r.set(route.initialPrompt)
-                  }
-                }}
-                disabled={permissions().length > 0 || questions().length > 0}
-                onSubmit={() => {
-                  toBottom()
-                }}
-                sessionID={route.sessionID}
-              />
-            </box>
-          </Show>
-          <Toast />
+                          )
+                        })()}
+                      </Match>
+                      <Match when={revert()?.messageID && message.id >= revert()!.messageID}>
+                        <></>
+                      </Match>
+                      <Match when={message.role === "user"}>
+                        <UserMessage
+                          index={index()}
+                          onMouseUp={() => {
+                            if (renderer.getSelection()?.getSelectedText()) return
+                            dialog.replace(() => (
+                              <DialogMessage
+                                messageID={message.id}
+                                sessionID={route.sessionID}
+                                setPrompt={(promptInfo) => prompt.set(promptInfo)}
+                              />
+                            ))
+                          }}
+                          message={message as UserMessage}
+                          parts={sync.data.part[message.id] ?? []}
+                          pending={pending()}
+                        />
+                      </Match>
+                      <Match when={message.role === "assistant"}>
+                        <AssistantMessage
+                          last={lastAssistant()?.id === message.id}
+                          message={message as AssistantMessage}
+                          parts={sync.data.part[message.id] ?? []}
+                        />
+                      </Match>
+                    </Switch>
+                  )}
+                </For>
+              </scrollbox>
+              <box flexShrink={0}>
+                <Show when={permissions().length > 0}>
+                  <PermissionPrompt request={permissions()[0]} />
+                </Show>
+                <Show when={permissions().length === 0 && questions().length > 0}>
+                  <QuestionPrompt request={questions()[0]} />
+                </Show>
+                <PromptQueuePanel sessionID={route.sessionID} />
+                <Prompt
+                  visible={!session()?.parentID && permissions().length === 0 && questions().length === 0}
+                  historyMode={history()}
+                  historyTarget={target()}
+                  onFocus={() => {
+                    setHistoryPart(undefined)
+                    setHistoryPrompt(undefined)
+                    setTarget("prompt")
+                  }}
+                  ref={(r) => {
+                    prompt = r
+                    promptRef.set(r)
+                    // Apply initial prompt when prompt component mounts (e.g., from fork)
+                    if (route.initialPrompt) {
+                      r.set(route.initialPrompt)
+                    }
+                  }}
+                  disabled={permissions().length > 0 || questions().length > 0}
+                  onSubmit={() => {
+                    toBottom()
+                  }}
+                  sessionID={route.sessionID}
+                />
+              </box>
+            </Show>
+            <Toast />
+          </box>
         </box>
         <Show when={sidebarVisible()}>
           <Switch>
@@ -1543,6 +1885,175 @@ export function Session() {
   )
 }
 
+type QueueRow = {
+  id: string
+  label: string
+  mode: "normal" | "shell"
+  agent: string
+  summary: string
+  detail?: string
+}
+
+const initial = (value: string) => value.trim().charAt(0).toUpperCase() || "?"
+
+function PromptQueuePanel(props: { sessionID: string }) {
+  const local = useLocal()
+  const { theme } = useTheme()
+  const renderer = useRenderer()
+  const [store, setStore] = createStore({
+    active: undefined as PromptQueueItem | undefined,
+    queue: [] as PromptQueueItem[],
+    collapsed: false,
+  })
+
+  const sync = () => {
+    const next = promptQueue.snapshot(props.sessionID)
+    setStore("active", next.active)
+    setStore("queue", next.queue)
+  }
+
+  createEffect(on(() => props.sessionID, sync))
+
+  const off = promptQueue.subscribe((key: string) => {
+    if (key !== props.sessionID) return
+    sync()
+  })
+
+  onCleanup(off)
+
+  const rows = createMemo<QueueRow[]>(() => {
+    const active = store.active
+      ? [
+          {
+            id: store.active.id,
+            label: "Active",
+            mode: store.active.mode,
+            agent: store.active.agent,
+            summary: store.active.summary,
+            detail: store.active.detail,
+          },
+        ]
+      : []
+
+    return [
+      ...active,
+      ...store.queue.map((item: PromptQueueItem) => ({
+        id: item.id,
+        label: "Queued",
+        mode: item.mode,
+        agent: item.agent,
+        summary: item.summary,
+        detail: item.detail,
+      })),
+    ]
+  })
+
+  const visible = createMemo(() => rows().slice(0, QUEUE_VISIBLE_ITEMS))
+  const hidden = createMemo(() => Math.max(0, rows().length - QUEUE_VISIBLE_ITEMS))
+  const preview = createMemo(() => {
+    const text = store.active?.summary ?? store.queue[0]?.summary ?? ""
+    if (text.length <= 48) return text
+    return text.slice(0, 45).trimEnd() + "..."
+  })
+
+  const color = (item: QueueRow) => (item.mode === "shell" ? theme.primary : local.agent.color(item.agent))
+
+  const toggle = () => {
+    setStore("collapsed", (value) => !value)
+  }
+
+  const clear = () => {
+    promptQueue.clear(props.sessionID)
+  }
+
+  const remove = (id: string) => {
+    promptQueue.remove(props.sessionID, (item) => item.id === id)
+  }
+
+  return (
+    <Show when={store.queue.length > 0}>
+      <box
+        backgroundColor={theme.backgroundPanel}
+        marginBottom={1}
+        paddingTop={1}
+        paddingBottom={1}
+        paddingLeft={2}
+        gap={1}
+      >
+        <box paddingLeft={3} paddingRight={3} flexDirection="row" justifyContent="space-between">
+          <box
+            flexDirection="row"
+            gap={2}
+            onMouseUp={() => {
+              if (renderer.getSelection()?.getSelectedText()) return
+              toggle()
+            }}
+          >
+            <text fg={theme.textMuted}># Queue</text>
+            <Show when={store.collapsed && preview()}>
+              <text fg={theme.text}>{preview()}</text>
+            </Show>
+            <text fg={theme.textMuted}>{store.collapsed ? "Click to expand" : "Click to collapse"}</text>
+          </box>
+          <Show when={store.queue.length > 0}>
+            <box
+              onMouseUp={(evt) => {
+                evt.stopPropagation()
+                clear()
+              }}
+            >
+              <text fg={theme.textMuted}>Clear queue</text>
+            </box>
+          </Show>
+        </box>
+        <Show when={!store.collapsed}>
+          <box paddingLeft={3} paddingRight={3} flexDirection="column">
+            <For each={visible()}>
+              {(item: QueueRow) => {
+                const bg = createMemo(() => color(item))
+                const fg = createMemo(() => selectedForeground(theme, bg()))
+                return (
+                  <box
+                    flexDirection="column"
+                    border={["left"]}
+                    customBorderChars={SplitBorder.customBorderChars}
+                    borderColor={color(item)}
+                    paddingLeft={2}
+                  >
+                    <box flexDirection="row" justifyContent="space-between">
+                      <text fg={theme.text}>
+                        <span style={{ bg: bg(), fg: fg(), bold: true }}> {item.label} </span>
+                        <span style={{ fg: bg(), bold: true }}> {initial(item.agent)} </span>
+                        <span> {item.summary}</span>
+                      </text>
+                      <Show when={item.label === "Queued"}>
+                        <box
+                          onMouseUp={(evt) => {
+                            evt.stopPropagation()
+                            remove(item.id)
+                          }}
+                        >
+                          <text fg={theme.textMuted}>remove</text>
+                        </box>
+                      </Show>
+                    </box>
+                    <Show when={item.detail}>
+                      <text fg={theme.textMuted}>{item.detail}</text>
+                    </Show>
+                  </box>
+                )
+              }}
+            </For>
+            <Show when={hidden() > 0}>
+              <text fg={theme.textMuted}>... {hidden()} more</text>
+            </Show>
+          </box>
+        </Show>
+      </box>
+    </Show>
+  )
+}
+
 const MIME_BADGE: Record<string, string> = {
   "text/plain": "txt",
   "image/png": "img",
@@ -1565,10 +2076,13 @@ function UserMessage(props: {
   const text = createMemo(() => props.parts.flatMap((x) => (x.type === "text" && !x.synthetic ? [x] : []))[0])
   const files = createMemo(() => props.parts.flatMap((x) => (x.type === "file" ? [x] : [])))
   const sync = useSync()
-  const { theme } = useTheme()
+  const { theme, syntax } = useTheme()
+  const segments = createMemo(() => segmentRichText(text()?.text ?? ""))
   const [hover, setHover] = createSignal(false)
   const queued = createMemo(() => props.pending && props.message.id > props.pending)
   const color = createMemo(() => local.agent.color(props.message.agent))
+  const selected = createMemo(() => ctx.isHistoryPromptSelected(props.message.id))
+  const border = createMemo(() => (selected() ? tint(theme.borderActive, theme.primary, 0.4) : color()))
   const queuedFg = createMemo(() => selectedForeground(theme, color()))
   const metadataVisible = createMemo(() => queued() || ctx.showTimestamps())
 
@@ -1580,7 +2094,7 @@ function UserMessage(props: {
         <box
           id={props.message.id}
           border={["left"]}
-          borderColor={color()}
+          borderColor={border()}
           customBorderChars={SplitBorder.customBorderChars}
           marginTop={props.index === 0 ? 0 : 1}
         >
@@ -1598,7 +2112,7 @@ function UserMessage(props: {
             backgroundColor={hover() ? theme.backgroundElement : theme.backgroundPanel}
             flexShrink={0}
           >
-            <text fg={theme.text}>{text()?.text}</text>
+            <RichSegments conceal={ctx.conceal()} segments={segments()} syntaxStyle={syntax()} text={theme.text} />
             <Show when={files().length}>
               <box flexDirection="row" paddingBottom={metadataVisible() ? 1 : 0} paddingTop={1} gap={1} flexWrap="wrap">
                 <For each={files()}>
@@ -1736,13 +2250,23 @@ const PART_MAPPING = {
 }
 
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
+  const renderer = useRenderer()
   const { theme, subtleSyntax } = useTheme()
   const ctx = use()
+  const [hover, setHover] = createSignal(false)
+  const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
   const content = createMemo(() => {
     // Filter out redacted reasoning chunks from OpenRouter
     // OpenRouter sends encrypted reasoning data that appears as [REDACTED]
     return props.part.text.replace("[REDACTED]", "").trim()
   })
+  const overflow = createMemo(() => canExpandReasoning(content()))
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return content()
+    return clip(content(), REASONING_EXPAND_LINES)
+  })
+
   return (
     <Show when={content() && ctx.showThinking()}>
       <box
@@ -1752,17 +2276,30 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         flexDirection="column"
         border={["left"]}
         customBorderChars={SplitBorder.customBorderChars}
-        borderColor={theme.backgroundElement}
+        borderColor={selected() ? theme.textMuted : theme.backgroundElement}
+        backgroundColor={hover() ? theme.backgroundPanel : undefined}
+        onMouseOver={() => overflow() && setHover(true)}
+        onMouseOut={() => setHover(false)}
+        onMouseUp={() => {
+          if (!overflow()) return
+          if (renderer.getSelection()?.getSelectedText()) return
+          ctx.toggleToolExpanded(props.part.id)
+        }}
       >
         <code
           filetype="markdown"
           drawUnstyledText={false}
           streaming={true}
           syntaxStyle={subtleSyntax()}
-          content={"_Thinking:_ " + content()}
+          content={"_Thinking:_ " + limited()}
           conceal={ctx.conceal()}
           fg={theme.textMuted}
         />
+        <Show when={overflow()}>
+          <text fg={theme.textMuted} paddingLeft={3}>
+            {expanded() ? "Click to collapse" : "Click to expand"}
+          </text>
+        </Show>
       </box>
     </Show>
   )
@@ -1771,30 +2308,21 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { theme, syntax } = useTheme()
+  const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
+  const segments = createMemo(() => segmentRichText(props.part.text.trim()))
   return (
     <Show when={props.part.text.trim()}>
-      <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
-        <Switch>
-          <Match when={Flag.SLOPCODE_EXPERIMENTAL_MARKDOWN}>
-            <markdown
-              syntaxStyle={syntax()}
-              streaming={true}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-            />
-          </Match>
-          <Match when={!Flag.SLOPCODE_EXPERIMENTAL_MARKDOWN}>
-            <code
-              filetype="markdown"
-              drawUnstyledText={false}
-              streaming={true}
-              syntaxStyle={syntax()}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.text}
-            />
-          </Match>
-        </Switch>
+      <box
+        id={"text-" + props.part.id}
+        paddingLeft={2}
+        marginTop={1}
+        flexShrink={0}
+        border={["left"]}
+        customBorderChars={SplitBorder.customBorderChars}
+        borderColor={selected() ? theme.textMuted : theme.background}
+        backgroundColor={selected() ? theme.backgroundElement : undefined}
+      >
+        <RichSegments conceal={ctx.conceal()} segments={segments()} syntaxStyle={syntax()} text={theme.text} />
       </box>
     </Show>
   )
@@ -1905,12 +2433,11 @@ function GenericTool(props: ToolProps<any>) {
   const ctx = use()
   const output = createMemo(() => props.output?.trim() ?? "")
   const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
-  const lines = createMemo(() => output().split("\n"))
-  const maxLines = 3
-  const overflow = createMemo(() => lines().length > maxLines)
+  const list = createMemo(() => output().split("\n"))
+  const overflow = createMemo(() => list().length > GENERIC_EXPAND_LINES)
   const limited = createMemo(() => {
     if (expanded() || !overflow()) return output()
-    return [...lines().slice(0, maxLines), "…"].join("\n")
+    return [...list().slice(0, GENERIC_EXPAND_LINES), "…"].join("\n")
   })
 
   return (
@@ -1956,8 +2483,11 @@ function InlineTool(props: {
   pending: string
   children: JSX.Element
   part: ToolPart
+  onClick?: () => void
 }) {
+  const renderer = useRenderer()
   const [margin, setMargin] = createSignal(0)
+  const [hover, setHover] = createSignal(false)
   const { theme } = useTheme()
   const ctx = use()
   const sync = useSync()
@@ -1993,6 +2523,13 @@ function InlineTool(props: {
       borderColor={selected() ? theme.textMuted : theme.background}
       customBorderChars={SplitBorder.customBorderChars}
       paddingLeft={2}
+      backgroundColor={hover() ? theme.backgroundMenu : undefined}
+      onMouseOver={() => props.onClick && setHover(true)}
+      onMouseOut={() => setHover(false)}
+      onMouseUp={() => {
+        if (renderer.getSelection()?.getSelectedText()) return
+        props.onClick?.()
+      }}
       renderBefore={function () {
         const el = this as BoxRenderable
         const parent = el.parent
@@ -2078,19 +2615,76 @@ function BlockTool(props: {
   )
 }
 
-function Bash(props: ToolProps<typeof BashTool>) {
+function ExpandableOutputTool(props: {
+  icon: string
+  pending: string
+  complete: any
+  title: string
+  summary: JSX.Element
+  output?: string
+  part: ToolPart
+  limit?: number
+}) {
   const { theme } = useTheme()
+  const ctx = use()
+  const output = createMemo(() => props.output?.trim() ?? "")
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const limit = createMemo(() => props.limit ?? OUTPUT_EXPAND_LINES)
+  const overflow = createMemo(() => lines(output()) > limit())
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return output()
+    return clip(output(), limit())
+  })
+
+  return (
+    <Switch>
+      <Match when={props.output !== undefined && expanded()}>
+        <BlockTool
+          title={props.title}
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
+          <box gap={1}>
+            <text fg={theme.text}>{limited()}</text>
+            <Show when={overflow()}>
+              <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
+            </Show>
+          </box>
+        </BlockTool>
+      </Match>
+      <Match when={true}>
+        <InlineTool
+          icon={props.icon}
+          pending={props.pending}
+          complete={props.complete}
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
+          {props.summary}
+          <Show when={overflow()}>
+            <span style={{ fg: theme.textMuted }}> (click to expand)</span>
+          </Show>
+        </InlineTool>
+      </Match>
+    </Switch>
+  )
+}
+
+function Bash(props: ToolProps<typeof BashTool>) {
+  const { theme, syntax } = useTheme()
   const ctx = use()
   const sync = useSync()
   const isRunning = createMemo(() => props.part.state.status === "running")
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
   const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
-  const lines = createMemo(() => output().split("\n"))
-  const overflow = createMemo(() => lines().length > 10)
+  const list = createMemo(() => output().split("\n"))
+  const overflow = createMemo(() => list().length > BASH_EXPAND_LINES)
   const limited = createMemo(() => {
     if (expanded() || !overflow()) return output()
-    return [...lines().slice(0, 10), "…"].join("\n")
+    return [...list().slice(0, BASH_EXPAND_LINES), "…"].join("\n")
   })
+  const commandSegments = createMemo(() => segmentRichText(`$ ${props.input.command ?? ""}`))
+  const outputSegments = createMemo(() => segmentRichText(limited()))
 
   const workdirDisplay = createMemo(() => {
     const workdir = props.input.workdir
@@ -2126,10 +2720,20 @@ function Bash(props: ToolProps<typeof BashTool>) {
           spinner={isRunning()}
           onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
         >
-          <box gap={1}>
-            <text fg={theme.text}>$ {props.input.command}</text>
+          <box gap={1} flexDirection="column">
+            <RichSegments
+              conceal={ctx.conceal()}
+              segments={commandSegments()}
+              syntaxStyle={syntax()}
+              text={theme.text}
+            />
             <Show when={output()}>
-              <text fg={theme.text}>{limited()}</text>
+              <RichSegments
+                conceal={ctx.conceal()}
+                segments={outputSegments()}
+                syntaxStyle={syntax()}
+                text={theme.text}
+              />
             </Show>
             <Show when={overflow()}>
               <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
@@ -2147,25 +2751,41 @@ function Bash(props: ToolProps<typeof BashTool>) {
 }
 
 function Write(props: ToolProps<typeof WriteTool>) {
+  const ctx = use()
   const { theme, syntax } = useTheme()
   const code = createMemo(() => {
     if (!props.input.content) return ""
     return props.input.content
   })
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const overflow = createMemo(() => lines(code()) > WRITE_EXPAND_LINES)
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return code()
+    return clip(code(), WRITE_EXPAND_LINES)
+  })
 
   return (
     <Switch>
       <Match when={props.metadata.diagnostics !== undefined}>
-        <BlockTool title={"# Wrote " + normalizePath(props.input.filePath!)} part={props.part}>
+        <BlockTool
+          title={"# Wrote " + normalizePath(props.input.filePath!)}
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
           <line_number fg={theme.textMuted} minWidth={3} paddingRight={1}>
             <code
               conceal={false}
               fg={theme.text}
               filetype={filetype(props.input.filePath!)}
               syntaxStyle={syntax()}
-              content={code()}
+              content={limited()}
             />
           </line_number>
+          <Show when={overflow()}>
+            <text fg={theme.textMuted} paddingLeft={3}>
+              {expanded() ? "Click to collapse" : "Click to expand"}
+            </text>
+          </Show>
           <Diagnostics diagnostics={props.metadata.diagnostics} filePath={props.input.filePath ?? ""} />
         </BlockTool>
       </Match>
@@ -2180,12 +2800,22 @@ function Write(props: ToolProps<typeof WriteTool>) {
 
 function Glob(props: ToolProps<typeof GlobTool>) {
   return (
-    <InlineTool icon="✱" pending="Finding files..." complete={props.input.pattern} part={props.part}>
-      Glob "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
-      <Show when={props.metadata.count}>
-        ({props.metadata.count} {props.metadata.count === 1 ? "match" : "matches"})
-      </Show>
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="✱"
+      pending="Finding files..."
+      complete={props.input.pattern}
+      title={`# Glob "${props.input.pattern}"${props.input.path ? ` in ${normalizePath(props.input.path)}` : ""}`}
+      output={props.output}
+      part={props.part}
+      summary={
+        <>
+          Glob "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
+          <Show when={props.metadata.count}>
+            ({props.metadata.count} {props.metadata.count === 1 ? "match" : "matches"})
+          </Show>
+        </>
+      }
+    />
   )
 }
 
@@ -2200,9 +2830,19 @@ function Read(props: ToolProps<typeof ReadTool>) {
   })
   return (
     <>
-      <InlineTool icon="→" pending="Reading file..." complete={props.input.filePath} part={props.part}>
-        Read {normalizePath(props.input.filePath!)} {input(props.input, ["filePath"])}
-      </InlineTool>
+      <ExpandableOutputTool
+        icon="→"
+        pending="Reading file..."
+        complete={props.input.filePath}
+        title={"# Read " + normalizePath(props.input.filePath!)}
+        output={props.output}
+        part={props.part}
+        summary={
+          <>
+            Read {normalizePath(props.input.filePath!)} {input(props.input, ["filePath"])}
+          </>
+        }
+      />
       <For each={loaded()}>
         {(filepath) => (
           <box paddingLeft={3}>
@@ -2218,12 +2858,22 @@ function Read(props: ToolProps<typeof ReadTool>) {
 
 function Grep(props: ToolProps<typeof GrepTool>) {
   return (
-    <InlineTool icon="✱" pending="Searching content..." complete={props.input.pattern} part={props.part}>
-      Grep "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
-      <Show when={props.metadata.matches}>
-        ({props.metadata.matches} {props.metadata.matches === 1 ? "match" : "matches"})
-      </Show>
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="✱"
+      pending="Searching content..."
+      complete={props.input.pattern}
+      title={`# Grep "${props.input.pattern}"${props.input.path ? ` in ${normalizePath(props.input.path)}` : ""}`}
+      output={props.output}
+      part={props.part}
+      summary={
+        <>
+          Grep "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
+          <Show when={props.metadata.matches}>
+            ({props.metadata.matches} {props.metadata.matches === 1 ? "match" : "matches"})
+          </Show>
+        </>
+      }
+    />
   )
 }
 
@@ -2235,17 +2885,30 @@ function List(props: ToolProps<typeof ListTool>) {
     return ""
   })
   return (
-    <InlineTool icon="→" pending="Listing directory..." complete={props.input.path !== undefined} part={props.part}>
-      List {dir()}
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="→"
+      pending="Listing directory..."
+      complete={props.input.path !== undefined}
+      title={"# List " + dir()}
+      output={props.output}
+      part={props.part}
+      summary={<>List {dir()}</>}
+    />
   )
 }
 
 function WebFetch(props: ToolProps<typeof WebFetchTool>) {
+  const input = props.input as any
   return (
-    <InlineTool icon="%" pending="Fetching from the web..." complete={(props.input as any).url} part={props.part}>
-      WebFetch {(props.input as any).url}
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="%"
+      pending="Fetching from the web..."
+      complete={input.url}
+      title={`# WebFetch ${input.url}`}
+      output={props.output}
+      part={props.part}
+      summary={<>WebFetch {input.url}</>}
+    />
   )
 }
 
@@ -2253,9 +2916,19 @@ function CodeSearch(props: ToolProps<any>) {
   const input = props.input as any
   const metadata = props.metadata as any
   return (
-    <InlineTool icon="◇" pending="Searching code..." complete={input.query} part={props.part}>
-      Exa Code Search "{input.query}" <Show when={metadata.results}>({metadata.results} results)</Show>
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="◇"
+      pending="Searching code..."
+      complete={input.query}
+      title={`# Exa Code Search "${input.query}"`}
+      output={props.output}
+      part={props.part}
+      summary={
+        <>
+          Exa Code Search "{input.query}" <Show when={metadata.results}>({metadata.results} results)</Show>
+        </>
+      }
+    />
   )
 }
 
@@ -2263,13 +2936,24 @@ function WebSearch(props: ToolProps<any>) {
   const input = props.input as any
   const metadata = props.metadata as any
   return (
-    <InlineTool icon="◈" pending="Searching web..." complete={input.query} part={props.part}>
-      Exa Web Search "{input.query}" <Show when={metadata.numResults}>({metadata.numResults} results)</Show>
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="◈"
+      pending="Searching web..."
+      complete={input.query}
+      title={`# Exa Web Search "${input.query}"`}
+      output={props.output}
+      part={props.part}
+      summary={
+        <>
+          Exa Web Search "{input.query}" <Show when={metadata.numResults}>({metadata.numResults} results)</Show>
+        </>
+      }
+    />
   )
 }
 
 function Task(props: ToolProps<typeof TaskTool>) {
+  const ctx = use()
   const { theme } = useTheme()
   const keybind = useKeybind()
   const { navigate } = useRoute()
@@ -2287,8 +2971,19 @@ function Task(props: ToolProps<typeof TaskTool>) {
   })
 
   const current = createMemo(() => tools().findLast((x) => x.state.status !== "pending"))
-
   const isRunning = createMemo(() => props.part.state.status === "running")
+  const output = createMemo(() => props.output?.trim() ?? "")
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const overflow = createMemo(() => lines(output()) > OUTPUT_EXPAND_LINES)
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return output()
+    return clip(output(), OUTPUT_EXPAND_LINES)
+  })
+
+  const open = () => {
+    if (!props.metadata.sessionId) return
+    navigate({ type: "session", sessionID: props.metadata.sessionId, source: "switch" })
+  }
 
   return (
     <Switch>
@@ -2296,14 +2991,12 @@ function Task(props: ToolProps<typeof TaskTool>) {
         <BlockTool
           title={"# " + Locale.titlecase(props.input.subagent_type ?? "unknown") + " Task"}
           onClick={
-            props.metadata.sessionId
-              ? () => navigate({ type: "session", sessionID: props.metadata.sessionId! })
-              : undefined
+            overflow() ? () => ctx.toggleToolExpanded(props.part.id) : props.metadata.sessionId ? open : undefined
           }
           part={props.part}
           spinner={isRunning()}
         >
-          <box>
+          <box gap={1}>
             <text style={{ fg: theme.textMuted }}>
               {props.input.description} ({tools().length} toolcalls)
             </text>
@@ -2316,6 +3009,12 @@ function Task(props: ToolProps<typeof TaskTool>) {
                   </text>
                 )
               }}
+            </Show>
+            <Show when={expanded() && output()}>
+              <text style={{ fg: theme.text }}>{limited()}</text>
+            </Show>
+            <Show when={overflow()}>
+              <text style={{ fg: theme.textMuted }}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
             </Show>
           </box>
           <Show when={props.metadata.sessionId}>
@@ -2342,21 +3041,29 @@ function Edit(props: ToolProps<typeof EditTool>) {
   const view = createMemo(() => {
     const diffStyle = ctx.tui.diff_style
     if (diffStyle === "stacked") return "unified"
-    // Default to "auto" behavior
     return ctx.width > 120 ? "split" : "unified"
   })
 
   const ft = createMemo(() => filetype(props.input.filePath))
-
-  const diffContent = createMemo(() => props.metadata.diff)
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const diff = createMemo(() => props.metadata.diff?.trim() ?? "")
+  const overflow = createMemo(() => lines(diff()) > EDIT_EXPAND_LINES)
+  const limited = createMemo(() => {
+    if (expanded() || !overflow()) return diff()
+    return clip(diff(), EDIT_EXPAND_LINES)
+  })
 
   return (
     <Switch>
       <Match when={props.metadata.diff !== undefined}>
-        <BlockTool title={"← Edit " + normalizePath(props.input.filePath!)} part={props.part}>
+        <BlockTool
+          title={"← Edit " + normalizePath(props.input.filePath!)}
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
           <box paddingLeft={1}>
             <diff
-              diff={diffContent()}
+              diff={limited()}
               view={view()}
               filetype={ft()}
               syntaxStyle={syntax()}
@@ -2375,6 +3082,11 @@ function Edit(props: ToolProps<typeof EditTool>) {
               removedLineNumberBg={theme.diffRemovedLineNumberBg}
             />
           </box>
+          <Show when={overflow()}>
+            <text fg={theme.textMuted} paddingLeft={3}>
+              {expanded() ? "Click to collapse" : "Click to expand"}
+            </text>
+          </Show>
           <Diagnostics diagnostics={props.metadata.diagnostics} filePath={props.input.filePath ?? ""} />
         </BlockTool>
       </Match>
@@ -2392,6 +3104,12 @@ function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
   const { theme, syntax } = useTheme()
 
   const files = createMemo(() => props.metadata.files ?? [])
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const overflow = createMemo(
+    () =>
+      files().reduce((sum, file) => sum + lines(typeof file.diff === "string" ? file.diff : ""), 0) >
+      PATCH_EXPAND_LINES,
+  )
 
   const view = createMemo(() => {
     const diffStyle = ctx.tui.diff_style
@@ -2436,21 +3154,36 @@ function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
     <Switch>
       <Match when={files().length > 0}>
         <For each={files()}>
-          {(file) => (
-            <BlockTool title={title(file)} part={props.part}>
-              <Show
-                when={file.type !== "delete"}
-                fallback={
-                  <text fg={theme.diffRemoved}>
-                    -{file.deletions} line{file.deletions !== 1 ? "s" : ""}
-                  </text>
-                }
+          {(file) => {
+            const diff = typeof file.diff === "string" ? file.diff : ""
+            return (
+              <BlockTool
+                title={title(file)}
+                part={props.part}
+                onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
               >
-                <Diff diff={file.diff} filePath={file.filePath} />
-                <Diagnostics diagnostics={props.metadata.diagnostics} filePath={file.movePath ?? file.filePath} />
-              </Show>
-            </BlockTool>
-          )}
+                <Show
+                  when={file.type !== "delete"}
+                  fallback={
+                    <text fg={theme.diffRemoved}>
+                      -{file.deletions} line{file.deletions !== 1 ? "s" : ""}
+                    </text>
+                  }
+                >
+                  <Diff
+                    diff={expanded() || !overflow() ? diff : clip(diff, PATCH_FILE_PREVIEW_LINES)}
+                    filePath={file.filePath}
+                  />
+                  <Diagnostics diagnostics={props.metadata.diagnostics} filePath={file.movePath ?? file.filePath} />
+                </Show>
+                <Show when={overflow()}>
+                  <text fg={theme.textMuted} paddingLeft={3}>
+                    {expanded() ? "Click to collapse" : "Click to expand"}
+                  </text>
+                </Show>
+              </BlockTool>
+            )
+          }}
         </For>
       </Match>
       <Match when={true}>
@@ -2463,15 +3196,37 @@ function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
 }
 
 function TodoWrite(props: ToolProps<typeof TodoWriteTool>) {
+  const { theme } = useTheme()
+  const ctx = use()
+  const todos = createMemo(() => props.input.todos ?? [])
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const overflow = createMemo(() => todos().length > TODO_EXPAND_ITEMS)
+  const visible = createMemo(() => {
+    if (expanded() || !overflow()) return todos()
+    return todos().slice(0, TODO_EXPAND_ITEMS)
+  })
+
   return (
     <Switch>
       <Match when={props.metadata.todos?.length}>
-        <BlockTool title="# Todos" part={props.part}>
+        <BlockTool
+          title="# Todos"
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
           <box>
-            <For each={props.input.todos ?? []}>
-              {(todo) => <TodoItem status={todo.status} content={todo.content} />}
-            </For>
+            <For each={visible()}>{(todo) => <TodoItem status={todo.status} content={todo.content} />}</For>
+            <Show when={overflow() && !expanded()}>
+              <text fg={theme.textMuted} paddingLeft={3}>
+                … {todos().length - TODO_EXPAND_ITEMS} more
+              </text>
+            </Show>
           </box>
+          <Show when={overflow()}>
+            <text fg={theme.textMuted} paddingLeft={3}>
+              {expanded() ? "Click to collapse" : "Click to expand"}
+            </text>
+          </Show>
         </BlockTool>
       </Match>
       <Match when={true}>
@@ -2485,7 +3240,20 @@ function TodoWrite(props: ToolProps<typeof TodoWriteTool>) {
 
 function Question(props: ToolProps<typeof QuestionTool>) {
   const { theme } = useTheme()
+  const ctx = use()
   const count = createMemo(() => props.input.questions?.length ?? 0)
+  const expanded = createMemo(() => ctx.isToolExpanded(props.part.id))
+  const rows = createMemo(() =>
+    (props.input.questions ?? []).map((question, index) => ({
+      question: question.question,
+      answer: props.metadata.answers?.[index],
+    })),
+  )
+  const overflow = createMemo(() => rows().length > QUESTION_EXPAND_ITEMS)
+  const visible = createMemo(() => {
+    if (expanded() || !overflow()) return rows()
+    return rows().slice(0, QUESTION_EXPAND_ITEMS)
+  })
 
   function format(answer?: string[]) {
     if (!answer?.length) return "(no answer)"
@@ -2495,17 +3263,31 @@ function Question(props: ToolProps<typeof QuestionTool>) {
   return (
     <Switch>
       <Match when={props.metadata.answers}>
-        <BlockTool title="# Questions" part={props.part}>
+        <BlockTool
+          title="# Questions"
+          part={props.part}
+          onClick={overflow() ? () => ctx.toggleToolExpanded(props.part.id) : undefined}
+        >
           <box gap={1}>
-            <For each={props.input.questions ?? []}>
-              {(q, i) => (
+            <For each={visible()}>
+              {(item) => (
                 <box flexDirection="column">
-                  <text fg={theme.textMuted}>{q.question}</text>
-                  <text fg={theme.text}>{format(props.metadata.answers?.[i()])}</text>
+                  <text fg={theme.textMuted}>{item.question}</text>
+                  <text fg={theme.text}>{format(item.answer)}</text>
                 </box>
               )}
             </For>
+            <Show when={overflow() && !expanded()}>
+              <text fg={theme.textMuted} paddingLeft={3}>
+                … {rows().length - QUESTION_EXPAND_ITEMS} more
+              </text>
+            </Show>
           </box>
+          <Show when={overflow()}>
+            <text fg={theme.textMuted} paddingLeft={3}>
+              {expanded() ? "Click to collapse" : "Click to expand"}
+            </text>
+          </Show>
         </BlockTool>
       </Match>
       <Match when={true}>
@@ -2519,9 +3301,15 @@ function Question(props: ToolProps<typeof QuestionTool>) {
 
 function Skill(props: ToolProps<typeof SkillTool>) {
   return (
-    <InlineTool icon="→" pending="Loading skill..." complete={props.input.name} part={props.part}>
-      Skill "{props.input.name}"
-    </InlineTool>
+    <ExpandableOutputTool
+      icon="→"
+      pending="Loading skill..."
+      complete={props.input.name}
+      title={`# Skill "${props.input.name}"`}
+      output={props.output}
+      part={props.part}
+      summary={<>Skill "{props.input.name}"</>}
+    />
   )
 }
 

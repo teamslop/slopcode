@@ -14,9 +14,10 @@ import { usePromptRef } from "../context/prompt"
 import { Installation } from "@/installation"
 import { useKV } from "../context/kv"
 import { useCommandDialog } from "../component/dialog-command"
+import { ShortcutHint } from "../ui/shortcut-hint"
+import { SessionStrip } from "./session/session-strip"
 
-// TODO: what is the best way to do this?
-let once = false
+let argsPromptSubmitted = false
 
 export function Home() {
   const sync = useSync()
@@ -37,7 +38,6 @@ export function Home() {
   const isFirstTimeUser = createMemo(() => sync.data.session.length === 0)
   const tipsHidden = createMemo(() => kv.get("tips_hidden", false))
   const showTips = createMemo(() => {
-    // Don't show tips for first-time users
     if (isFirstTimeUser()) return false
     return !tipsHidden()
   })
@@ -46,6 +46,7 @@ export function Home() {
     {
       title: tipsHidden() ? "Show tips" : "Hide tips",
       value: "tips.toggle",
+      search: "toggle tips",
       keybind: "tips_toggle",
       category: "System",
       onSelect: (dialog) => {
@@ -55,21 +56,30 @@ export function Home() {
     },
   ])
 
+  const keybind = useKeybind()
   const Hint = (
     <Show when={connectedMcpCount() > 0}>
       <box flexShrink={0} flexDirection="row" gap={1}>
-        <text fg={theme.text}>
-          <Switch>
-            <Match when={mcpError()}>
-              <span style={{ fg: theme.error }}>•</span> mcp errors{" "}
-              <span style={{ fg: theme.textMuted }}>ctrl+x s</span>
-            </Match>
-            <Match when={true}>
+        <Switch>
+          <Match when={mcpError()}>
+            <box flexDirection="row" gap={1} alignItems="center">
+              <text fg={theme.text}>
+                <span style={{ fg: theme.error }}>•</span> mcp errors
+              </text>
+              <ShortcutHint
+                shortcut={keybind.print("status_view")}
+                label="status"
+                onTrigger={() => command.trigger("slopcode.status")}
+              />
+            </box>
+          </Match>
+          <Match when={true}>
+            <text fg={theme.text}>
               <span style={{ fg: theme.success }}>•</span>{" "}
               {Locale.pluralize(connectedMcpCount(), "{} mcp server", "{} mcp servers")}
-            </Match>
-          </Switch>
-        </text>
+            </text>
+          </Match>
+        </Switch>
       </box>
     </Show>
   )
@@ -77,22 +87,20 @@ export function Home() {
   let prompt: PromptRef
   const args = useArgs()
   onMount(() => {
-    if (once) return
     if (route.initialPrompt) {
       prompt.set(route.initialPrompt)
-      once = true
-    } else if (args.prompt) {
-      prompt.set({ input: args.prompt, parts: [] })
-      once = true
-      prompt.submit()
+      return
     }
+    if (argsPromptSubmitted || !args.prompt) return
+    argsPromptSubmitted = true
+    prompt.set({ input: args.prompt, parts: [] })
+    prompt.submit()
   })
   const directory = useDirectory()
 
-  const keybind = useKeybind()
-
   return (
     <>
+      <SessionStrip />
       <box flexGrow={1} alignItems="center" paddingLeft={2} paddingRight={2}>
         <box flexGrow={1} minHeight={0} />
         <box height={4} minHeight={0} flexShrink={1} />
@@ -107,6 +115,7 @@ export function Home() {
               promptRef.set(r)
             }}
             hint={Hint}
+            showHistoryHint={false}
           />
         </box>
         <box height={4} minHeight={0} width="100%" maxWidth={75} alignItems="center" paddingTop={3} flexShrink={1}>

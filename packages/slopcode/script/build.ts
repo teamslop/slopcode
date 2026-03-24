@@ -200,6 +200,10 @@ for (const item of targets) {
       {
         name,
         version: Script.version,
+        repository: {
+          type: "git",
+          url: "https://github.com/teamslop/slopcode",
+        },
         os: [item.os],
         cpu: [item.arch],
       },
@@ -252,8 +256,8 @@ const debBuild = async (src: string, arch: "amd64" | "arm64") => {
       `Architecture: ${arch}`,
       "Maintainer: SlopCode Team <support@slopcode.dev>",
       "Depends: libc6, libstdc++6",
-      "Description: The open source AI coding agent",
-      " SlopCode is an open source AI coding agent focused on terminal workflows.",
+      "Description: The open source AI slopcoding agent",
+      " SlopCode is an open source AI slopcoding agent focused on terminal workflows.",
       "",
     ].join("\n"),
   )
@@ -282,6 +286,8 @@ if (Script.release) {
 
     await $`zip -r ../../${key}.zip *`.cwd(`dist/${key}/bin`)
   }
+
+  await $`tar -czf slopcode-cli-dist.tar.gz ${Object.keys(binaries)}`.cwd("dist")
 
   if (process.platform === "linux") {
     const dpkgDeb = (await $`bash -lc "command -v dpkg-deb"`.quiet().nothrow().text()).trim()

@@ -1,6 +1,7 @@
 // @refresh reload
 
 import { iife } from "@slopcode-ai/util/iife"
+import { product } from "@slopcode-ai/util/product"
 import { render } from "solid-js/web"
 import { AppBaseProviders, AppInterface } from "@/app"
 import { type Platform, PlatformProvider } from "@/context/platform"
@@ -53,6 +54,26 @@ const setStorage = (key: string, value: string | null) => {
 const readDefaultServerUrl = () => getStorage(DEFAULT_SERVER_URL_KEY)
 const writeDefaultServerUrl = (url: string | null) => setStorage(DEFAULT_SERVER_URL_KEY, url)
 
+const viewID = (() => {
+  const key = "slopcode.view-id"
+  let cached = ""
+  return () => {
+    if (cached) return cached
+    if (typeof sessionStorage === "undefined") {
+      cached = crypto.randomUUID()
+      return cached
+    }
+    const stored = sessionStorage.getItem(key)
+    if (stored) {
+      cached = stored
+      return cached
+    }
+    cached = crypto.randomUUID()
+    sessionStorage.setItem(key, cached)
+    return cached
+  }
+})()
+
 const notify: Platform["notify"] = async (title, description, href) => {
   if (!("Notification" in window)) return
 
@@ -68,7 +89,7 @@ const notify: Platform["notify"] = async (title, description, href) => {
 
   const notification = new Notification(title, {
     body: description ?? "",
-    icon: "https://slopcode.dev/favicon-96x96-v3.png",
+    icon: `${product.urls.site}/favicon-96x96-v3.png`,
   })
 
   notification.onclick = () => {
@@ -101,6 +122,7 @@ if (!(root instanceof HTMLElement) && import.meta.env.DEV) {
 const platform: Platform = {
   platform: "web",
   version: pkg.version,
+  viewID,
   openLink,
   back,
   forward,
@@ -113,7 +135,8 @@ const platform: Platform = {
 const defaultUrl = iife(() => {
   const lsDefault = readDefaultServerUrl()
   if (lsDefault) return lsDefault
-  if (location.hostname.includes("slopcode.dev")) return "http://localhost:4096"
+  const host = new URL(product.urls.site).hostname
+  if (location.hostname.includes(host)) return "http://localhost:4096"
   if (import.meta.env.DEV)
     return `http://${import.meta.env.VITE_SLOPCODE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_SLOPCODE_SERVER_PORT ?? "4096"}`
   return location.origin

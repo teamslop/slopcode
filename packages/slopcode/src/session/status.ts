@@ -30,6 +30,7 @@ export namespace SessionStatus {
       z.object({
         sessionID: z.string(),
         status: Info,
+        viewID: z.string().optional(),
       }),
     ),
     // deprecated
@@ -37,6 +38,7 @@ export namespace SessionStatus {
       "session.idle",
       z.object({
         sessionID: z.string(),
+        viewID: z.string().optional(),
       }),
     ),
   }
@@ -62,11 +64,13 @@ export namespace SessionStatus {
     Bus.publish(Event.Status, {
       sessionID,
       status,
+      viewID: Instance.viewID,
     })
     if (status.type === "idle") {
       // deprecated
       Bus.publish(Event.Idle, {
         sessionID,
+        viewID: Instance.viewID,
       })
       delete state()[sessionID]
       return

@@ -19,6 +19,8 @@ import type {
   ConfigProvidersResponses,
   ConfigUpdateErrors,
   ConfigUpdateResponses,
+  DaemonShutdownResponses,
+  DaemonStatusResponses,
   EventSubscribeResponses,
   EventTuiCommandExecute,
   EventTuiPromptAppend,
@@ -105,6 +107,8 @@ import type {
   QuestionReplyResponses,
   SessionAbortErrors,
   SessionAbortResponses,
+  SessionAutocompleteErrors,
+  SessionAutocompleteResponses,
   SessionChildrenErrors,
   SessionChildrenResponses,
   SessionCommandErrors,
@@ -308,6 +312,32 @@ export class Global extends HeyApiClient {
   }
 }
 
+export class Daemon extends HeyApiClient {
+  /**
+   * Get daemon status
+   *
+   * Get local daemon status.
+   */
+  public status<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).get<DaemonStatusResponses, unknown, ThrowOnError>({
+      url: "/daemon/status",
+      ...options,
+    })
+  }
+
+  /**
+   * Shutdown daemon
+   *
+   * Shutdown the local daemon.
+   */
+  public shutdown<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).post<DaemonShutdownResponses, unknown, ThrowOnError>({
+      url: "/daemon/shutdown",
+      ...options,
+    })
+  }
+}
+
 export class Auth extends HeyApiClient {
   /**
    * Remove auth credentials
@@ -461,12 +491,23 @@ export class Pty extends HeyApiClient {
    * Get a list of all active pseudo-terminal (PTY) sessions managed by SlopCode.
    */
   public list<ThrowOnError extends boolean = false>(
-    parameters?: {
+    parameters: {
       directory?: string
+      sessionID: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
+          ],
+        },
+      ],
+    )
     return (options?.client ?? this.client).get<PtyListResponses, unknown, ThrowOnError>({
       url: "/pty",
       ...options,
@@ -489,6 +530,7 @@ export class Pty extends HeyApiClient {
       env?: {
         [key: string]: string
       }
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -503,6 +545,7 @@ export class Pty extends HeyApiClient {
             { in: "body", key: "cwd" },
             { in: "body", key: "title" },
             { in: "body", key: "env" },
+            { in: "body", key: "sessionID" },
           ],
         },
       ],
@@ -528,6 +571,7 @@ export class Pty extends HeyApiClient {
     parameters: {
       ptyID: string
       directory?: string
+      sessionID: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -538,6 +582,7 @@ export class Pty extends HeyApiClient {
           args: [
             { in: "path", key: "ptyID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
           ],
         },
       ],
@@ -558,6 +603,7 @@ export class Pty extends HeyApiClient {
     parameters: {
       ptyID: string
       directory?: string
+      sessionID: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -568,6 +614,7 @@ export class Pty extends HeyApiClient {
           args: [
             { in: "path", key: "ptyID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
           ],
         },
       ],
@@ -588,6 +635,7 @@ export class Pty extends HeyApiClient {
     parameters: {
       ptyID: string
       directory?: string
+      sessionID: string
       title?: string
       size?: {
         rows: number
@@ -603,6 +651,7 @@ export class Pty extends HeyApiClient {
           args: [
             { in: "path", key: "ptyID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
             { in: "body", key: "title" },
             { in: "body", key: "size" },
           ],
@@ -1098,6 +1147,7 @@ export class Session2 extends HeyApiClient {
       directory?: string
       roots?: boolean
       start?: number
+      cursor?: number
       search?: string
       limit?: number
     },
@@ -1111,6 +1161,7 @@ export class Session2 extends HeyApiClient {
             { in: "query", key: "directory" },
             { in: "query", key: "roots" },
             { in: "query", key: "start" },
+            { in: "query", key: "cursor" },
             { in: "query", key: "search" },
             { in: "query", key: "limit" },
           ],
@@ -1253,7 +1304,7 @@ export class Session2 extends HeyApiClient {
       directory?: string
       title?: string
       time?: {
-        archived?: number
+        archived?: number | null
       }
     },
     options?: Options<never, ThrowOnError>,
@@ -1594,6 +1645,7 @@ export class Session2 extends HeyApiClient {
       sessionID: string
       directory?: string
       limit?: number
+      cursor?: number
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -1605,6 +1657,7 @@ export class Session2 extends HeyApiClient {
             { in: "path", key: "sessionID" },
             { in: "query", key: "directory" },
             { in: "query", key: "limit" },
+            { in: "query", key: "cursor" },
           ],
         },
       ],
@@ -1740,6 +1793,58 @@ export class Session2 extends HeyApiClient {
       ...options,
       ...params,
     })
+  }
+
+  /**
+   * Get prompt autocomplete
+   *
+   * Generate a low-latency model-powered completion for the current prompt input.
+   */
+  public autocomplete<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      model?: {
+        providerID: string
+        modelID: string
+      }
+      agent?: string
+      variant?: string
+      mode?: "normal" | "shell"
+      prefix?: string
+      suffix?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "body", key: "model" },
+            { in: "body", key: "agent" },
+            { in: "body", key: "variant" },
+            { in: "body", key: "mode" },
+            { in: "body", key: "prefix" },
+            { in: "body", key: "suffix" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionAutocompleteResponses, SessionAutocompleteErrors, ThrowOnError>(
+      {
+        url: "/session/{sessionID}/autocomplete",
+        ...options,
+        ...params,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+          ...params.headers,
+        },
+      },
+    )
   }
 
   /**
@@ -2094,6 +2199,7 @@ export class Permission extends HeyApiClient {
     parameters: {
       requestID: string
       directory?: string
+      sessionID?: string
       reply?: "once" | "always" | "reject"
       message?: string
     },
@@ -2106,6 +2212,7 @@ export class Permission extends HeyApiClient {
           args: [
             { in: "path", key: "requestID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
             { in: "body", key: "reply" },
             { in: "body", key: "message" },
           ],
@@ -2132,10 +2239,21 @@ export class Permission extends HeyApiClient {
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
+          ],
+        },
+      ],
+    )
     return (options?.client ?? this.client).get<PermissionListResponses, unknown, ThrowOnError>({
       url: "/permission",
       ...options,
@@ -2153,10 +2271,21 @@ export class Question extends HeyApiClient {
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
+          ],
+        },
+      ],
+    )
     return (options?.client ?? this.client).get<QuestionListResponses, unknown, ThrowOnError>({
       url: "/question",
       ...options,
@@ -2173,6 +2302,7 @@ export class Question extends HeyApiClient {
     parameters: {
       requestID: string
       directory?: string
+      sessionID?: string
       answers?: Array<QuestionAnswer>
     },
     options?: Options<never, ThrowOnError>,
@@ -2184,6 +2314,7 @@ export class Question extends HeyApiClient {
           args: [
             { in: "path", key: "requestID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
             { in: "body", key: "answers" },
           ],
         },
@@ -2210,6 +2341,7 @@ export class Question extends HeyApiClient {
     parameters: {
       requestID: string
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2220,6 +2352,7 @@ export class Question extends HeyApiClient {
           args: [
             { in: "path", key: "requestID" },
             { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
           ],
         },
       ],
@@ -2858,6 +2991,7 @@ export class Tui extends HeyApiClient {
     parameters?: {
       directory?: string
       text?: string
+      viewID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2868,6 +3002,7 @@ export class Tui extends HeyApiClient {
           args: [
             { in: "query", key: "directory" },
             { in: "body", key: "text" },
+            { in: "body", key: "viewID" },
           ],
         },
       ],
@@ -3045,6 +3180,7 @@ export class Tui extends HeyApiClient {
       message?: string
       variant?: "info" | "success" | "warning" | "error"
       duration?: number
+      viewID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3058,6 +3194,7 @@ export class Tui extends HeyApiClient {
             { in: "body", key: "message" },
             { in: "body", key: "variant" },
             { in: "body", key: "duration" },
+            { in: "body", key: "viewID" },
           ],
         },
       ],
@@ -3118,6 +3255,7 @@ export class Tui extends HeyApiClient {
     parameters?: {
       directory?: string
       sessionID?: string
+      viewID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3128,6 +3266,7 @@ export class Tui extends HeyApiClient {
           args: [
             { in: "query", key: "directory" },
             { in: "body", key: "sessionID" },
+            { in: "body", key: "viewID" },
           ],
         },
       ],
@@ -3368,10 +3507,21 @@ export class Event extends HeyApiClient {
   public subscribe<ThrowOnError extends boolean = false>(
     parameters?: {
       directory?: string
+      sessionID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "sessionID" },
+          ],
+        },
+      ],
+    )
     return (options?.client ?? this.client).sse.get<EventSubscribeResponses, unknown, ThrowOnError>({
       url: "/event",
       ...options,
@@ -3391,6 +3541,11 @@ export class SlopcodeClient extends HeyApiClient {
   private _global?: Global
   get global(): Global {
     return (this._global ??= new Global({ client: this.client }))
+  }
+
+  private _daemon?: Daemon
+  get daemon(): Daemon {
+    return (this._daemon ??= new Daemon({ client: this.client }))
   }
 
   private _auth?: Auth

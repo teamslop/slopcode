@@ -10,7 +10,7 @@ import { Flag } from "../flag/flag"
 import { Identifier } from "../id/id"
 import { Installation } from "../installation"
 
-import { Database, NotFoundError, eq, and, or, gte, isNull, desc, like, inArray, lt } from "../storage/db"
+import { Database, NotFoundError, eq, and, or, gte, isNull, isNotNull, desc, like, inArray, lt } from "../storage/db"
 import type { SQL } from "../storage/db"
 import { SessionTable, MessageTable, PartTable } from "./session.sql"
 import { ProjectTable } from "../project/project.sql"
@@ -205,6 +205,7 @@ export namespace Session {
       z.object({
         sessionID: z.string().optional(),
         error: MessageV2.Assistant.shape.error,
+        viewID: z.string().optional(),
       }),
     ),
   }
@@ -396,7 +397,7 @@ export namespace Session {
       return Database.use((db) => {
         const row = db
           .update(SessionTable)
-          .set({ time_archived: input.time })
+          .set({ time_archived: input.time ?? null })
           .where(eq(SessionTable.id, input.sessionID))
           .returning()
           .get()
@@ -513,10 +514,12 @@ export namespace Session {
     z.object({
       sessionID: Identifier.schema("session"),
       limit: z.number().optional(),
+      cursor: z.number().optional(),
     }),
     async (input) => {
       const result = [] as MessageV2.WithParts[]
       for await (const msg of MessageV2.stream(input.sessionID)) {
+        if (input.cursor && msg.info.time.created >= input.cursor) continue
         if (input.limit && result.length >= input.limit) break
         result.push(msg)
       }
@@ -529,6 +532,7 @@ export namespace Session {
     directory?: string
     roots?: boolean
     start?: number
+    cursor?: number
     search?: string
     limit?: number
   }) {
@@ -544,6 +548,9 @@ export namespace Session {
     if (input?.start) {
       conditions.push(gte(SessionTable.time_updated, input.start))
     }
+    if (input?.cursor) {
+      conditions.push(lt(SessionTable.time_updated, input.cursor))
+    }
     if (input?.search) {
       conditions.push(like(SessionTable.title, `%${input.search}%`))
     }
@@ -555,7 +562,7 @@ export namespace Session {
         .select()
         .from(SessionTable)
         .where(and(...conditions))
-        .orderBy(desc(SessionTable.time_updated))
+        .orderBy(desc(SessionTable.time_updated), desc(SessionTable.id))
         .limit(limit)
         .all(),
     )
@@ -589,6 +596,9 @@ export namespace Session {
     }
     if (input?.search) {
       conditions.push(like(SessionTable.title, `%${input.search}%`))
+    }
+    if (input?.archived) {
+      conditions.push(isNotNull(SessionTable.time_archived))
     }
     if (!input?.archived) {
       conditions.push(isNull(SessionTable.time_archived))

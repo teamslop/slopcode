@@ -47,12 +47,82 @@ function detectPlatformAndArch() {
   return { platform, arch }
 }
 
+function supportsAvx2(platform, arch) {
+  if (arch !== "x64") return false
+
+  if (platform === "linux") {
+    try {
+      return /(^|\s)avx2(\s|$)/i.test(fs.readFileSync("/proc/cpuinfo", "utf8"))
+    } catch {
+      return false
+    }
+  }
+
+  if (platform === "darwin") {
+    try {
+      const result = require("child_process").spawnSync("sysctl", ["-n", "hw.optional.avx2_0"], {
+        encoding: "utf8",
+        timeout: 1500,
+      })
+      if (result.status !== 0) return false
+      return (result.stdout || "").trim() === "1"
+    } catch {
+      return false
+    }
+  }
+
+  return false
+}
+
+function names(platform, arch) {
+  const base = `slopcode-bin-${platform}-${arch}`
+  const avx2 = supportsAvx2(platform, arch)
+  const baseline = arch === "x64" && !avx2
+
+  if (platform === "linux") {
+    const musl = (() => {
+      try {
+        if (fs.existsSync("/etc/alpine-release")) return true
+      } catch {}
+
+      try {
+        const result = require("child_process").spawnSync("ldd", ["--version"], { encoding: "utf8" })
+        const text = ((result.stdout || "") + (result.stderr || "")).toLowerCase()
+        if (text.includes("musl")) return true
+      } catch {}
+
+      return false
+    })()
+
+    if (musl) {
+      if (arch === "x64") {
+        if (baseline) return [`${base}-baseline-musl`, `${base}-musl`, `${base}-baseline`, base]
+        return [`${base}-musl`, `${base}-baseline-musl`, base, `${base}-baseline`]
+      }
+      return [`${base}-musl`, base]
+    }
+
+    if (arch === "x64") {
+      if (baseline) return [`${base}-baseline`, base, `${base}-baseline-musl`, `${base}-musl`]
+      return [base, `${base}-baseline`, `${base}-musl`, `${base}-baseline-musl`]
+    }
+
+    return [base, `${base}-musl`]
+  }
+
+  if (arch === "x64") {
+    if (baseline) return [`${base}-baseline`, base]
+    return [base, `${base}-baseline`]
+  }
+
+  return [base]
+}
+
 function findBinary() {
   const { platform, arch } = detectPlatformAndArch()
   const binaryName = platform === "windows" ? "slopcode.exe" : "slopcode"
-  const names = [`slopcode-bin-${platform}-${arch}`, `slopcode-${platform}-${arch}`]
 
-  for (const name of names) {
+  for (const name of names(platform, arch)) {
     try {
       const packageJsonPath = require.resolve(`${name}/package.json`)
       const packageDir = path.dirname(packageJsonPath)

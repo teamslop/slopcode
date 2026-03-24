@@ -31,6 +31,13 @@ export type ProjectMeta = {
   }
 }
 
+export type SessionHistory = {
+  message: Message[]
+  part: Record<string, Part[]>
+  limit: number
+  complete: boolean
+}
+
 export type State = {
   status: "loading" | "partial" | "complete"
   agent: Agent[]
@@ -70,6 +77,12 @@ export type State = {
   part: {
     [messageID: string]: Part[]
   }
+  history: {
+    [sessionID: string]: {
+      limit: number
+      complete: boolean
+    }
+  }
 }
 
 export type VcsCache = {
@@ -87,6 +100,12 @@ export type MetaCache = {
 export type IconCache = {
   store: Store<{ value: string | undefined }>
   setStore: SetStoreFunction<{ value: string | undefined }>
+  ready: Accessor<boolean>
+}
+
+export type HistoryCache = {
+  store: Store<{ value: Record<string, SessionHistory | undefined> }>
+  setStore: SetStoreFunction<{ value: Record<string, SessionHistory | undefined> }>
   ready: Accessor<boolean>
 }
 

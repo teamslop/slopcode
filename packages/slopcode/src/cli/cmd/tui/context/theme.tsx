@@ -42,6 +42,7 @@ import { createStore, produce } from "solid-js/store"
 import { Global } from "@/global"
 import { Filesystem } from "@/util/filesystem"
 import { useTuiConfig } from "./tui-config"
+import { createSubtleSyntaxStyle, createSyntaxStyle } from "@/cli/render/syntax"
 
 type ThemeColors = {
   primary: RGBA
@@ -620,31 +621,11 @@ function generateMutedTextColor(bg: RGBA, isDark: boolean): RGBA {
 }
 
 function generateSyntax(theme: Theme) {
-  return SyntaxStyle.fromTheme(getSyntaxRules(theme))
+  return createSyntaxStyle(theme)
 }
 
 function generateSubtleSyntax(theme: Theme) {
-  const rules = getSyntaxRules(theme)
-  return SyntaxStyle.fromTheme(
-    rules.map((rule) => {
-      if (rule.style.foreground) {
-        const fg = rule.style.foreground
-        return {
-          ...rule,
-          style: {
-            ...rule.style,
-            foreground: RGBA.fromInts(
-              Math.round(fg.r * 255),
-              Math.round(fg.g * 255),
-              Math.round(fg.b * 255),
-              Math.round(theme.thinkingOpacity * 255),
-            ),
-          },
-        }
-      }
-      return rule
-    }),
-  )
+  return createSubtleSyntaxStyle(theme)
 }
 
 function getSyntaxRules(theme: Theme) {
@@ -681,6 +662,12 @@ function getSyntaxRules(theme: Theme) {
         foreground: theme.background,
         background: theme.warning,
         bold: true,
+      },
+    },
+    {
+      scope: ["extmark.ghost"],
+      style: {
+        foreground: theme.textMuted,
       },
     },
     {

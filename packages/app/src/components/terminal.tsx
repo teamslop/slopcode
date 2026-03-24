@@ -188,9 +188,11 @@ export const Terminal = (props: TerminalProps) => {
   }
 
   const pushSize = (cols: number, rows: number) => {
+    if (!local.pty.sessionID) return Promise.resolve()
     return sdk.client.pty
       .update({
         ptyID: local.pty.id,
+        sessionID: local.pty.sessionID,
         size: { cols, rows },
       })
       .catch((err) => {
@@ -449,6 +451,7 @@ export const Terminal = (props: TerminalProps) => {
 
       const url = new URL(sdk.url + `/pty/${local.pty.id}/connect`)
       url.searchParams.set("directory", sdk.directory)
+      if (local.pty.sessionID) url.searchParams.set("sessionID", local.pty.sessionID)
       url.searchParams.set("cursor", String(start !== undefined ? start : local.pty.buffer ? -1 : 0))
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
       url.username = server.current?.http.username ?? ""

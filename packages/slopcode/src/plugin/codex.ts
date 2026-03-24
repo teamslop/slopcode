@@ -4,6 +4,7 @@ import { Installation } from "../installation"
 import { Auth, OAUTH_DUMMY_KEY } from "../auth"
 import os from "os"
 import { ProviderTransform } from "@/provider/transform"
+import { setTimeout as sleep } from "node:timers/promises"
 
 const log = Log.create({ service: "plugin.codex" })
 
@@ -358,12 +359,14 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
 
         // Filter models to only allowed Codex models for OAuth
         const allowedModels = new Set([
+          "gpt-5.1-codex",
           "gpt-5.1-codex-max",
           "gpt-5.1-codex-mini",
           "gpt-5.2",
           "gpt-5.2-codex",
           "gpt-5.3-codex",
-          "gpt-5.1-codex",
+          "gpt-5.4",
+          "gpt-5.4-mini",
         ])
         for (const modelId of Object.keys(provider.models)) {
           if (modelId.includes("codex")) continue
@@ -602,7 +605,7 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
                     return { type: "failed" as const }
                   }
 
-                  await Bun.sleep(interval + OAUTH_POLLING_SAFETY_MARGIN_MS)
+                  await sleep(interval + OAUTH_POLLING_SAFETY_MARGIN_MS)
                 }
               },
             }

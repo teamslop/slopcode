@@ -2,16 +2,25 @@ import { Component } from "solid-js"
 import { Dialog } from "@slopcode-ai/ui/dialog"
 import { Tabs } from "@slopcode-ai/ui/tabs"
 import { Icon } from "@slopcode-ai/ui/icon"
+import { Button } from "@slopcode-ai/ui/button"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
+import { useDialog } from "@slopcode-ai/ui/context/dialog"
 import { SettingsGeneral } from "./settings-general"
 import { SettingsKeybinds } from "./settings-keybinds"
 import { SettingsProviders } from "./settings-providers"
 import { SettingsModels } from "./settings-models"
+import { SettingsArchive } from "./settings-archive"
+import { DialogChangelog } from "@/components/dialog-changelog"
 
 export const DialogSettings: Component = () => {
   const language = useLanguage()
   const platform = usePlatform()
+  const dialog = useDialog()
+
+  function handleShowChangelog() {
+    dialog.show(() => <DialogChangelog />)
+  }
 
   return (
     <Dialog size="x-large" transition>
@@ -47,11 +56,27 @@ export const DialogSettings: Component = () => {
                     </Tabs.Trigger>
                   </div>
                 </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <Tabs.SectionTitle>{language.t("settings.section.data")}</Tabs.SectionTitle>
+                  <div class="flex flex-col gap-1.5 w-full">
+                    <Tabs.Trigger value="archive">
+                      <Icon name="archive" />
+                      {language.t("settings.archive.title")}
+                    </Tabs.Trigger>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="flex flex-col gap-1 pl-1 py-1 text-12-medium text-text-weak">
               <span>{language.t("app.name.desktop")}</span>
               <span class="text-11-regular">v{platform.version}</span>
+              <button
+                class="text-11-regular text-text-weak hover:text-text-base self-start"
+                onClick={handleShowChangelog}
+              >
+                Changelog
+              </button>
             </div>
           </div>
         </Tabs.List>
@@ -66,6 +91,9 @@ export const DialogSettings: Component = () => {
         </Tabs.Content>
         <Tabs.Content value="models" class="no-scrollbar">
           <SettingsModels />
+        </Tabs.Content>
+        <Tabs.Content value="archive" class="no-scrollbar">
+          <SettingsArchive />
         </Tabs.Content>
       </Tabs>
     </Dialog>

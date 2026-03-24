@@ -375,6 +375,7 @@ export namespace MCP {
                 message: `Server "${key}" requires a pre-registered client ID. Add clientId to your config.`,
                 variant: "warning",
                 duration: 8000,
+                viewID: Instance.viewID,
               }).catch((e) => log.debug("failed to show toast", { error: e }))
             } else {
               // Store transport for later finishAuth call
@@ -386,6 +387,7 @@ export namespace MCP {
                 message: `Server "${key}" requires authentication. Run: slopcode mcp auth ${key}`,
                 variant: "warning",
                 duration: 8000,
+                viewID: Instance.viewID,
               }).catch((e) => log.debug("failed to show toast", { error: e }))
             }
             break

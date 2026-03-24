@@ -365,6 +365,11 @@ export const RunCommand = cmd({
         action: "deny",
         pattern: "*",
       },
+      {
+        permission: "edit",
+        action: "allow",
+        pattern: "*",
+      },
     ]
 
     function title() {
@@ -497,7 +502,7 @@ export const RunCommand = cmd({
                 continue
               }
               UI.empty()
-              UI.println(text)
+              UI.println(await UI.markdown(text))
               UI.empty()
             }
 
@@ -547,6 +552,7 @@ export const RunCommand = cmd({
             await sdk.permission.reply({
               requestID: permission.id,
               reply: "reject",
+              sessionID: permission.sessionID,
             })
           }
         }

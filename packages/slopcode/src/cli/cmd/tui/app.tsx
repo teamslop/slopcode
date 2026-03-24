@@ -1,24 +1,25 @@
 import { render, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { createEffect, createSignal, ErrorBoundary, Match, on, onMount, Switch, untrack } from "solid-js"
 import { Clipboard } from "@tui/util/clipboard"
 import { Selection } from "@tui/util/selection"
 import { MouseButton, TextAttributes } from "@opentui/core"
 import { RouteProvider, useRoute } from "@tui/context/route"
-import { Switch, Match, createEffect, untrack, ErrorBoundary, createSignal, onMount, batch, Show, on } from "solid-js"
-import { win32DisableProcessedInput, win32FlushInputBuffer, win32InstallCtrlCGuard } from "./win32"
-import { Installation } from "@/installation"
-import { Flag } from "@/flag/flag"
-import { DialogProvider, useDialog } from "@tui/ui/dialog"
-import { DialogProvider as DialogProviderList } from "@tui/component/dialog-provider"
+import { SessionTabsProvider, useSessionTabs } from "@tui/context/session-tabs"
+import { TabStateProvider, useTabState } from "@tui/context/tab-state"
 import { SDKProvider, useSDK } from "@tui/context/sdk"
 import { SyncProvider, useSync } from "@tui/context/sync"
+import { DialogProvider, useDialog } from "@tui/ui/dialog"
+
 import { LocalProvider, useLocal } from "@tui/context/local"
 import { DialogModel, useConnected } from "@tui/component/dialog-model"
+import { DialogModelCompletion } from "@tui/component/dialog-model-completion"
 import { DialogMcp } from "@tui/component/dialog-mcp"
 import { DialogStatus } from "@tui/component/dialog-status"
 import { DialogThemeList } from "@tui/component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogAgent } from "@tui/component/dialog-agent"
+import { DialogProvider as DialogProviderList } from "@tui/component/dialog-provider"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
 import { KeybindProvider } from "@tui/context/keybind"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
@@ -39,6 +40,10 @@ import { writeHeapSnapshot } from "v8"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { TuiConfigProvider } from "./context/tui-config"
 import { TuiConfig } from "@/config/tui"
+import { Flag } from "@/flag/flag"
+import { Installation } from "@/installation"
+import { win32DisableProcessedInput, win32FlushInputBuffer, win32InstallCtrlCGuard } from "./win32"
+import { DRAFT_TAB_ID } from "./context/session-tabs-state"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   // can't set raw mode if not a TTY
@@ -107,6 +112,7 @@ export function tui(input: {
   args: Args
   config: TuiConfig.Info
   directory?: string
+  viewID?: string
   fetch?: typeof fetch
   headers?: RequestInit["headers"]
   events?: EventSource
@@ -144,30 +150,35 @@ export function tui(input: {
                         <SDKProvider
                           url={input.url}
                           directory={input.directory}
+                          viewID={input.viewID}
                           fetch={input.fetch}
                           headers={input.headers}
                           events={input.events}
                         >
                           <SyncProvider>
-                            <ThemeProvider mode={mode}>
-                              <LocalProvider>
-                                <KeybindProvider>
-                                  <PromptStashProvider>
-                                    <DialogProvider>
-                                      <CommandProvider>
-                                        <FrecencyProvider>
-                                          <PromptHistoryProvider>
-                                            <PromptRefProvider>
-                                              <App />
-                                            </PromptRefProvider>
-                                          </PromptHistoryProvider>
-                                        </FrecencyProvider>
-                                      </CommandProvider>
-                                    </DialogProvider>
-                                  </PromptStashProvider>
-                                </KeybindProvider>
-                              </LocalProvider>
-                            </ThemeProvider>
+                            <SessionTabsProvider>
+                              <TabStateProvider>
+                                <ThemeProvider mode={mode}>
+                                  <LocalProvider>
+                                    <KeybindProvider>
+                                      <PromptStashProvider>
+                                        <DialogProvider>
+                                          <CommandProvider>
+                                            <FrecencyProvider>
+                                              <PromptHistoryProvider>
+                                                <PromptRefProvider>
+                                                  <App />
+                                                </PromptRefProvider>
+                                              </PromptHistoryProvider>
+                                            </FrecencyProvider>
+                                          </CommandProvider>
+                                        </DialogProvider>
+                                      </PromptStashProvider>
+                                    </KeybindProvider>
+                                  </LocalProvider>
+                                </ThemeProvider>
+                              </TabStateProvider>
+                            </SessionTabsProvider>
                           </SyncProvider>
                         </SDKProvider>
                       </TuiConfigProvider>
@@ -214,6 +225,8 @@ function App() {
   const sync = useSync()
   const exit = useExit()
   const promptRef = usePromptRef()
+  const tabs = useSessionTabs()
+  const tabState = useTabState()
 
   useKeyboard((evt) => {
     if (!Flag.SLOPCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
@@ -284,26 +297,24 @@ function App() {
 
   const args = useArgs()
   onMount(() => {
-    batch(() => {
-      if (args.agent) local.agent.set(args.agent)
-      if (args.model) {
-        const { providerID, modelID } = Provider.parseModel(args.model)
-        if (!providerID || !modelID)
-          return toast.show({
-            variant: "warning",
-            message: `Invalid model format: ${args.model}`,
-            duration: 3000,
-          })
-        local.model.set({ providerID, modelID }, { recent: true })
-      }
-      // Handle --session without --fork immediately (fork is handled in createEffect below)
-      if (args.sessionID && !args.fork) {
-        route.navigate({
-          type: "session",
-          sessionID: args.sessionID,
+    if (args.sessionID && !args.fork) {
+      route.navigate({
+        type: "session",
+        sessionID: args.sessionID,
+        source: "switch",
+      })
+    }
+    if (args.agent) local.agent.set(args.agent)
+    if (args.model) {
+      const { providerID, modelID } = Provider.parseModel(args.model)
+      if (!providerID || !modelID)
+        return toast.show({
+          variant: "warning",
+          message: `Invalid model format: ${args.model}`,
+          duration: 3000,
         })
-      }
-    })
+      local.model.set({ providerID, modelID }, { recent: true })
+    }
   })
 
   let continued = false
@@ -318,13 +329,13 @@ function App() {
       if (args.fork) {
         sdk.client.session.fork({ sessionID: match }).then((result) => {
           if (result.data?.id) {
-            route.navigate({ type: "session", sessionID: result.data.id })
+            route.navigate({ type: "session", sessionID: result.data.id, source: "fork" })
           } else {
             toast.show({ message: "Failed to fork session", variant: "error" })
           }
         })
       } else {
-        route.navigate({ type: "session", sessionID: match })
+        route.navigate({ type: "session", sessionID: match, source: "switch" })
       }
     }
   })
@@ -338,7 +349,7 @@ function App() {
     forked = true
     sdk.client.session.fork({ sessionID: args.sessionID }).then((result) => {
       if (result.data?.id) {
-        route.navigate({ type: "session", sessionID: result.data.id })
+        route.navigate({ type: "session", sessionID: result.data.id, source: "fork" })
       } else {
         toast.show({ message: "Failed to fork session", variant: "error" })
       }
@@ -383,13 +394,12 @@ function App() {
         aliases: ["clear"],
       },
       onSelect: () => {
-        const current = promptRef.current
-        // Don't require focus - if there's any text, preserve it
-        const currentPrompt = current?.current?.input ? current.current : undefined
-        route.navigate({
-          type: "home",
-          initialPrompt: currentPrompt,
-        })
+        const current = promptRef.current?.current
+        const currentPrompt = current && (current.input || current.parts.length > 0) ? current : undefined
+        tabState.copySelection(tabState.currentID(), DRAFT_TAB_ID)
+        if (currentPrompt) tabState.setPrompt(DRAFT_TAB_ID, currentPrompt)
+        else tabState.clearPrompt(DRAFT_TAB_ID)
+        tabs.openDraft()
         dialog.clear()
       },
     },
@@ -404,6 +414,17 @@ function App() {
       },
       onSelect: () => {
         dialog.replace(() => <DialogModel />)
+      },
+    },
+    {
+      title: "Autocomplete model overrides",
+      value: "model.completion.list",
+      category: "Agent",
+      slash: {
+        name: "models-completion",
+      },
+      onSelect: () => {
+        dialog.replace(() => <DialogModelCompletion />)
       },
     },
     {
@@ -461,6 +482,7 @@ function App() {
     {
       title: "Toggle MCPs",
       value: "mcp.list",
+      search: "toggle mcps",
       category: "Agent",
       slash: {
         name: "mcps",
@@ -536,8 +558,9 @@ function App() {
       category: "System",
     },
     {
-      title: "Toggle appearance",
+      title: mode() === "dark" ? "Light mode" : "Dark mode",
       value: "theme.switch_mode",
+      search: "toggle appearance",
       onSelect: (dialog) => {
         setMode(mode() === "dark" ? "light" : "dark")
         dialog.clear()
@@ -567,6 +590,7 @@ function App() {
     },
     {
       title: "Toggle debug panel",
+      search: "toggle debug",
       category: "System",
       value: "app.debug",
       onSelect: (dialog) => {
@@ -576,6 +600,7 @@ function App() {
     },
     {
       title: "Toggle console",
+      search: "toggle console",
       category: "System",
       value: "app.console",
       onSelect: (dialog) => {
@@ -616,6 +641,7 @@ function App() {
     {
       title: terminalTitleEnabled() ? "Disable terminal title" : "Enable terminal title",
       value: "terminal.title.toggle",
+      search: "toggle terminal title",
       keybind: "terminal_title_toggle",
       category: "System",
       onSelect: (dialog) => {
@@ -631,6 +657,7 @@ function App() {
     {
       title: kv.get("animations_enabled", true) ? "Disable animations" : "Enable animations",
       value: "app.toggle.animations",
+      search: "toggle animations",
       category: "System",
       onSelect: (dialog) => {
         kv.set("animations_enabled", !kv.get("animations_enabled", true))
@@ -640,6 +667,7 @@ function App() {
     {
       title: kv.get("diff_wrap_mode", "word") === "word" ? "Disable diff wrapping" : "Enable diff wrapping",
       value: "app.toggle.diffwrap",
+      search: "toggle diff wrapping",
       category: "System",
       onSelect: (dialog) => {
         const current = kv.get("diff_wrap_mode", "word")
@@ -680,6 +708,7 @@ function App() {
     route.navigate({
       type: "session",
       sessionID: evt.properties.sessionID,
+      source: "switch",
     })
   })
 

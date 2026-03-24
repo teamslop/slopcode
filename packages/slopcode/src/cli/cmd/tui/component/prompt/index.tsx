@@ -1,32 +1,47 @@
-import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent, t, dim, fg } from "@opentui/core"
-import { createEffect, createMemo, type JSX, onMount, createSignal, onCleanup, on, Show, Switch, Match } from "solid-js"
+import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent } from "@opentui/core"
+import {
+  createEffect,
+  createMemo,
+  type JSX,
+  onMount,
+  createSignal,
+  onCleanup,
+  on,
+  Show,
+  Switch,
+  Match,
+  untrack,
+} from "solid-js"
 import "opentui-spinner/solid"
 import path from "path"
 import { Filesystem } from "@/util/filesystem"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
+import { useSessionTabs } from "@tui/context/session-tabs"
+import { useTabState } from "@tui/context/tab-state"
 import { EmptyBorder } from "@tui/component/border"
 import { useSDK } from "@tui/context/sdk"
 import { useRoute } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { Identifier } from "@/id/id"
-import { createStore, produce } from "solid-js/store"
+import { createStore, produce, unwrap } from "solid-js/store"
 import { useKeybind } from "@tui/context/keybind"
 import { usePromptHistory, type PromptInfo } from "./history"
+import { ghostCursor, ghostVisible, ghostRemainder } from "./ghost.ts"
 import { usePromptStash } from "./stash"
 import { DialogStash } from "../dialog-stash"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useCommandDialog } from "../dialog-command"
-import { useRenderer } from "@opentui/solid"
+import { useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Editor } from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import { Clipboard } from "../../util/clipboard"
-import type { FilePart } from "@slopcode-ai/sdk/v2"
+import type { FilePart, Message } from "@slopcode-ai/sdk/v2"
 import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
 import { Locale } from "@/util/locale"
 import { formatDuration } from "@/util/format"
-import { createColors, createFrames } from "../../ui/spinner.ts"
+import { createBlockSpinner } from "../../ui/spinner.ts"
 import { useDialog } from "@tui/ui/dialog"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
 import { DialogAlert } from "../../ui/dialog-alert"
@@ -34,13 +49,17 @@ import { useToast } from "../../ui/toast"
 import { useKV } from "../../context/kv"
 import { useTextareaKeybindings } from "../textarea-keybindings"
 import { DialogSkill } from "../dialog-skill"
+import { describePromptQueue, promptQueue } from "./queue"
 
 export type PromptProps = {
   sessionID?: string
   visible?: boolean
   disabled?: boolean
   historyMode?: boolean
+  historyTarget?: "prompt" | "timeline"
+  showHistoryHint?: boolean
   onSubmit?: () => void
+  onFocus?: () => void
   ref?: (ref: PromptRef) => void
   hint?: JSX.Element
   showPlaceholder?: boolean
@@ -59,6 +78,33 @@ export type PromptRef = {
 const PLACEHOLDERS = ["Fix a TODO in the codebase", "What is the tech stack of this project?", "Fix broken tests"]
 const SHELL_PLACEHOLDERS = ["ls -la", "git status", "pwd"]
 
+type QueueStore = {
+  message: {
+    [sessionID: string]: Message[] | undefined
+  }
+  session_status: {
+    [sessionID: string]: { type: string } | undefined
+  }
+}
+
+const idle = (store: QueueStore, sessionID: string) => (store.session_status[sessionID]?.type ?? "idle") === "idle"
+
+const assistants = (messages: Message[], messageID: string) =>
+  messages.filter((item) => item.role === "assistant" && item.parentID === messageID)
+
+const finished = (message: Message) => {
+  if (message.role !== "assistant") return false
+  if (!message.time.completed) return false
+  if (message.error) return true
+  if (!message.finish) return false
+  return !["tool-calls", "unknown"].includes(message.finish)
+}
+
+const done = (store: QueueStore, sessionID: string, messageID: string) => {
+  if (!idle(store, sessionID)) return false
+  return assistants(store.message[sessionID] ?? [], messageID).some(finished)
+}
+
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
   let anchor: BoxRenderable
@@ -68,11 +114,17 @@ export function Prompt(props: PromptProps) {
   const local = useLocal()
   const sdk = useSDK()
   const route = useRoute()
+  const tabs = useSessionTabs()
+  const tabState = useTabState()
   const sync = useSync()
   const dialog = useDialog()
   const toast = useToast()
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
   const history = usePromptHistory()
+  const historyScope = createMemo(() => ({
+    dir: sync.data.path.directory || process.cwd(),
+    sessionID: props.sessionID,
+  }))
   const stash = usePromptStash()
   const command = useCommandDialog()
   const renderer = useRenderer()
@@ -88,6 +140,23 @@ export function Prompt(props: PromptProps) {
     if (sync.data.provider.length === 0) {
       dialog.replace(() => <DialogProviderConnect />)
     }
+  }
+
+  const abort = (error: unknown) => {
+    return (
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (typeof error === "object" &&
+        error !== null &&
+        "name" in error &&
+        (error.name === "AbortError" || error.name === "MessageAbortedError"))
+    )
+  }
+
+  const runSafe = (promise: Promise<unknown>) => {
+    void promise.catch((error) => {
+      if (abort(error)) return
+      console.error("Prompt request failed", error)
+    })
   }
 
   const textareaKeybindings = useTextareaKeybindings()
@@ -110,16 +179,21 @@ export function Prompt(props: PromptProps) {
   })
 
   createEffect(() => {
-    if (props.disabled) input.cursorColor = theme.backgroundElement
-    if (!props.disabled) input.cursorColor = theme.text
+    if (props.disabled) {
+      input.cursorColor = theme.backgroundElement
+      return
+    }
+
+    if (props.historyMode && props.historyTarget === "timeline") {
+      input.cursorColor = theme.backgroundElement
+      return
+    }
+
+    input.cursorColor = theme.text
   })
 
-  const lastUserMessage = createMemo(() => {
-    if (!props.sessionID) return undefined
-    const messages = sync.data.message[props.sessionID]
-    if (!messages) return undefined
-    return messages.findLast((m) => m.role === "user")
-  })
+  const currentTabID = createMemo(() => tabState.currentID())
+  const currentTab = createMemo(() => tabState.get(currentTabID()))
 
   const [store, setStore] = createStore<{
     prompt: PromptInfo
@@ -127,6 +201,7 @@ export function Prompt(props: PromptProps) {
     extmarkToPartIndex: Map<number, number>
     interrupt: number
     placeholder: number
+    ghost: string
   }>({
     placeholder: Math.floor(Math.random() * PLACEHOLDERS.length),
     prompt: {
@@ -136,6 +211,66 @@ export function Prompt(props: PromptProps) {
     mode: "normal",
     extmarkToPartIndex: new Map(),
     interrupt: 0,
+    ghost: "",
+  })
+  const [cursor, setCursor] = createSignal({
+    row: 0,
+    col: 0,
+    offset: 0,
+  })
+
+  function syncCursor() {
+    if (!input || input.isDestroyed) return
+    const visual = input.visualCursor
+    setCursor({
+      row: visual.visualRow,
+      col: visual.visualCol,
+      offset: visual.offset,
+    })
+  }
+
+  function loadPrompt(prompt: PromptInfo) {
+    if (!input || input.isDestroyed) return
+    const next = unwrap(prompt)
+    input.setText(next.input)
+    setStore("prompt", {
+      input: next.input,
+      parts: structuredClone(next.parts),
+    })
+    setStore("mode", next.mode ?? "normal")
+    restoreExtmarksFromParts(next.parts)
+    input.gotoBufferEnd()
+    syncCursor()
+  }
+
+  const ghostPoint = createMemo(() => ghostCursor(input, cursor()))
+
+  const inlineGhost = createMemo(() => {
+    if (
+      !ghostVisible({
+        ghost: store.ghost,
+        mode: store.mode,
+        disabled: props.disabled,
+        historyMode: props.historyMode,
+        historyTarget: props.historyTarget,
+        autocompleteVisible: !!autocomplete?.visible,
+        focused: !!input?.focused,
+        cursorOffset: ghostPoint().offset,
+        inputLength: store.prompt.input.length,
+      })
+    ) {
+      return ""
+    }
+
+    return store.ghost
+  })
+
+  const inlineGhostPosition = createMemo(() => {
+    const point = ghostPoint()
+    return {
+      top: point.row,
+      left: point.col,
+    }
   })
 
   createEffect(
@@ -148,25 +283,28 @@ export function Prompt(props: PromptProps) {
     ),
   )
 
-  // Initialize agent/model/variant from last user message when session changes
-  let syncedSessionID: string | undefined
   createEffect(() => {
-    const sessionID = props.sessionID
-    const msg = lastUserMessage()
+    const id = currentTabID()
+    const next = currentTab().prompt
+    if (!id || !input || input.isDestroyed) return
+    const mode = next.mode ?? "normal"
+    const current = untrack(() => ({
+      input: store.prompt.input,
+      parts: store.prompt.parts,
+      mode: store.mode,
+    }))
+    if (current.input === next.input && Bun.deepEquals(current.parts, next.parts) && current.mode === mode) return
+    loadPrompt(next)
+  })
 
-    if (sessionID !== syncedSessionID) {
-      if (!sessionID || !msg) return
-
-      syncedSessionID = sessionID
-
-      // Only set agent if it's a primary agent (not a subagent)
-      const isPrimaryAgent = local.agent.list().some((x) => x.name === msg.agent)
-      if (msg.agent && isPrimaryAgent) {
-        local.agent.set(msg.agent)
-        if (msg.model) local.model.set(msg.model)
-        if (msg.variant) local.model.variant.set(msg.variant)
-      }
-    }
+  createEffect(() => {
+    const id = currentTabID()
+    if (!id || !input || input.isDestroyed) return
+    tabState.setPrompt(id, {
+      input: store.prompt.input,
+      parts: store.prompt.parts,
+      mode: store.mode,
+    })
   })
 
   command.register(() => {
@@ -179,6 +317,9 @@ export function Prompt(props: PromptProps) {
         onSelect: (dialog) => {
           input.extmarks.clear()
           input.clear()
+          setStore("prompt", { input: "", parts: [] })
+          setStore("mode", "normal")
+          setStore("extmarkToPartIndex", new Map())
           dialog.clear()
         },
       },
@@ -220,7 +361,6 @@ export function Prompt(props: PromptProps) {
         enabled: status().type !== "idle",
         onSelect: (dialog) => {
           if (autocomplete.visible) return
-          if (!input.focused) return
           // TODO: this should be its own command
           if (store.mode === "shell") {
             setStore("mode", "normal")
@@ -235,9 +375,12 @@ export function Prompt(props: PromptProps) {
           }, 5000)
 
           if (store.interrupt >= 2) {
-            sdk.client.session.abort({
-              sessionID: props.sessionID,
-            })
+            promptQueue.clear(props.sessionID, { active: true })
+            runSafe(
+              sdk.client.session.abort({
+                sessionID: props.sessionID,
+              }),
+            )
             setStore("interrupt", 0)
           }
           dialog.clear()
@@ -360,7 +503,10 @@ export function Prompt(props: PromptProps) {
       return input.focused
     },
     get current() {
-      return store.prompt
+      return {
+        ...store.prompt,
+        mode: store.mode,
+      }
     },
     focus() {
       input.focus()
@@ -369,10 +515,7 @@ export function Prompt(props: PromptProps) {
       input.blur()
     },
     set(prompt) {
-      input.setText(prompt.input)
-      setStore("prompt", prompt)
-      restoreExtmarksFromParts(prompt.parts)
-      input.gotoBufferEnd()
+      loadPrompt(prompt)
     },
     reset() {
       input.clear()
@@ -381,6 +524,7 @@ export function Prompt(props: PromptProps) {
         input: "",
         parts: [],
       })
+      setStore("mode", "normal")
       setStore("extmarkToPartIndex", new Map())
     },
     submit() {
@@ -471,6 +615,112 @@ export function Prompt(props: PromptProps) {
     )
   }
 
+  let ghostTimer: Timer | undefined
+  let ghostRequest = 0
+  const [ghostSuggestion, setGhostSuggestion] = createSignal("")
+
+  function clearGhost() {
+    ghostRequest += 1
+    if (ghostTimer) {
+      clearTimeout(ghostTimer)
+      ghostTimer = undefined
+    }
+    if (ghostSuggestion()) setGhostSuggestion("")
+    if (store.ghost) setStore("ghost", "")
+  }
+
+  function acceptGhost() {
+    if (!store.ghost) return false
+    input.insertText(store.ghost)
+    clearGhost()
+    return true
+  }
+
+  createEffect(() => {
+    const config = sync.data.config.autocomplete
+    if (config?.enabled === false) {
+      clearGhost()
+      return
+    }
+
+    const sessionID = props.sessionID
+    if (!sessionID || store.mode !== "normal") {
+      clearGhost()
+      return
+    }
+
+    if (autocomplete?.visible || !input?.focused) {
+      clearGhost()
+      return
+    }
+
+    const text = store.prompt.input
+    const cursor = input.cursorOffset
+    if (!text || cursor !== text.length) {
+      clearGhost()
+      return
+    }
+
+    if (!/\S/.test(text)) {
+      clearGhost()
+      return
+    }
+
+    if (store.prompt.parts.some((part) => part.type !== "text")) {
+      clearGhost()
+      return
+    }
+
+    const suggestion = ghostSuggestion()
+    if (suggestion) {
+      const remaining = ghostRemainder(text, suggestion)
+      if (remaining !== undefined) {
+        if (store.ghost !== remaining) setStore("ghost", remaining)
+        if (!remaining) setGhostSuggestion("")
+        return
+      }
+      setGhostSuggestion("")
+      if (store.ghost) setStore("ghost", "")
+    }
+
+    const prefix = text
+    if (prefix.length < (config?.min_prefix_chars ?? 12)) {
+      clearGhost()
+      return
+    }
+
+    if (ghostTimer) clearTimeout(ghostTimer)
+    const requestID = ++ghostRequest
+    ghostTimer = setTimeout(async () => {
+      const selected = local.model.current()
+      if (!selected) return
+      const response = await sdk.client.session
+        .autocomplete({
+          sessionID,
+          model: selected,
+          agent: local.agent.current().name,
+          variant: local.model.variant.current(),
+          mode: "normal",
+          prefix,
+        })
+        .catch(() => undefined)
+      if (!response?.data) return
+      if (requestID !== ghostRequest) return
+      const completion = response.data.completion
+      if (!completion || /\n/.test(completion)) {
+        setGhostSuggestion("")
+        if (store.ghost) setStore("ghost", "")
+        return
+      }
+      setGhostSuggestion(prefix + completion)
+      setStore("ghost", completion)
+    }, config?.debounce_ms ?? 180)
+  })
+
+  onCleanup(() => {
+    if (ghostTimer) clearTimeout(ghostTimer)
+  })
+
   command.register(() => [
     {
       title: "Stash prompt",
@@ -486,6 +736,7 @@ export function Prompt(props: PromptProps) {
         input.extmarks.clear()
         input.clear()
         setStore("prompt", { input: "", parts: [] })
+        setStore("mode", "normal")
         setStore("extmarkToPartIndex", new Map())
         dialog.clear()
       },
@@ -498,10 +749,7 @@ export function Prompt(props: PromptProps) {
       onSelect: (dialog) => {
         const entry = stash.pop()
         if (entry) {
-          input.setText(entry.input)
-          setStore("prompt", { input: entry.input, parts: entry.parts })
-          restoreExtmarksFromParts(entry.parts)
-          input.gotoBufferEnd()
+          loadPrompt(entry)
         }
         dialog.clear()
       },
@@ -515,10 +763,7 @@ export function Prompt(props: PromptProps) {
         dialog.replace(() => (
           <DialogStash
             onSelect={(entry) => {
-              input.setText(entry.input)
-              setStore("prompt", { input: entry.input, parts: entry.parts })
-              restoreExtmarksFromParts(entry.parts)
-              input.gotoBufferEnd()
+              loadPrompt(entry)
             }}
           />
         ))
@@ -528,6 +773,7 @@ export function Prompt(props: PromptProps) {
 
   async function submit() {
     if (props.disabled) return
+    clearGhost()
     if (autocomplete?.visible) return
     if (!store.prompt.input) return
     const trimmed = store.prompt.input.trim()
@@ -540,6 +786,8 @@ export function Prompt(props: PromptProps) {
       promptModelWarning()
       return
     }
+    const draft = !props.sessionID && tabs.draftActive()
+    const sourceTabID = currentTabID()
     const sessionID = props.sessionID
       ? props.sessionID
       : await (async () => {
@@ -548,6 +796,7 @@ export function Prompt(props: PromptProps) {
         })()
     const messageID = Identifier.ascending("message")
     let inputText = store.prompt.input
+    const queueMode = sync.data.config.queue_mode ?? "serial"
 
     // Expand pasted text inline before submitting
     const allExtmarks = input.extmarks.getAllForTypeId(promptPartTypeId)
@@ -570,18 +819,21 @@ export function Prompt(props: PromptProps) {
 
     // Capture mode before it gets reset
     const currentMode = store.mode
+    const agent = local.agent.current().name
     const variant = local.model.variant.current()
 
     if (store.mode === "shell") {
-      sdk.client.session.shell({
-        sessionID,
-        agent: local.agent.current().name,
-        model: {
-          providerID: selectedModel.providerID,
-          modelID: selectedModel.modelID,
-        },
-        command: inputText,
-      })
+      runSafe(
+        sdk.client.session.shell({
+          sessionID,
+          agent,
+          model: {
+            providerID: selectedModel.providerID,
+            modelID: selectedModel.modelID,
+          },
+          command: inputText,
+        }),
+      )
       setStore("mode", "normal")
     } else if (
       inputText.startsWith("/") &&
@@ -598,28 +850,30 @@ export function Prompt(props: PromptProps) {
       const restOfInput = firstLineEnd === -1 ? "" : inputText.slice(firstLineEnd + 1)
       const args = firstLineArgs.join(" ") + (restOfInput ? "\n" + restOfInput : "")
 
-      sdk.client.session.command({
-        sessionID,
-        command: command.slice(1),
-        arguments: args,
-        agent: local.agent.current().name,
-        model: `${selectedModel.providerID}/${selectedModel.modelID}`,
-        messageID,
-        variant,
-        parts: nonTextParts
-          .filter((x) => x.type === "file")
-          .map((x) => ({
-            id: Identifier.ascending("part"),
-            ...x,
-          })),
-      })
+      runSafe(
+        sdk.client.session.command({
+          sessionID,
+          command: command.slice(1),
+          arguments: args,
+          agent,
+          model: `${selectedModel.providerID}/${selectedModel.modelID}`,
+          messageID,
+          variant,
+          parts: nonTextParts
+            .filter((x) => x.type === "file")
+            .map((x) => ({
+              id: Identifier.ascending("part"),
+              ...x,
+            })),
+        }),
+      )
     } else {
-      sdk.client.session
-        .prompt({
+      const send = async () => {
+        await sdk.client.session.promptAsync({
           sessionID,
           ...selectedModel,
           messageID,
-          agent: local.agent.current().name,
+          agent,
           model: selectedModel,
           variant,
           parts: [
@@ -634,26 +888,70 @@ export function Prompt(props: PromptProps) {
             })),
           ],
         })
-        .catch(() => {})
+      }
+
+      if (queueMode === "serial") {
+        const queued = describePromptQueue({
+          text: inputText,
+          files: nonTextParts.length,
+        })
+        promptQueue.push({
+          key: sessionID,
+          id: messageID,
+          mode: store.mode,
+          agent,
+          summary: queued.summary,
+          detail: queued.detail,
+          ready: () => idle(sync.data as QueueStore, sessionID),
+          done: () => done(sync.data as QueueStore, sessionID, messageID),
+          run: send,
+          reject: (error) => {
+            if (abort(error)) return
+            console.error("Prompt request failed", error)
+          },
+        })
+      } else {
+        runSafe(send())
+      }
     }
-    history.append({
-      ...store.prompt,
-      mode: currentMode,
-    })
+    history.append(
+      {
+        ...historyScope(),
+        sessionID,
+      },
+      {
+        ...store.prompt,
+        mode: currentMode,
+      },
+    )
+    if (!props.sessionID) {
+      tabState.copySelection(sourceTabID, sessionID)
+    }
     input.extmarks.clear()
     setStore("prompt", {
       input: "",
       parts: [],
     })
+    setStore("mode", "normal")
     setStore("extmarkToPartIndex", new Map())
     props.onSubmit?.()
 
     // temporary hack to make sure the message is sent
     if (!props.sessionID)
       setTimeout(() => {
+        if (draft) {
+          tabs.promoteDraft(sessionID)
+          route.navigate({
+            type: "session",
+            sessionID,
+            source: "switch",
+          })
+          return
+        }
         route.navigate({
           type: "session",
           sessionID,
+          source: "new",
         })
       }, 50)
     input.clear()
@@ -738,6 +1036,7 @@ export function Prompt(props: PromptProps) {
   }
 
   const highlight = createMemo(() => {
+    if (props.historyMode && props.historyTarget === "timeline") return theme.backgroundElement
     if (keybind.leader) return theme.border
     if (store.mode === "shell") return theme.primary
     return local.agent.color(local.agent.current().name)
@@ -758,26 +1057,60 @@ export function Prompt(props: PromptProps) {
     }
     return `Ask anything... "${PLACEHOLDERS[store.placeholder % PLACEHOLDERS.length]}"`
   })
+  const dimensions = useTerminalDimensions()
+  const compact = createMemo(() => dimensions().width < 100)
+  const tight = createMemo(() => dimensions().width < 80)
+  const tiny = createMemo(() => dimensions().width < 72)
+  const statusWidth = createMemo(() => {
+    if (status().type === "idle") return undefined
+    if (!compact()) return undefined
+    return Math.max(20, Math.floor(dimensions().width / 2) - 4)
+  })
+  const chipGap = createMemo(() => (tight() ? 0 : compact() ? 1 : 2))
+  const chipPad = createMemo(() => (compact() ? 0 : 1))
+  const showVariantHint = createMemo(() => !compact())
+  const showAgentHint = createMemo(() => !tight())
+  const showHistoryChip = createMemo(() => props.showHistoryHint !== false && history.has(historyScope()) && !tiny())
+  const showCommandChip = createMemo(() => !tiny())
+  const label = (full: string, short: string = full, hideOnTight = false) => {
+    if (tight() && hideOnTight) return ""
+    if (compact()) return short
+    return full
+  }
+  const muted = (full: string, short: string = full, hideOnTight = false) => {
+    const text = label(full, short, hideOnTight)
+    if (!text) return ""
+    return <span style={{ fg: theme.textMuted }}> {text}</span>
+  }
 
   const spinnerDef = createMemo(() => {
     const color = local.agent.color(local.agent.current().name)
-    return {
-      frames: createFrames({
-        color,
-        style: "blocks",
-        inactiveFactor: 0.6,
-        // enableFading: false,
-        minAlpha: 0.3,
-      }),
-      color: createColors({
-        color,
-        style: "blocks",
-        inactiveFactor: 0.6,
-        // enableFading: false,
-        minAlpha: 0.3,
-      }),
-    }
+    return createBlockSpinner({ color })
   })
+
+  const [hover, setHover] = createSignal<string>()
+  const [flash, setFlash] = createSignal<string>()
+  let pulse: ReturnType<typeof setTimeout> | undefined
+
+  onCleanup(() => {
+    if (!pulse) return
+    clearTimeout(pulse)
+  })
+
+  const run = (id: string, fn: () => void) => {
+    setFlash(id)
+    if (pulse) clearTimeout(pulse)
+    pulse = setTimeout(() => {
+      setFlash(undefined)
+    }, 140)
+    fn()
+  }
+
+  const chip = (id: string) => {
+    if (flash() === id) return theme.backgroundMenu
+    if (hover() === id) return theme.backgroundElement
+    return undefined
+  }
 
   return (
     <>
@@ -819,185 +1152,231 @@ export function Prompt(props: PromptProps) {
             backgroundColor={theme.backgroundElement}
             flexGrow={1}
           >
-            <textarea
-              placeholder={placeholderText()}
-              textColor={keybind.leader ? theme.textMuted : theme.text}
-              focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
-              minHeight={1}
-              maxHeight={6}
-              onContentChange={() => {
-                const value = input.plainText
-                setStore("prompt", "input", value)
-                autocomplete.onInput(value)
-                syncExtmarksWithPromptParts()
-              }}
-              keyBindings={textareaKeybindings()}
-              onKeyDown={async (e) => {
-                if (props.disabled) {
-                  e.preventDefault()
-                  return
-                }
-                // Handle clipboard paste (Ctrl+V) - check for images first on Windows
-                // This is needed because Windows terminal doesn't properly send image data
-                // through bracketed paste, so we need to intercept the keypress and
-                // directly read from clipboard before the terminal handles it
-                if (keybind.match("input_paste", e)) {
-                  const content = await Clipboard.read()
-                  if (content?.mime.startsWith("image/")) {
-                    e.preventDefault()
-                    await pasteImage({
-                      filename: "clipboard",
-                      mime: content.mime,
-                      content: content.data,
-                    })
-                    return
-                  }
-                  // If no image, let the default paste behavior continue
-                }
-                if (keybind.match("input_clear", e) && store.prompt.input !== "") {
-                  input.clear()
-                  input.extmarks.clear()
-                  setStore("prompt", {
-                    input: "",
-                    parts: [],
-                  })
-                  setStore("extmarkToPartIndex", new Map())
-                  return
-                }
-                if (keybind.match("app_exit", e)) {
-                  if (store.prompt.input === "") {
-                    await exit()
-                    // Don't preventDefault - let textarea potentially handle the event
+            <box position="relative">
+              <textarea
+                placeholder={placeholderText()}
+                textColor={keybind.leader ? theme.textMuted : theme.text}
+                focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
+                minHeight={1}
+                maxHeight={6}
+                onContentChange={() => {
+                  const value = input.plainText
+                  setStore("prompt", "input", value)
+                  autocomplete.onInput(value)
+                  syncExtmarksWithPromptParts()
+                  syncCursor()
+                }}
+                onCursorChange={() => {
+                  syncCursor()
+                }}
+                keyBindings={textareaKeybindings()}
+                onKeyDown={async (e) => {
+                  if (props.disabled) {
                     e.preventDefault()
                     return
                   }
-                }
-                if (e.name === "!" && input.visualCursor.offset === 0) {
-                  setStore("placeholder", Math.floor(Math.random() * SHELL_PLACEHOLDERS.length))
-                  setStore("mode", "shell")
-                  e.preventDefault()
-                  return
-                }
-                if (store.mode === "shell") {
-                  if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
-                    setStore("mode", "normal")
-                    e.preventDefault()
-                    return
-                  }
-                }
-                if (store.mode === "normal") autocomplete.onKeyDown(e)
-                if (!autocomplete.visible) {
-                  if (
-                    (keybind.match("history_previous", e) && input.cursorOffset === 0) ||
-                    (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length)
-                  ) {
-                    const direction = keybind.match("history_previous", e) ? -1 : 1
-                    const item = history.move(direction, input.plainText)
-
-                    if (item) {
-                      input.setText(item.input)
-                      setStore("prompt", item)
-                      setStore("mode", item.mode ?? "normal")
-                      restoreExtmarksFromParts(item.parts)
+                  // Handle clipboard paste (Ctrl+V) - check for images first on Windows
+                  // This is needed because Windows terminal doesn't properly send image data
+                  // through bracketed paste, so we need to intercept the keypress and
+                  // directly read from clipboard before the terminal handles it
+                  if (keybind.match("input_paste", e)) {
+                    const content = await Clipboard.read()
+                    if (content?.mime.startsWith("image/")) {
                       e.preventDefault()
-                      if (direction === -1) input.cursorOffset = 0
-                      if (direction === 1) input.cursorOffset = input.plainText.length
+                      await pasteImage({
+                        filename: "clipboard",
+                        mime: content.mime,
+                        content: content.data,
+                      })
+                      return
                     }
+                    // If no image, let the default paste behavior continue
+                  }
+                  if (keybind.match("input_clear", e) && store.prompt.input !== "") {
+                    input.clear()
+                    input.extmarks.clear()
+                    setStore("prompt", {
+                      input: "",
+                      parts: [],
+                    })
+                    setStore("mode", "normal")
+                    setStore("extmarkToPartIndex", new Map())
+                    return
+                  }
+                  if (keybind.match("app_exit", e)) {
+                    if (store.prompt.input === "") {
+                      await exit()
+                      // Don't preventDefault - let textarea potentially handle the event
+                      e.preventDefault()
+                      return
+                    }
+                  }
+                  if (e.name === "!" && input.visualCursor.offset === 0) {
+                    setStore("placeholder", Math.floor(Math.random() * SHELL_PLACEHOLDERS.length))
+                    setStore("mode", "shell")
+                    e.preventDefault()
+                    return
+                  }
+                  if (store.mode === "shell") {
+                    if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
+                      setStore("mode", "normal")
+                      e.preventDefault()
+                      return
+                    }
+                  }
+                  if (store.mode === "normal" && !autocomplete.visible && store.ghost) {
+                    if (
+                      e.name === "right" &&
+                      !e.ctrl &&
+                      !e.meta &&
+                      !e.option &&
+                      !e.shift &&
+                      input.cursorOffset === input.plainText.length
+                    ) {
+                      if (acceptGhost()) {
+                        e.preventDefault()
+                        return
+                      }
+                    }
+                    if (e.name === "escape") {
+                      clearGhost()
+                      e.preventDefault()
+                      return
+                    }
+                  }
+                  if (store.mode === "normal") autocomplete.onKeyDown(e)
+                  if (!autocomplete.visible) {
+                    if (
+                      !props.historyMode &&
+                      ((keybind.match("history_previous", e) && input.cursorOffset === 0) ||
+                        (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length))
+                    ) {
+                      const direction = keybind.match("history_previous", e) ? -1 : 1
+                      const item = history.move(historyScope(), direction, {
+                        ...store.prompt,
+                        mode: store.mode,
+                      })
+
+                      if (item) {
+                        input.setText(item.input)
+                        setStore("prompt", item)
+                        setStore("mode", item.mode ?? "normal")
+                        restoreExtmarksFromParts(item.parts)
+                        e.preventDefault()
+                        if (direction === -1) input.cursorOffset = 0
+                        if (direction === 1) input.cursorOffset = input.plainText.length
+                      }
+                      return
+                    }
+
+                    if (keybind.match("history_previous", e) && input.visualCursor.visualRow === 0)
+                      input.cursorOffset = 0
+                    if (keybind.match("history_next", e) && input.visualCursor.visualRow === input.height - 1)
+                      input.cursorOffset = input.plainText.length
+                  }
+                }}
+                onSubmit={submit}
+                onPaste={async (event: PasteEvent) => {
+                  if (props.disabled) {
+                    event.preventDefault()
                     return
                   }
 
-                  if (keybind.match("history_previous", e) && input.visualCursor.visualRow === 0) input.cursorOffset = 0
-                  if (keybind.match("history_next", e) && input.visualCursor.visualRow === input.height - 1)
-                    input.cursorOffset = input.plainText.length
-                }
-              }}
-              onSubmit={submit}
-              onPaste={async (event: PasteEvent) => {
-                if (props.disabled) {
-                  event.preventDefault()
-                  return
-                }
+                  // Normalize line endings at the boundary
+                  // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
+                  // Replace CRLF first, then any remaining CR
+                  const normalizedText = event.text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+                  const pastedContent = normalizedText.trim()
+                  if (!pastedContent) {
+                    command.trigger("prompt.paste")
+                    return
+                  }
 
-                // Normalize line endings at the boundary
-                // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
-                // Replace CRLF first, then any remaining CR
-                const normalizedText = event.text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-                const pastedContent = normalizedText.trim()
-                if (!pastedContent) {
-                  command.trigger("prompt.paste")
-                  return
-                }
-
-                // trim ' from the beginning and end of the pasted content. just
-                // ' and nothing else
-                const filepath = pastedContent.replace(/^'+|'+$/g, "").replace(/\\ /g, " ")
-                const isUrl = /^(https?):\/\//.test(filepath)
-                if (!isUrl) {
-                  try {
-                    const mime = Filesystem.mimeType(filepath)
-                    const filename = path.basename(filepath)
-                    // Handle SVG as raw text content, not as base64 image
-                    if (mime === "image/svg+xml") {
-                      event.preventDefault()
-                      const content = await Filesystem.readText(filepath).catch(() => {})
-                      if (content) {
-                        pasteText(content, `[SVG: ${filename ?? "image"}]`)
-                        return
+                  // trim ' from the beginning and end of the pasted content. just
+                  // ' and nothing else
+                  const filepath = pastedContent.replace(/^'+|'+$/g, "").replace(/\\ /g, " ")
+                  const isUrl = /^(https?):\/\//.test(filepath)
+                  if (!isUrl) {
+                    try {
+                      const mime = Filesystem.mimeType(filepath)
+                      const filename = path.basename(filepath)
+                      // Handle SVG as raw text content, not as base64 image
+                      if (mime === "image/svg+xml") {
+                        event.preventDefault()
+                        const content = await Filesystem.readText(filepath).catch(() => {})
+                        if (content) {
+                          pasteText(content, `[SVG: ${filename ?? "image"}]`)
+                          return
+                        }
                       }
-                    }
-                    if (mime.startsWith("image/")) {
-                      event.preventDefault()
-                      const content = await Filesystem.readArrayBuffer(filepath)
-                        .then((buffer) => Buffer.from(buffer).toString("base64"))
-                        .catch(() => {})
-                      if (content) {
-                        await pasteImage({
-                          filename,
-                          mime,
-                          content,
-                        })
-                        return
+                      if (mime.startsWith("image/")) {
+                        event.preventDefault()
+                        const content = await Filesystem.readArrayBuffer(filepath)
+                          .then((buffer) => Buffer.from(buffer).toString("base64"))
+                          .catch(() => {})
+                        if (content) {
+                          await pasteImage({
+                            filename,
+                            mime,
+                            content,
+                          })
+                          return
+                        }
                       }
-                    }
-                  } catch {}
-                }
+                    } catch {}
+                  }
 
-                const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
-                if (
-                  (lineCount >= 3 || pastedContent.length > 150) &&
-                  !sync.data.config.experimental?.disable_paste_summary
-                ) {
-                  event.preventDefault()
-                  pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
-                  return
-                }
+                  const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
+                  if (
+                    (lineCount >= 3 || pastedContent.length > 150) &&
+                    !sync.data.config.experimental?.disable_paste_summary
+                  ) {
+                    event.preventDefault()
+                    pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
+                    return
+                  }
 
-                // Force layout update and render for the pasted content
-                setTimeout(() => {
-                  // setTimeout is a workaround and needs to be addressed properly
-                  if (!input || input.isDestroyed) return
-                  input.getLayoutNode().markDirty()
-                  renderer.requestRender()
-                }, 0)
-              }}
-              ref={(r: TextareaRenderable) => {
-                input = r
-                if (promptPartTypeId === 0) {
-                  promptPartTypeId = input.extmarks.registerType("prompt-part")
-                }
-                props.ref?.(ref)
-                setTimeout(() => {
-                  // setTimeout is a workaround and needs to be addressed properly
-                  if (!input || input.isDestroyed) return
-                  input.cursorColor = theme.text
-                }, 0)
-              }}
-              onMouseDown={(r: MouseEvent) => r.target?.focus()}
-              focusedBackgroundColor={theme.backgroundElement}
-              cursorColor={theme.text}
-              syntaxStyle={syntax()}
-            />
-            <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1}>
+                  // Force layout update and render for the pasted content
+                  setTimeout(() => {
+                    // setTimeout is a workaround and needs to be addressed properly
+                    if (!input || input.isDestroyed) return
+                    input.getLayoutNode().markDirty()
+                    renderer.requestRender()
+                  }, 0)
+                }}
+                ref={(r: TextareaRenderable) => {
+                  input = r
+                  if (promptPartTypeId === 0) {
+                    promptPartTypeId = input.extmarks.registerType("prompt-part")
+                  }
+                  loadPrompt(currentTab().prompt)
+                  props.ref?.(ref)
+                  syncCursor()
+                  setTimeout(() => {
+                    // setTimeout is a workaround and needs to be addressed properly
+                    if (!input || input.isDestroyed) return
+                    const hidden = props.disabled || (props.historyMode && props.historyTarget === "timeline")
+                    input.cursorColor = hidden ? theme.backgroundElement : theme.text
+                    syncCursor()
+                  }, 0)
+                }}
+                onMouseDown={(r: MouseEvent) => {
+                  props.onFocus?.()
+                  r.target?.focus()
+                }}
+                focusedBackgroundColor={theme.backgroundElement}
+                cursorColor={theme.text}
+                syntaxStyle={syntax()}
+              />
+              <Show when={inlineGhost()}>
+                {(ghost) => (
+                  <box position="absolute" top={inlineGhostPosition().top} left={inlineGhostPosition().left} zIndex={1}>
+                    <text fg={theme.textMuted}>{ghost()}</text>
+                  </box>
+                )}
+              </Show>
+            </box>
+            <box flexDirection="row" flexShrink={0} gap={1}>
               <text fg={highlight()}>
                 {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
               </text>
@@ -1018,47 +1397,25 @@ export function Prompt(props: PromptProps) {
             </box>
           </box>
         </box>
-        <box
-          height={1}
-          border={["left"]}
-          borderColor={highlight()}
-          customBorderChars={{
-            ...EmptyBorder,
-            vertical: theme.backgroundElement.a !== 0 ? "╹" : " ",
-          }}
-        >
-          <box
-            height={1}
-            border={["bottom"]}
-            borderColor={theme.backgroundElement}
-            customBorderChars={
-              theme.backgroundElement.a !== 0
-                ? {
-                    ...EmptyBorder,
-                    horizontal: "▀",
-                  }
-                : {
-                    ...EmptyBorder,
-                    horizontal: " ",
-                  }
-            }
-          />
-        </box>
-        <box flexDirection="row" justifyContent="space-between">
+        <box flexDirection="row" justifyContent="space-between" gap={chipGap()}>
           <Show when={status().type !== "idle"} fallback={<text />}>
             <box
               flexDirection="row"
-              gap={1}
+              gap={compact() ? 0 : 1}
               flexGrow={1}
-              justifyContent={status().type === "retry" ? "space-between" : "flex-start"}
+              flexShrink={1}
+              minWidth={0}
+              maxWidth={statusWidth()}
+              justifyContent="flex-start"
+              alignItems="center"
             >
-              <box flexShrink={0} flexDirection="row" gap={1}>
-                <box marginLeft={1}>
+              <box flexShrink={0} flexDirection="row" gap={compact() ? 0 : 1} alignItems="center">
+                <box marginLeft={compact() ? 0 : 1}>
                   <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>[⋯]</text>}>
-                    <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={40} />
+                    <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={80} />
                   </Show>
                 </box>
-                <box flexDirection="row" gap={1} flexShrink={0}>
+                <box flexDirection="row" gap={compact() ? 0 : 1} flexShrink={1} minWidth={0}>
                   {(() => {
                     const retry = createMemo(() => {
                       const s = status()
@@ -1100,67 +1457,192 @@ export function Prompt(props: PromptProps) {
                     const retryText = () => {
                       const r = retry()
                       if (!r) return ""
-                      const baseMessage = message()
-                      const truncatedHint = isTruncated() ? " (click to expand)" : ""
+                      const baseMessage = compact()
+                        ? Locale.truncate(message() ?? "", tight() ? 18 : 28)
+                        : (message() ?? "")
+                      const truncatedHint = isTruncated() && !compact() ? " (click to expand)" : ""
                       const duration = formatDuration(seconds())
-                      const retryInfo = ` [retrying ${duration ? `in ${duration} ` : ""}attempt #${r.attempt}]`
+                      const retryInfo = compact()
+                        ? ` [${duration ? `${duration} ` : ""}#${r.attempt}]`
+                        : ` [retrying ${duration ? `in ${duration} ` : ""}attempt #${r.attempt}]`
                       return baseMessage + truncatedHint + retryInfo
                     }
 
                     return (
                       <Show when={retry()}>
                         <box onMouseUp={handleMessageClick}>
-                          <text fg={theme.error}>{retryText()}</text>
+                          <text fg={theme.error} wrapMode="none">
+                            {retryText()}
+                          </text>
                         </box>
                       </Show>
                     )
                   })()}
                 </box>
               </box>
-              <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
-                esc{" "}
-                <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
-                  {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
-                </span>
-              </text>
+              <box
+                paddingLeft={chipPad()}
+                paddingRight={chipPad()}
+                onMouseDown={() => input?.focus()}
+                onMouseOver={() => setHover("interrupt")}
+                onMouseOut={() => setHover(undefined)}
+                onMouseUp={() => run("interrupt", () => command.trigger("session.interrupt"))}
+                backgroundColor={chip("interrupt")}
+              >
+                <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
+                  esc{" "}
+                  <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
+                    {store.interrupt > 0
+                      ? label("again to interrupt", "again", true)
+                      : label("interrupt", "stop", true)}
+                  </span>
+                </text>
+              </box>
             </box>
           </Show>
           <Show when={status().type !== "retry"}>
-            <box gap={2} flexDirection="row">
+            <box gap={chipGap()} flexDirection="row" flexShrink={0}>
               <Switch>
                 <Match when={props.historyMode}>
+                  <box
+                    paddingLeft={chipPad()}
+                    paddingRight={chipPad()}
+                    onMouseDown={() => input?.focus()}
+                    onMouseOver={() => setHover("history-toggle")}
+                    onMouseOut={() => setHover(undefined)}
+                    onMouseUp={() => run("history-toggle", () => command.trigger("session.history.toggle"))}
+                    backgroundColor={chip("history-toggle")}
+                  >
+                    <text fg={theme.text}>
+                      {keybind.print("history_mode_toggle")}
+                      {muted("edit mode", "edit", true)}
+                    </text>
+                  </box>
+                  <box flexDirection="row" alignItems="center" gap={compact() ? 0 : 1}>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history-previous")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history-previous", () => command.trigger("session.history.previous"))}
+                      backgroundColor={chip("history-previous")}
+                    >
+                      <text fg={theme.text}>↑</text>
+                    </box>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history-next")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history-next", () => command.trigger("session.history.next"))}
+                      backgroundColor={chip("history-next")}
+                    >
+                      <text fg={theme.text}>↓</text>
+                    </box>
+                    <text fg={theme.textMuted}>{label("nav. prompt", "prompt", true)}</text>
+                  </box>
+                  <box flexDirection="row" alignItems="center" gap={compact() ? 0 : 1}>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history-left")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history-left", () => command.trigger("session.history.left"))}
+                      backgroundColor={chip("history-left")}
+                    >
+                      <text fg={theme.text}>←</text>
+                    </box>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history-right")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history-right", () => command.trigger("session.history.right"))}
+                      backgroundColor={chip("history-right")}
+                    >
+                      <text fg={theme.text}>→</text>
+                    </box>
+                    <text fg={theme.textMuted}>{label("nav. trace", "trace", true)}</text>
+                  </box>
                   <text fg={theme.text}>
-                    {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>edit mode</span>
-                  </text>
-                  <text fg={theme.text}>
-                    ↑/↓ <span style={{ fg: theme.textMuted }}>navigate prompt</span>
-                  </text>
-                  <text fg={theme.text}>
-                    ←/→ <span style={{ fg: theme.textMuted }}>navigate trace</span>
-                  </text>
-                  <text fg={theme.text}>
-                    space <span style={{ fg: theme.textMuted }}>expand</span>
+                    space
+                    {muted("expand", "expand", true)}
                   </text>
                 </Match>
                 <Match when={store.mode === "normal"}>
-                  <Show when={local.model.variant.list().length > 0}>
-                    <text fg={theme.text}>
-                      {keybind.print("variant_cycle")} <span style={{ fg: theme.textMuted }}>variants</span>
-                    </text>
+                  <Show when={showVariantHint() && local.model.variant.list().length > 0}>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("variant")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("variant", () => command.trigger("variant.cycle"))}
+                      backgroundColor={chip("variant")}
+                    >
+                      <text fg={theme.text}>
+                        {keybind.print("variant_cycle")}
+                        {muted("variants", "var", true)}
+                      </text>
+                    </box>
                   </Show>
-                  <text fg={theme.text}>
-                    {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>agents</span>
-                  </text>
-                  <text fg={theme.text}>
-                    {keybind.print("history_mode_toggle")} <span style={{ fg: theme.textMuted }}>history</span>
-                  </text>
-                  <text fg={theme.text}>
-                    {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>commands</span>
-                  </text>
+                  <Show when={showAgentHint()}>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("agent")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("agent", () => command.trigger("agent.cycle"))}
+                      backgroundColor={chip("agent")}
+                    >
+                      <text fg={theme.text}>
+                        {keybind.print("agent_cycle")}
+                        {muted("agents", "agent", true)}
+                      </text>
+                    </box>
+                  </Show>
+                  <Show when={showHistoryChip()}>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("history")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("history", () => command.trigger("session.history.toggle"))}
+                      backgroundColor={chip("history")}
+                    >
+                      <text fg={theme.text}>
+                        {keybind.print("history_mode_toggle")}
+                        {muted("history", "hist", true)}
+                      </text>
+                    </box>
+                  </Show>
+                  <Show when={showCommandChip()}>
+                    <box
+                      paddingLeft={chipPad()}
+                      paddingRight={chipPad()}
+                      onMouseDown={() => input?.focus()}
+                      onMouseOver={() => setHover("command")}
+                      onMouseOut={() => setHover(undefined)}
+                      onMouseUp={() => run("command", () => command.show())}
+                      backgroundColor={chip("command")}
+                    >
+                      <text fg={theme.text}>
+                        {keybind.print("command_list")}
+                        {muted("commands", "cmd", true)}
+                      </text>
+                    </box>
+                  </Show>
                 </Match>
                 <Match when={store.mode === "shell"}>
                   <text fg={theme.text}>
-                    esc <span style={{ fg: theme.textMuted }}>exit shell mode</span>
+                    esc
+                    {muted("exit shell mode", "shell", true)}
                   </text>
                 </Match>
               </Switch>

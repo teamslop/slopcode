@@ -32,6 +32,7 @@ import { ulid } from "ulid"
 import { spawn } from "child_process"
 import { Command } from "../command"
 import { $, fileURLToPath, pathToFileURL } from "bun"
+import { Config } from "@/config/config"
 import { ConfigMarkdown } from "../config/markdown"
 import { SessionSummary } from "./summary"
 import { NamedError } from "@slopcode-ai/util/error"
@@ -45,6 +46,7 @@ import { LLM } from "./llm"
 import { iife } from "@/util/iife"
 import { Shell } from "@/shell/shell"
 import { Truncate } from "@/tool/truncation"
+import { Env } from "@/env"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -62,18 +64,26 @@ const STRUCTURED_OUTPUT_SYSTEM_PROMPT = `IMPORTANT: The user has requested struc
 export namespace SessionPrompt {
   const log = Log.create({ service: "session.prompt" })
 
+  type Waiter = {
+    resolve(input: MessageV2.WithParts): void
+    reject(reason?: any): void
+  }
+
+  type Entry = {
+    abort: AbortController
+    callbacks: Waiter[]
+    current?: string
+    queued: string[]
+    pending: Set<string>
+    running: boolean
+    generation: number
+    waiters: Record<string, Waiter[]>
+    lock: Promise<void>
+  }
+
   const state = Instance.state(
     () => {
-      const data: Record<
-        string,
-        {
-          abort: AbortController
-          callbacks: {
-            resolve(input: MessageV2.WithParts): void
-            reject(reason?: any): void
-          }[]
-        }
-      > = {}
+      const data: Record<string, Entry> = {}
       return data
     },
     async (current) => {
@@ -159,9 +169,6 @@ export namespace SessionPrompt {
     const session = await Session.get(input.sessionID)
     await SessionRevert.cleanup(session)
 
-    const message = await createUserMessage(input)
-    await Session.touch(input.sessionID)
-
     // this is backwards compatibility for allowing `tools` to be specified when
     // prompting
     const permissions: PermissionNext.Ruleset = []
@@ -177,11 +184,52 @@ export namespace SessionPrompt {
       await Session.setPermission({ sessionID: session.id, permission: permissions })
     }
 
+    const messageID = input.messageID ?? Identifier.ascending("message")
+    const mode = await queueMode()
+    const wait = input.noReply ? undefined : createWaiter()
+    await admit({
+      mode,
+      messageID,
+      sessionID: input.sessionID,
+      waiter: wait?.waiter,
+    })
+
+    const rollbackAndContinue = async (error: unknown, label: string) => {
+      const next = await rollback({
+        mode,
+        messageID,
+        sessionID: input.sessionID,
+        waiter: wait?.waiter,
+      })
+      if (next)
+        void loop({ sessionID: input.sessionID, resume_existing: true }).catch((cause) => {
+          log.error(label, { sessionID: input.sessionID, error: cause })
+          void cancel(input.sessionID, cause)
+        })
+      throw error
+    }
+
+    const message = await createUserMessage({
+      ...input,
+      messageID,
+    }).catch((error) => rollbackAndContinue(error, "session loop failed after prompt rollback"))
+    await Session.touch(input.sessionID).catch((error) =>
+      rollbackAndContinue(error, "session loop failed after touch rollback"),
+    )
+
+    const startLoop = await ready(input.sessionID, messageID)
+    if (startLoop) {
+      void loop({ sessionID: input.sessionID, resume_existing: true }).catch((error) => {
+        log.error("session loop failed after prompt", { sessionID: input.sessionID, error })
+        void cancel(input.sessionID, error)
+      })
+    }
+
     if (input.noReply === true) {
       return message
     }
 
-    return loop({ sessionID: input.sessionID })
+    return wait!.promise
   })
 
   export async function resolvePromptParts(template: string): Promise<PromptInput["parts"]> {
@@ -235,36 +283,283 @@ export namespace SessionPrompt {
     return parts
   }
 
+  async function queueMode() {
+    return (await Config.get()).queue_mode
+  }
+
+  function ensure(sessionID: string) {
+    const s = state()
+    const match = s[sessionID]
+    if (match) return match
+    const next: Entry = {
+      abort: new AbortController(),
+      callbacks: [],
+      queued: [],
+      pending: new Set<string>(),
+      running: false,
+      generation: 0,
+      waiters: {},
+      lock: Promise.resolve(),
+    }
+    s[sessionID] = next
+    return next
+  }
+
+  async function withLock<T>(entry: Entry, fn: () => Promise<T> | T) {
+    const prev = entry.lock
+    let release!: () => void
+    entry.lock = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await prev
+    try {
+      return await fn()
+    } finally {
+      release()
+    }
+  }
+
+  function createWaiter() {
+    let resolve!: (input: MessageV2.WithParts) => void
+    let reject!: (reason?: any) => void
+    const promise = new Promise<MessageV2.WithParts>((nextResolve, nextReject) => {
+      resolve = nextResolve
+      reject = nextReject
+    })
+    const waiter: Waiter = { resolve, reject }
+    return { promise, waiter }
+  }
+
+  function pushWaiter(entry: Entry, messageID: string, waiter: Waiter) {
+    entry.waiters[messageID] ??= []
+    entry.waiters[messageID].push(waiter)
+  }
+
+  function drop(list: Waiter[], waiter: Waiter) {
+    const index = list.indexOf(waiter)
+    if (index === -1) return
+    list.splice(index, 1)
+  }
+
+  function dropWaiter(entry: Entry, messageID: string, waiter: Waiter) {
+    const list = entry.waiters[messageID]
+    if (!list) return
+    drop(list, waiter)
+    if (list.length === 0) {
+      delete entry.waiters[messageID]
+    }
+  }
+
+  function idle(entry: Entry) {
+    return (
+      !entry.current &&
+      entry.queued.length === 0 &&
+      entry.pending.size === 0 &&
+      !entry.running &&
+      entry.callbacks.length === 0 &&
+      Object.keys(entry.waiters).length === 0
+    )
+  }
+
+  function abortReason(reason: unknown) {
+    if (MessageV2.AbortedError.isInstance(reason)) return reason
+    if (reason instanceof DOMException && reason.name === "AbortError") {
+      return new MessageV2.AbortedError({ message: reason.message || "Aborted" }, { cause: reason })
+    }
+    return new MessageV2.AbortedError({ message: "Aborted" })
+  }
+
+  function aborted(reason: unknown) {
+    return MessageV2.AbortedError.isInstance(reason) || (reason instanceof DOMException && reason.name === "AbortError")
+  }
+
+  async function admit(input: {
+    sessionID: string
+    messageID: string
+    mode: Awaited<ReturnType<typeof queueMode>>
+    waiter?: Waiter
+  }) {
+    const existing = state()[input.sessionID]
+    const entry = existing ?? ensure(input.sessionID)
+    return withLock(entry, () => {
+      const busy = !!existing || !!entry.current || entry.queued.length > 0 || entry.running
+      entry.pending.add(input.messageID)
+      if (!busy) {
+        entry.current = input.messageID
+        if (input.waiter) pushWaiter(entry, input.messageID, input.waiter)
+        return
+      }
+      if (input.mode === "serial") {
+        entry.queued.push(input.messageID)
+        if (input.waiter) pushWaiter(entry, input.messageID, input.waiter)
+        return
+      }
+      if (input.waiter) entry.callbacks.push(input.waiter)
+    })
+  }
+
+  async function kick(sessionID: string) {
+    const entry = state()[sessionID]
+    if (!entry) return false
+    return withLock(entry, () => {
+      if (entry.running) return false
+      if (entry.current) {
+        return !entry.pending.has(entry.current)
+      }
+      const next = entry.queued[0]
+      if (!next || entry.pending.has(next)) return false
+      entry.current = entry.queued.shift()
+      return true
+    })
+  }
+
+  async function ready(sessionID: string, messageID: string) {
+    const entry = state()[sessionID]
+    if (!entry) return false
+    await withLock(entry, () => {
+      entry.pending.delete(messageID)
+    })
+    return kick(sessionID)
+  }
+
+  async function rollback(input: {
+    sessionID: string
+    messageID: string
+    mode: Awaited<ReturnType<typeof queueMode>>
+    waiter?: Waiter
+  }) {
+    const entry = state()[input.sessionID]
+    if (!entry) return false
+    await withLock(entry, () => {
+      entry.pending.delete(input.messageID)
+      if (input.waiter) {
+        drop(entry.callbacks, input.waiter)
+        dropWaiter(entry, input.messageID, input.waiter)
+      }
+      if (entry.current === input.messageID) {
+        entry.current = undefined
+      }
+      const index = entry.queued.indexOf(input.messageID)
+      if (index !== -1) {
+        entry.queued.splice(index, 1)
+      }
+      if (idle(entry)) {
+        delete state()[input.sessionID]
+        SessionStatus.set(input.sessionID, { type: "idle" })
+      }
+    })
+    return kick(input.sessionID)
+  }
+
+  function waitForLoop(sessionID: string) {
+    return new Promise<MessageV2.WithParts>((resolve, reject) => {
+      ensure(sessionID).callbacks.push({ resolve, reject })
+    })
+  }
+
   function start(sessionID: string) {
     const s = state()
     if (s[sessionID]) return
-    const controller = new AbortController()
-    s[sessionID] = {
-      abort: controller,
-      callbacks: [],
-    }
-    return controller.signal
+    return ensure(sessionID).abort.signal
   }
 
-  function resume(sessionID: string) {
-    const s = state()
-    if (!s[sessionID]) return
-
-    return s[sessionID].abort.signal
+  async function claim(sessionID: string) {
+    const entry = ensure(sessionID)
+    return withLock(entry, () => {
+      if (entry.running) return
+      entry.running = true
+      entry.generation += 1
+      if (entry.abort.signal.aborted) {
+        entry.abort = new AbortController()
+      }
+      if (!entry.current && entry.queued.length > 0) {
+        const next = entry.queued[0]
+        if (next && !entry.pending.has(next)) {
+          entry.current = entry.queued.shift()
+        }
+      }
+      return {
+        abort: entry.abort.signal,
+        generation: entry.generation,
+      }
+    })
   }
 
-  export function cancel(sessionID: string) {
+  async function release(sessionID: string, generation: number) {
+    const entry = state()[sessionID]
+    if (!entry) return
+    await withLock(entry, () => {
+      if (entry.generation !== generation) return
+      entry.running = false
+    })
+  }
+
+  async function settle(sessionID: string, mode: Awaited<ReturnType<typeof queueMode>>, item: MessageV2.WithParts) {
+    const entry = state()[sessionID]
+    if (!entry) return "stop" as const
+    return withLock(entry, () => {
+      for (const callback of entry.callbacks.splice(0)) {
+        callback.resolve(item)
+      }
+      if (entry.current) {
+        const current = entry.current
+        const waiters = entry.waiters[current] ?? []
+        delete entry.waiters[current]
+        for (const waiter of waiters) {
+          waiter.resolve(item)
+        }
+        entry.current = undefined
+      }
+      if (mode === "serial" && entry.queued.length > 0) {
+        const next = entry.queued[0]
+        if (next && entry.pending.has(next)) {
+          return "hold" as const
+        }
+        entry.current = entry.queued.shift()
+        return "start" as const
+      }
+      return "stop" as const
+    })
+  }
+
+  export async function cancel(sessionID: string, reason: unknown = new DOMException("Aborted", "AbortError")) {
     log.info("cancel", { sessionID })
-    const s = state()
-    const match = s[sessionID]
-    if (!match) {
+    const entry = state()[sessionID]
+    if (!entry) {
       SessionStatus.set(sessionID, { type: "idle" })
       return
     }
-    match.abort.abort()
-    delete s[sessionID]
-    SessionStatus.set(sessionID, { type: "idle" })
-    return
+    await withLock(entry, () => {
+      const current = entry.current
+      const active = aborted(reason) && !!current && entry.running && !entry.pending.has(current)
+      const error = aborted(reason) ? abortReason(reason) : reason
+      entry.abort.abort()
+      if (active) {
+        entry.queued = []
+        for (const id of [...entry.pending]) {
+          if (id !== current) entry.pending.delete(id)
+        }
+        for (const [id, waiters] of Object.entries(entry.waiters)) {
+          if (id === current) continue
+          delete entry.waiters[id]
+          for (const waiter of waiters) {
+            waiter.reject(error)
+          }
+        }
+        return
+      }
+      for (const callback of entry.callbacks.splice(0)) {
+        callback.reject(error)
+      }
+      for (const [id, waiters] of Object.entries(entry.waiters)) {
+        delete entry.waiters[id]
+        for (const waiter of waiters) {
+          waiter.reject(error)
+        }
+      }
+      delete state()[sessionID]
+      SessionStatus.set(sessionID, { type: "idle" })
+    })
   }
 
   export const LoopInput = z.object({
@@ -272,455 +567,494 @@ export namespace SessionPrompt {
     resume_existing: z.boolean().optional(),
   })
   export const loop = fn(LoopInput, async (input) => {
-    const { sessionID, resume_existing } = input
+    const { sessionID } = input
 
-    const abort = resume_existing ? resume(sessionID) : start(sessionID)
-    if (!abort) {
-      return new Promise<MessageV2.WithParts>((resolve, reject) => {
-        const callbacks = state()[sessionID].callbacks
-        callbacks.push({ resolve, reject })
-      })
+    const runner = await claim(sessionID)
+    if (!runner) {
+      return waitForLoop(sessionID)
     }
 
-    using _ = defer(() => cancel(sessionID))
+    let next: "hold" | "start" | "stop" = "stop"
+    try {
+      const abort = runner.abort
+      const mode = await queueMode()
 
-    // Structured output state
-    // Note: On session resumption, state is reset but outputFormat is preserved
-    // on the user message and will be retrieved from lastUser below
-    let structuredOutput: unknown | undefined
+      // Structured output state
+      // Note: On session resumption, state is reset but outputFormat is preserved
+      // on the user message and will be retrieved from lastUser below
+      let structuredOutput: unknown | undefined
 
-    let step = 0
-    const session = await Session.get(sessionID)
-    while (true) {
-      SessionStatus.set(sessionID, { type: "busy" })
-      log.info("loop", { step, sessionID })
-      if (abort.aborted) break
-      let msgs = await MessageV2.filterCompacted(MessageV2.stream(sessionID))
+      let step = 0
+      const session = await Session.get(sessionID)
+      while (true) {
+        SessionStatus.set(sessionID, { type: "busy" })
+        log.info("loop", { step, sessionID })
+        if (abort.aborted) break
+        let msgs = filterQueuedMessages(
+          await MessageV2.filterCompacted(MessageV2.stream(sessionID)),
+          state()[sessionID],
+          mode,
+        )
 
-      let lastUser: MessageV2.User | undefined
-      let lastAssistant: MessageV2.Assistant | undefined
-      let lastFinished: MessageV2.Assistant | undefined
-      let tasks: (MessageV2.CompactionPart | MessageV2.SubtaskPart)[] = []
-      for (let i = msgs.length - 1; i >= 0; i--) {
-        const msg = msgs[i]
-        if (!lastUser && msg.info.role === "user") lastUser = msg.info as MessageV2.User
-        if (!lastAssistant && msg.info.role === "assistant") lastAssistant = msg.info as MessageV2.Assistant
-        if (!lastFinished && msg.info.role === "assistant" && msg.info.finish)
-          lastFinished = msg.info as MessageV2.Assistant
-        if (lastUser && lastFinished) break
-        const task = msg.parts.filter((part) => part.type === "compaction" || part.type === "subtask")
-        if (task && !lastFinished) {
-          tasks.push(...task)
+        const current = mode === "serial" ? state()[sessionID]?.current : undefined
+        let currentMsg: MessageV2.WithParts | undefined
+        let lastUser: MessageV2.User | undefined
+        let lastAssistant: MessageV2.Assistant | undefined
+        let lastFinished: MessageV2.Assistant | undefined
+        let lastComplete: MessageV2.Assistant | undefined
+        let tasks: (MessageV2.CompactionPart | MessageV2.SubtaskPart)[] = []
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          const msg = msgs[i]
+          if (!lastUser && msg.info.role === "user" && (!current || msg.info.id === current)) {
+            lastUser = msg.info as MessageV2.User
+            currentMsg = msg
+          }
+          if (!lastAssistant && msg.info.role === "assistant") lastAssistant = msg.info as MessageV2.Assistant
+          if (!lastFinished && msg.info.role === "assistant" && msg.info.finish) {
+            lastFinished = msg.info as MessageV2.Assistant
+          }
+          if (
+            !lastComplete &&
+            msg.info.role === "assistant" &&
+            msg.info.finish &&
+            !["tool-calls", "unknown"].includes(msg.info.finish)
+          ) {
+            lastComplete = msg.info as MessageV2.Assistant
+          }
+          if (lastUser && lastComplete) break
+          const task = msg.parts.filter((part) => part.type === "compaction" || part.type === "subtask")
+          if (task && !lastComplete && (!current || msg.info.id !== current)) {
+            tasks.push(...task)
+          }
         }
-      }
+        if (currentMsg && !lastComplete) {
+          const processed = msgs.filter(
+            (msg) =>
+              msg.info.role === "assistant" &&
+              msg.info.parentID === currentMsg!.info.id &&
+              msg.parts.some((part) => part.type === "tool" && part.tool === TaskTool.id),
+          ).length
+          const remaining = currentMsg.parts.filter((part) => part.type === "subtask").slice(processed)
+          tasks.push(...remaining)
+        }
 
-      if (!lastUser) throw new Error("No user message found in stream. This should never happen.")
-      if (
-        lastAssistant?.finish &&
-        !["tool-calls", "unknown"].includes(lastAssistant.finish) &&
-        lastUser.id < lastAssistant.id
-      ) {
-        log.info("exiting loop", { sessionID })
-        break
-      }
+        if (!lastUser) throw new Error("No user message found in stream. This should never happen.")
+        if (shouldExitLoop(lastUser, lastAssistant)) {
+          log.info("exiting loop", { sessionID })
+          break
+        }
 
-      step++
-      if (step === 1)
-        ensureTitle({
-          session,
-          modelID: lastUser.model.modelID,
-          providerID: lastUser.model.providerID,
-          history: msgs,
-        })
-
-      const model = await Provider.getModel(lastUser.model.providerID, lastUser.model.modelID).catch((e) => {
-        if (Provider.ModelNotFoundError.isInstance(e)) {
-          const hint = e.data.suggestions?.length ? ` Did you mean: ${e.data.suggestions.join(", ")}?` : ""
-          Bus.publish(Session.Event.Error, {
-            sessionID,
-            error: new NamedError.Unknown({
-              message: `Model not found: ${e.data.providerID}/${e.data.modelID}.${hint}`,
-            }).toObject(),
+        step++
+        if (step === 1)
+          ensureTitle({
+            session,
+            modelID: lastUser.model.modelID,
+            providerID: lastUser.model.providerID,
+            history: msgs,
           })
-        }
-        throw e
-      })
-      const task = tasks.pop()
 
-      // pending subtask
-      // TODO: centralize "invoke tool" logic
-      if (task?.type === "subtask") {
-        const taskTool = await TaskTool.init()
-        const taskModel = task.model ? await Provider.getModel(task.model.providerID, task.model.modelID) : model
-        const assistantMessage = (await Session.updateMessage({
-          id: Identifier.ascending("message"),
-          role: "assistant",
-          parentID: lastUser.id,
-          sessionID,
-          mode: task.agent,
-          agent: task.agent,
-          variant: lastUser.variant,
-          path: {
-            cwd: Instance.directory,
-            root: Instance.worktree,
-          },
-          cost: 0,
-          tokens: {
-            input: 0,
-            output: 0,
-            reasoning: 0,
-            cache: { read: 0, write: 0 },
-          },
-          modelID: taskModel.id,
-          providerID: taskModel.providerID,
-          time: {
-            created: Date.now(),
-          },
-        })) as MessageV2.Assistant
-        let part = (await Session.updatePart({
-          id: Identifier.ascending("part"),
-          messageID: assistantMessage.id,
-          sessionID: assistantMessage.sessionID,
-          type: "tool",
-          callID: ulid(),
-          tool: TaskTool.id,
-          state: {
-            status: "running",
-            input: {
-              prompt: task.prompt,
-              description: task.description,
-              subagent_type: task.agent,
-              command: task.command,
-            },
-            time: {
-              start: Date.now(),
-            },
-          },
-        })) as MessageV2.ToolPart
-        const taskArgs = {
-          prompt: task.prompt,
-          description: task.description,
-          subagent_type: task.agent,
-          command: task.command,
-        }
-        await Plugin.trigger(
-          "tool.execute.before",
-          {
-            tool: "task",
-            sessionID,
-            callID: part.id,
-          },
-          { args: taskArgs },
-        )
-        let executionError: Error | undefined
-        const taskAgent = await Agent.get(task.agent)
-        const taskCtx: Tool.Context = {
-          agent: task.agent,
-          messageID: assistantMessage.id,
-          sessionID: sessionID,
-          abort,
-          callID: part.callID,
-          extra: { bypassAgentCheck: true },
-          messages: msgs,
-          async metadata(input) {
-            await Session.updatePart({
-              ...part,
-              type: "tool",
-              state: {
-                ...part.state,
-                ...input,
-              },
-            } satisfies MessageV2.ToolPart)
-          },
-          async ask(req) {
-            await PermissionNext.ask({
-              ...req,
-              sessionID: sessionID,
-              ruleset: PermissionNext.merge(taskAgent.permission, session.permission ?? []),
+        const model = await Provider.getModel(lastUser.model.providerID, lastUser.model.modelID).catch((e) => {
+          if (Provider.ModelNotFoundError.isInstance(e)) {
+            const hint = e.data.suggestions?.length ? ` Did you mean: ${e.data.suggestions.join(", ")}?` : ""
+            Bus.publish(Session.Event.Error, {
+              sessionID,
+              error: new NamedError.Unknown({
+                message: `Model not found: ${e.data.providerID}/${e.data.modelID}.${hint}`,
+              }).toObject(),
+              viewID: Instance.viewID,
             })
-          },
-        }
-        const result = await taskTool.execute(taskArgs, taskCtx).catch((error) => {
-          executionError = error
-          log.error("subtask execution failed", { error, agent: task.agent, description: task.description })
-          return undefined
+          }
+          throw e
         })
-        const attachments = result?.attachments?.map((attachment) => ({
-          ...attachment,
-          id: Identifier.ascending("part"),
-          sessionID,
-          messageID: assistantMessage.id,
-        }))
-        await Plugin.trigger(
-          "tool.execute.after",
-          {
-            tool: "task",
-            sessionID,
-            callID: part.id,
-            args: taskArgs,
-          },
-          result,
-        )
-        assistantMessage.finish = "tool-calls"
-        assistantMessage.time.completed = Date.now()
-        await Session.updateMessage(assistantMessage)
-        if (result && part.state.status === "running") {
-          await Session.updatePart({
-            ...part,
-            state: {
-              status: "completed",
-              input: part.state.input,
-              title: result.title,
-              metadata: result.metadata,
-              output: result.output,
-              attachments,
-              time: {
-                ...part.state.time,
-                end: Date.now(),
-              },
-            },
-          } satisfies MessageV2.ToolPart)
-        }
-        if (!result) {
-          await Session.updatePart({
-            ...part,
-            state: {
-              status: "error",
-              error: executionError ? `Tool execution failed: ${executionError.message}` : "Tool execution failed",
-              time: {
-                start: part.state.status === "running" ? part.state.time.start : Date.now(),
-                end: Date.now(),
-              },
-              metadata: part.metadata,
-              input: part.state.input,
-            },
-          } satisfies MessageV2.ToolPart)
-        }
+        const task = tasks.pop()
 
-        if (task.command) {
-          // Add synthetic user message to prevent certain reasoning models from erroring
-          // If we create assistant messages w/ out user ones following mid loop thinking signatures
-          // will be missing and it can cause errors for models like gemini for example
-          const summaryUserMsg: MessageV2.User = {
+        // pending subtask
+        // TODO: centralize "invoke tool" logic
+        if (task?.type === "subtask") {
+          const taskTool = await TaskTool.init()
+          const taskModel = task.model ? await Provider.getModel(task.model.providerID, task.model.modelID) : model
+          const assistantMessage = (await Session.updateMessage({
             id: Identifier.ascending("message"),
+            role: "assistant",
+            parentID: lastUser.id,
             sessionID,
-            role: "user",
+            mode: task.agent,
+            agent: task.agent,
+            variant: lastUser.variant,
+            path: {
+              cwd: Instance.directory,
+              root: Instance.worktree,
+            },
+            cost: 0,
+            tokens: {
+              input: 0,
+              output: 0,
+              reasoning: 0,
+              cache: { read: 0, write: 0 },
+            },
+            modelID: taskModel.id,
+            providerID: taskModel.providerID,
             time: {
               created: Date.now(),
             },
+          })) as MessageV2.Assistant
+          let part = (await Session.updatePart({
+            id: Identifier.ascending("part"),
+            messageID: assistantMessage.id,
+            sessionID: assistantMessage.sessionID,
+            type: "tool",
+            callID: ulid(),
+            tool: TaskTool.id,
+            state: {
+              status: "running",
+              input: {
+                prompt: task.prompt,
+                description: task.description,
+                subagent_type: task.agent,
+                command: task.command,
+              },
+              time: {
+                start: Date.now(),
+              },
+            },
+          })) as MessageV2.ToolPart
+          const taskArgs = {
+            prompt: task.prompt,
+            description: task.description,
+            subagent_type: task.agent,
+            command: task.command,
+          }
+          await Plugin.trigger(
+            "tool.execute.before",
+            {
+              tool: "task",
+              sessionID,
+              callID: part.id,
+            },
+            { args: taskArgs },
+          )
+          let executionError: Error | undefined
+          const taskAgent = await Agent.get(task.agent)
+          const taskCtx: Tool.Context = {
+            agent: task.agent,
+            messageID: assistantMessage.id,
+            sessionID: sessionID,
+            abort,
+            callID: part.callID,
+            extra: { bypassAgentCheck: true },
+            messages: msgs,
+            async metadata(input) {
+              await Session.updatePart({
+                ...part,
+                type: "tool",
+                state: {
+                  ...part.state,
+                  ...input,
+                },
+              } satisfies MessageV2.ToolPart)
+            },
+            async ask(req) {
+              await PermissionNext.ask({
+                ...req,
+                sessionID: sessionID,
+                ruleset: PermissionNext.merge(taskAgent.permission, session.permission ?? []),
+              })
+            },
+          }
+          const result = await taskTool.execute(taskArgs, taskCtx).catch((error) => {
+            executionError = error
+            log.error("subtask execution failed", { error, agent: task.agent, description: task.description })
+            return undefined
+          })
+          const attachments = result?.attachments?.map((attachment) => ({
+            ...attachment,
+            id: Identifier.ascending("part"),
+            sessionID,
+            messageID: assistantMessage.id,
+          }))
+          await Plugin.trigger(
+            "tool.execute.after",
+            {
+              tool: "task",
+              sessionID,
+              callID: part.id,
+              args: taskArgs,
+            },
+            result,
+          )
+          assistantMessage.finish = "tool-calls"
+          assistantMessage.time.completed = Date.now()
+          await Session.updateMessage(assistantMessage)
+          if (result && part.state.status === "running") {
+            await Session.updatePart({
+              ...part,
+              state: {
+                status: "completed",
+                input: part.state.input,
+                title: result.title,
+                metadata: result.metadata,
+                output: result.output,
+                attachments,
+                time: {
+                  ...part.state.time,
+                  end: Date.now(),
+                },
+              },
+            } satisfies MessageV2.ToolPart)
+          }
+          if (!result) {
+            await Session.updatePart({
+              ...part,
+              state: {
+                status: "error",
+                error: executionError ? `Tool execution failed: ${executionError.message}` : "Tool execution failed",
+                time: {
+                  start: part.state.status === "running" ? part.state.time.start : Date.now(),
+                  end: Date.now(),
+                },
+                metadata: part.metadata,
+                input: part.state.input,
+              },
+            } satisfies MessageV2.ToolPart)
+          }
+
+          if (task.command) {
+            // Add synthetic user message to prevent certain reasoning models from erroring
+            // If we create assistant messages w/ out user ones following mid loop thinking signatures
+            // will be missing and it can cause errors for models like gemini for example
+            const summaryUserMsg: MessageV2.User = {
+              id: Identifier.ascending("message"),
+              sessionID,
+              role: "user",
+              time: {
+                created: Date.now(),
+              },
+              agent: lastUser.agent,
+              model: lastUser.model,
+            }
+            await Session.updateMessage(summaryUserMsg)
+            await Session.updatePart({
+              id: Identifier.ascending("part"),
+              messageID: summaryUserMsg.id,
+              sessionID,
+              type: "text",
+              text: "Summarize the task tool output above and continue with your task.",
+              synthetic: true,
+            } satisfies MessageV2.TextPart)
+          }
+
+          continue
+        }
+
+        // pending compaction
+        if (task?.type === "compaction") {
+          const result = await SessionCompaction.process({
+            messages: msgs,
+            parentID: lastUser.id,
+            abort,
+            sessionID,
+            auto: task.auto,
+          })
+          if (result === "stop") break
+          continue
+        }
+
+        // context overflow, needs compaction
+        if (
+          lastFinished &&
+          lastFinished.summary !== true &&
+          (await SessionCompaction.isOverflow({ tokens: lastFinished.tokens, model }))
+        ) {
+          await SessionCompaction.create({
+            sessionID,
             agent: lastUser.agent,
             model: lastUser.model,
-          }
-          await Session.updateMessage(summaryUserMsg)
-          await Session.updatePart({
-            id: Identifier.ascending("part"),
-            messageID: summaryUserMsg.id,
-            sessionID,
-            type: "text",
-            text: "Summarize the task tool output above and continue with your task.",
-            synthetic: true,
-          } satisfies MessageV2.TextPart)
+            auto: true,
+          })
+          continue
         }
 
-        continue
-      }
-
-      // pending compaction
-      if (task?.type === "compaction") {
-        const result = await SessionCompaction.process({
+        // normal processing
+        const agent = await Agent.get(lastUser.agent)
+        const maxSteps = agent.steps ?? Infinity
+        const isLastStep = step >= maxSteps
+        msgs = await insertReminders({
           messages: msgs,
-          parentID: lastUser.id,
+          agent,
+          session,
+        })
+
+        const processor = SessionProcessor.create({
+          assistantMessage: (await Session.updateMessage({
+            id: Identifier.ascending("message"),
+            parentID: lastUser.id,
+            role: "assistant",
+            mode: agent.name,
+            agent: agent.name,
+            variant: lastUser.variant,
+            path: {
+              cwd: Instance.directory,
+              root: Instance.worktree,
+            },
+            cost: 0,
+            tokens: {
+              input: 0,
+              output: 0,
+              reasoning: 0,
+              cache: { read: 0, write: 0 },
+            },
+            modelID: model.id,
+            providerID: model.providerID,
+            time: {
+              created: Date.now(),
+            },
+            sessionID,
+          })) as MessageV2.Assistant,
+          sessionID: sessionID,
+          model,
+          abort,
+        })
+        using _ = defer(() => InstructionPrompt.clear(processor.message.id))
+
+        // Check if user explicitly invoked an agent via @ in this turn
+        const lastUserMsg = current
+          ? msgs.find((m) => m.info.role === "user" && m.info.id === current)
+          : msgs.findLast((m) => m.info.role === "user")
+        const bypassAgentCheck = lastUserMsg?.parts.some((p) => p.type === "agent") ?? false
+
+        const tools = await resolveTools({
+          agent,
+          session,
+          model,
+          tools: lastUser.tools,
+          processor,
+          bypassAgentCheck,
+          messages: msgs,
+        })
+
+        // Inject StructuredOutput tool if JSON schema mode enabled
+        if (lastUser.format?.type === "json_schema") {
+          tools["StructuredOutput"] = createStructuredOutputTool({
+            schema: lastUser.format.schema,
+            onSuccess(output) {
+              structuredOutput = output
+            },
+          })
+        }
+
+        if (step === 1) {
+          SessionSummary.summarize({
+            sessionID: sessionID,
+            messageID: lastUser.id,
+          })
+        }
+
+        // Ephemerally wrap queued user messages with a reminder to stay on track
+        if (mode === "injection" && step > 1 && lastFinished) {
+          for (const msg of msgs) {
+            if (msg.info.role !== "user" || msg.info.id <= lastFinished.id) continue
+            for (const part of msg.parts) {
+              if (part.type !== "text" || part.ignored || part.synthetic) continue
+              if (!part.text.trim()) continue
+              part.text = [
+                "<system-reminder>",
+                "The user sent the following message:",
+                part.text,
+                "",
+                "Please address this message and continue with your tasks.",
+                "</system-reminder>",
+              ].join("\n")
+            }
+          }
+        }
+
+        await Plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
+
+        // Build system prompt, adding structured output instruction if needed
+        const system = [...(await SystemPrompt.environment(model)), ...(await InstructionPrompt.system())]
+        const format = lastUser.format ?? { type: "text" }
+        if (format.type === "json_schema") {
+          system.push(STRUCTURED_OUTPUT_SYSTEM_PROMPT)
+        }
+
+        const result = await processor.process({
+          user: lastUser,
+          agent,
           abort,
           sessionID,
-          auto: task.auto,
+          system,
+          messages: [
+            ...MessageV2.toModelMessages(msgs, model),
+            ...(isLastStep
+              ? [
+                  {
+                    role: "assistant" as const,
+                    content: MAX_STEPS,
+                  },
+                ]
+              : []),
+          ],
+          tools,
+          model,
+          toolChoice: format.type === "json_schema" ? "required" : undefined,
         })
-        if (result === "stop") break
-        continue
-      }
 
-      // context overflow, needs compaction
-      if (
-        lastFinished &&
-        lastFinished.summary !== true &&
-        (await SessionCompaction.isOverflow({ tokens: lastFinished.tokens, model }))
-      ) {
-        await SessionCompaction.create({
-          sessionID,
-          agent: lastUser.agent,
-          model: lastUser.model,
-          auto: true,
-        })
-        continue
-      }
-
-      // normal processing
-      const agent = await Agent.get(lastUser.agent)
-      const maxSteps = agent.steps ?? Infinity
-      const isLastStep = step >= maxSteps
-      msgs = await insertReminders({
-        messages: msgs,
-        agent,
-        session,
-      })
-
-      const processor = SessionProcessor.create({
-        assistantMessage: (await Session.updateMessage({
-          id: Identifier.ascending("message"),
-          parentID: lastUser.id,
-          role: "assistant",
-          mode: agent.name,
-          agent: agent.name,
-          variant: lastUser.variant,
-          path: {
-            cwd: Instance.directory,
-            root: Instance.worktree,
-          },
-          cost: 0,
-          tokens: {
-            input: 0,
-            output: 0,
-            reasoning: 0,
-            cache: { read: 0, write: 0 },
-          },
-          modelID: model.id,
-          providerID: model.providerID,
-          time: {
-            created: Date.now(),
-          },
-          sessionID,
-        })) as MessageV2.Assistant,
-        sessionID: sessionID,
-        model,
-        abort,
-      })
-      using _ = defer(() => InstructionPrompt.clear(processor.message.id))
-
-      // Check if user explicitly invoked an agent via @ in this turn
-      const lastUserMsg = msgs.findLast((m) => m.info.role === "user")
-      const bypassAgentCheck = lastUserMsg?.parts.some((p) => p.type === "agent") ?? false
-
-      const tools = await resolveTools({
-        agent,
-        session,
-        model,
-        tools: lastUser.tools,
-        processor,
-        bypassAgentCheck,
-        messages: msgs,
-      })
-
-      // Inject StructuredOutput tool if JSON schema mode enabled
-      if (lastUser.format?.type === "json_schema") {
-        tools["StructuredOutput"] = createStructuredOutputTool({
-          schema: lastUser.format.schema,
-          onSuccess(output) {
-            structuredOutput = output
-          },
-        })
-      }
-
-      if (step === 1) {
-        SessionSummary.summarize({
-          sessionID: sessionID,
-          messageID: lastUser.id,
-        })
-      }
-
-      // Ephemerally wrap queued user messages with a reminder to stay on track
-      if (step > 1 && lastFinished) {
-        for (const msg of msgs) {
-          if (msg.info.role !== "user" || msg.info.id <= lastFinished.id) continue
-          for (const part of msg.parts) {
-            if (part.type !== "text" || part.ignored || part.synthetic) continue
-            if (!part.text.trim()) continue
-            part.text = [
-              "<system-reminder>",
-              "The user sent the following message:",
-              part.text,
-              "",
-              "Please address this message and continue with your tasks.",
-              "</system-reminder>",
-            ].join("\n")
-          }
-        }
-      }
-
-      await Plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
-
-      // Build system prompt, adding structured output instruction if needed
-      const system = [...(await SystemPrompt.environment(model)), ...(await InstructionPrompt.system())]
-      const format = lastUser.format ?? { type: "text" }
-      if (format.type === "json_schema") {
-        system.push(STRUCTURED_OUTPUT_SYSTEM_PROMPT)
-      }
-
-      const result = await processor.process({
-        user: lastUser,
-        agent,
-        abort,
-        sessionID,
-        system,
-        messages: [
-          ...MessageV2.toModelMessages(msgs, model),
-          ...(isLastStep
-            ? [
-                {
-                  role: "assistant" as const,
-                  content: MAX_STEPS,
-                },
-              ]
-            : []),
-        ],
-        tools,
-        model,
-        toolChoice: format.type === "json_schema" ? "required" : undefined,
-      })
-
-      // If structured output was captured, save it and exit immediately
-      // This takes priority because the StructuredOutput tool was called successfully
-      if (structuredOutput !== undefined) {
-        processor.message.structured = structuredOutput
-        processor.message.finish = processor.message.finish ?? "stop"
-        await Session.updateMessage(processor.message)
-        break
-      }
-
-      // Check if model finished (finish reason is not "tool-calls" or "unknown")
-      const modelFinished = processor.message.finish && !["tool-calls", "unknown"].includes(processor.message.finish)
-
-      if (modelFinished && !processor.message.error) {
-        if (format.type === "json_schema") {
-          // Model stopped without calling StructuredOutput tool
-          processor.message.error = new MessageV2.StructuredOutputError({
-            message: "Model did not produce structured output",
-            retries: 0,
-          }).toObject()
+        // If structured output was captured, save it and exit immediately
+        // This takes priority because the StructuredOutput tool was called successfully
+        if (structuredOutput !== undefined) {
+          processor.message.structured = structuredOutput
+          processor.message.finish = processor.message.finish ?? "stop"
           await Session.updateMessage(processor.message)
           break
         }
-      }
 
-      if (result === "stop") break
-      if (result === "compact") {
-        await SessionCompaction.create({
-          sessionID,
-          agent: lastUser.agent,
-          model: lastUser.model,
-          auto: true,
-        })
+        // Check if model finished (finish reason is not "tool-calls" or "unknown")
+        const modelFinished = processor.message.finish && !["tool-calls", "unknown"].includes(processor.message.finish)
+
+        if (modelFinished && !processor.message.error) {
+          if (format.type === "json_schema") {
+            // Model stopped without calling StructuredOutput tool
+            processor.message.error = new MessageV2.StructuredOutputError({
+              message: "Model did not produce structured output",
+              retries: 0,
+            }).toObject()
+            await Session.updateMessage(processor.message)
+            break
+          }
+        }
+
+        if (result === "stop") break
+        if (result === "compact") {
+          await SessionCompaction.create({
+            sessionID,
+            agent: lastUser.agent,
+            model: lastUser.model,
+            auto: true,
+          })
+        }
+        continue
       }
-      continue
-    }
-    SessionCompaction.prune({ sessionID })
-    for await (const item of MessageV2.stream(sessionID)) {
-      if (item.info.role === "user") continue
-      const queued = state()[sessionID]?.callbacks ?? []
-      for (const q of queued) {
-        q.resolve(item)
+      SessionCompaction.prune({ sessionID })
+      const item = await latestAssistant(sessionID)
+      if (!item) throw new Error("Impossible")
+
+      next = await settle(sessionID, mode, item)
+      if (next === "stop") {
+        await cancel(sessionID)
       }
       return item
+    } catch (error) {
+      await cancel(sessionID, error)
+      throw error
+    } finally {
+      await release(sessionID, runner.generation)
+      if (next !== "stop" && (next === "start" || (await kick(sessionID)))) {
+        void loop({ sessionID, resume_existing: true }).catch((error) => {
+          log.error("failed to continue queued prompt", { sessionID, error })
+          void cancel(sessionID, error)
+        })
+      }
     }
-    throw new Error("Impossible")
   })
 
   async function lastModel(sessionID: string) {
@@ -728,6 +1062,40 @@ export namespace SessionPrompt {
       if (item.info.role === "user" && item.info.model) return item.info.model
     }
     return Provider.defaultModel()
+  }
+
+  async function latestAssistant(sessionID: string) {
+    for await (const item of MessageV2.stream(sessionID)) {
+      if (item.info.role === "user") continue
+      return item
+    }
+  }
+
+  function isInternalUserMessage(message: MessageV2.WithParts) {
+    if (message.info.role !== "user") return false
+    if (message.parts.length === 0) return false
+    return message.parts.every((part) => {
+      if (part.type === "compaction" || part.type === "subtask") return true
+      return part.type === "text" && !!part.synthetic
+    })
+  }
+
+  function filterQueuedMessages(
+    messages: MessageV2.WithParts[],
+    entry: Entry | undefined,
+    mode: Awaited<ReturnType<typeof queueMode>>,
+  ) {
+    if (!entry) return messages
+    const queued = new Set([...entry.queued, ...entry.pending])
+    return messages.filter((msg) => {
+      if (msg.info.role !== "user") return true
+      if (queued.has(msg.info.id)) return false
+      if (mode !== "serial") return true
+      if (!entry.current) return true
+      if (msg.info.id === entry.current) return true
+      if (msg.info.id > entry.current && !isInternalUserMessage(msg)) return false
+      return true
+    })
   }
 
   /** @internal Exported for testing */
@@ -1185,6 +1553,7 @@ export namespace SessionPrompt {
                       error: new NamedError.Unknown({
                         message,
                       }).toObject(),
+                      viewID: Instance.viewID,
                     })
                     pieces.push({
                       messageID: info.id,
@@ -1477,14 +1846,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     }
 
     using _ = defer(() => {
-      // If no queued callbacks, cancel (the default)
-      const callbacks = state()[input.sessionID]?.callbacks ?? []
-      if (callbacks.length === 0) {
-        cancel(input.sessionID)
+      const entry = state()[input.sessionID]
+      const hasQueuedWork = !!entry && (entry.callbacks.length > 0 || entry.queued.length > 0)
+      if (!hasQueuedWork) {
+        void cancel(input.sessionID)
       } else {
-        // Otherwise, trigger the session loop to process queued items
         loop({ sessionID: input.sessionID, resume_existing: true }).catch((error) => {
           log.error("session loop failed to resume after shell command", { sessionID: input.sessionID, error })
+          void cancel(input.sessionID, error)
         })
       }
     })
@@ -1628,7 +1997,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
       env: {
-        ...process.env,
+        ...Env.all({ sessionID: input.sessionID }),
         ...shellEnv.env,
         TERM: "dumb",
       },
@@ -1814,6 +2183,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         Bus.publish(Session.Event.Error, {
           sessionID: input.sessionID,
           error: new NamedError.Unknown({ message: `Model not found: ${providerID}/${modelID}.${hint}` }).toObject(),
+          viewID: Instance.viewID,
         })
       }
       throw e
@@ -1826,6 +2196,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       Bus.publish(Session.Event.Error, {
         sessionID: input.sessionID,
         error: error.toObject(),
+        viewID: Instance.viewID,
       })
       throw error
     }
@@ -1955,5 +2326,16 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       const title = cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned
       return Session.setTitle({ sessionID: input.session.id, title })
     }
+  }
+
+  /** @internal Exported for testing — determines whether the prompt loop should exit */
+  export function shouldExitLoop(
+    lastUser: MessageV2.User | undefined,
+    lastAssistant: MessageV2.Assistant | undefined,
+  ): boolean {
+    if (!lastUser) return false
+    if (!lastAssistant?.finish) return false
+    if (["tool-calls", "unknown"].includes(lastAssistant.finish)) return false
+    return lastAssistant.parentID === lastUser.id
   }
 }

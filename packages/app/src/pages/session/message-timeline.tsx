@@ -117,6 +117,7 @@ export function MessageTimeline(props: {
   const dialog = useDialog()
   const language = useLanguage()
 
+  const rendered = createMemo(() => props.renderedUserMessages.map((message) => message.id))
   const sessionKey = createMemo(() => `${params.dir}${params.id ? "/" + params.id : ""}`)
   const sessionID = createMemo(() => params.id)
   const info = createMemo(() => {
@@ -411,13 +412,13 @@ export function MessageTimeline(props: {
               classList={{
                 "sticky top-0 z-30 bg-[linear-gradient(to_bottom,var(--background-stronger)_48px,transparent)]": true,
                 "w-full": true,
-                "pb-4": true,
-                "pl-2 pr-3 md:pl-4 md:pr-3": true,
+                "pb-2": true,
+                "pl-2 pr-2 md:px-4": true,
                 "md:max-w-200 md:mx-auto 2xl:max-w-[1000px]": props.centered,
               }}
             >
-              <div class="h-12 w-full flex items-center justify-between gap-2">
-                <div class="flex items-center gap-1 min-w-0 flex-1 pr-3">
+              <div class="h-10 w-full flex items-center justify-between gap-1.5">
+                <div class="flex items-center gap-1 min-w-0 flex-1 pr-2">
                   <Show when={parentID()}>
                     <IconButton
                       tabIndex={-1}
@@ -432,7 +433,7 @@ export function MessageTimeline(props: {
                       when={title.editing}
                       fallback={
                         <h1
-                          class="text-14-medium text-text-strong truncate grow-1 min-w-0 pl-2"
+                          class="text-14-medium text-text-strong truncate grow-1 min-w-0 pl-1.5"
                           onDblClick={openTitleEditor}
                         >
                           {titleValue()}
@@ -445,7 +446,7 @@ export function MessageTimeline(props: {
                         }}
                         value={title.draft}
                         disabled={title.saving}
-                        class="text-14-medium text-text-strong grow-1 min-w-0 pl-2 rounded-[6px]"
+                        class="text-14-medium text-text-strong grow-1 min-w-0 pl-1.5 rounded-[6px]"
                         style={{ "--inline-input-shadow": "var(--shadow-xs-border-select)" }}
                         onInput={(event) => setTitle("draft", event.currentTarget.value)}
                         onKeyDown={(event) => {
@@ -467,7 +468,7 @@ export function MessageTimeline(props: {
                 </div>
                 <Show when={sessionID()}>
                   {(id) => (
-                    <div class="shrink-0 flex items-center gap-3">
+                    <div class="shrink-0 flex items-center gap-2">
                       <SessionContextUsage placement="bottom" />
                       <DropdownMenu
                         gutter={4}
@@ -552,16 +553,16 @@ export function MessageTimeline(props: {
                 </Button>
               </div>
             </Show>
-            <For each={props.renderedUserMessages}>
-              {(message) => {
-                const comments = createMemo(() => messageComments(sync.data.part[message.id] ?? []))
+            <For each={rendered()}>
+              {(messageID) => {
+                const comments = createMemo(() => messageComments(sync.data.part[messageID] ?? []))
                 return (
                   <div
-                    id={props.anchor(message.id)}
-                    data-message-id={message.id}
+                    id={props.anchor(messageID)}
+                    data-message-id={messageID}
                     ref={(el) => {
-                      props.onRegisterMessage(el, message.id)
-                      onCleanup(() => props.onUnregisterMessage(message.id))
+                      props.onRegisterMessage(el, messageID)
+                      onCleanup(() => props.onUnregisterMessage(messageID))
                     }}
                     classList={{
                       "min-w-0 w-full max-w-full": true,
@@ -600,7 +601,7 @@ export function MessageTimeline(props: {
                     </Show>
                     <SessionTurn
                       sessionID={sessionID() ?? ""}
-                      messageID={message.id}
+                      messageID={messageID}
                       lastUserMessageID={props.lastUserMessageID}
                       showReasoningSummaries={settings.general.showReasoningSummaries()}
                       shellToolDefaultOpen={settings.general.shellToolPartsExpanded()}

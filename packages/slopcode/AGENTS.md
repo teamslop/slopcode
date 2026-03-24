@@ -2,7 +2,10 @@
 
 ## Release
 
+- The default release flow is `bun run release <patch|minor|major|version>` from the repo root.
 - Before running the release flow or publishing to npm, rebase the release branch/worktree onto the latest remote base branch tip (`origin/dev` here, or `origin/main` in repos that use `main`) so npm publishes are cut from the current base.
+- That flow builds and uploads release assets locally, then dispatches `.github/workflows/publish.yml` for npm trusted publishing.
+- Do not use local `npm publish` as the normal release path; keep GitHub Actions publish-only.
 
 ## Database
 

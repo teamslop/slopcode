@@ -566,6 +566,10 @@ export const dict = {
   "common.close": "关闭",
   "common.edit": "编辑",
   "common.loadMore": "加载更多",
+  "common.changelog": "更新日志",
+  "common.noReleasesFound": "未找到版本",
+  "changelog.tag.latest": "最新",
+
   "common.key.esc": "ESC",
 
   "sidebar.menu.toggle": "切换菜单",
@@ -809,6 +813,12 @@ export const dict = {
   "workspace.reset.archived.one": "将归档 1 个会话。",
   "workspace.reset.archived.many": "将归档 {{count}} 个会话。",
   "workspace.reset.note": "这将把工作区重置为与默认分支一致。",
+
+  "settings.archive.title": "归档会话",
+  "settings.archive.description": "恢复归档会话以使其在侧边栏中可见。",
+  "settings.archive.none": "没有归档会话。",
+  "settings.archive.scope.all": "所有项目",
+  "settings.archive.scope.current": "当前项目",
   "common.open": "打开",
   "dialog.releaseNotes.action.getStarted": "开始",
   "dialog.releaseNotes.action.next": "下一步",

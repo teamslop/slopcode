@@ -10,6 +10,7 @@ import { Global } from "../global"
 import fs from "fs/promises"
 import { lazy } from "../util/lazy"
 import { NamedError } from "@slopcode-ai/util/error"
+import { product } from "@slopcode-ai/util/product"
 import { Flag } from "../flag/flag"
 import { Auth } from "../auth"
 import {
@@ -46,11 +47,11 @@ export namespace Config {
   function systemManagedConfigDir(): string {
     switch (process.platform) {
       case "darwin":
-        return "/Library/Application Support/slopcode"
+        return `/Library/Application Support/${product.id}`
       case "win32":
-        return path.join(process.env.ProgramData || "C:\\ProgramData", "slopcode")
+        return path.join(process.env.ProgramData || "C:\\ProgramData", product.id)
       default:
-        return "/etc/slopcode"
+        return `/etc/${product.id}`
     }
   }
 
@@ -87,20 +88,21 @@ export namespace Config {
     for (const [key, value] of Object.entries(auth)) {
       if (value.type === "wellknown") {
         process.env[value.key] = value.token
-        log.debug("fetching remote config", { url: `${key}/.well-known/slopcode` })
-        const response = await fetch(`${key}/.well-known/slopcode`)
+        const wellKnown = `${key}/${product.config.well_known}`
+        log.debug("fetching remote config", { url: wellKnown })
+        const response = await fetch(wellKnown)
         if (!response.ok) {
           throw new Error(`failed to fetch remote config from ${key}: ${response.status}`)
         }
         const wellknown = (await response.json()) as any
         const remoteConfig = wellknown.config ?? {}
         // Add $schema to prevent load() from trying to write back to a non-existent file
-        if (!remoteConfig.$schema) remoteConfig.$schema = "https://slopcode.dev/config.json"
+        if (!remoteConfig.$schema) remoteConfig.$schema = product.config.schema
         result = mergeConfigConcatArrays(
           result,
           await load(JSON.stringify(remoteConfig), {
-            dir: path.dirname(`${key}/.well-known/slopcode`),
-            source: `${key}/.well-known/slopcode`,
+            dir: path.dirname(wellKnown),
+            source: wellKnown,
           }),
         )
         log.debug("loaded remote config from well-known", { url: key })
@@ -230,6 +232,10 @@ export namespace Config {
       result.compaction = { ...result.compaction, prune: false }
     }
 
+    result.queue_mode ??= "serial"
+    result.daemon = {
+      idle_timeout_ms: result.daemon?.idle_timeout_ms ?? 30 * 60 * 1000,
+    }
     result.plugin = deduplicatePlugins(result.plugin ?? [])
 
     return {
@@ -783,6 +789,7 @@ export namespace Config {
       stash_delete: z.string().optional().default("ctrl+d").describe("Delete stash entry"),
       model_provider_list: z.string().optional().default("ctrl+a").describe("Open provider list from model dialog"),
       model_favorite_toggle: z.string().optional().default("ctrl+f").describe("Toggle model favorite status"),
+      model_show_all_toggle: z.string().optional().default("ctrl+o").describe("Toggle showing all models"),
       session_share: z.string().optional().default("none").describe("Share current session"),
       session_unshare: z.string().optional().default("none").describe("Unshare current session"),
       session_interrupt: z.string().optional().default("escape").describe("Interrupt current session"),
@@ -823,9 +830,14 @@ export namespace Config {
       command_list: z.string().optional().default("ctrl+p").describe("List available commands"),
       agent_list: z.string().optional().default("<leader>a").describe("List agents"),
       agent_cycle: z.string().optional().default("tab").describe("Next agent"),
-      agent_cycle_reverse: z.string().optional().default("shift+tab").describe("Previous agent"),
+      agent_cycle_reverse: z.string().optional().default("none").describe("Previous agent"),
+      permission_auto_accept_toggle: z
+        .string()
+        .optional()
+        .default("shift+tab")
+        .describe("Toggle auto-accept mode for permissions"),
       variant_cycle: z.string().optional().default("ctrl+t").describe("Cycle model variants"),
-      history_mode_toggle: z.string().optional().default("ctrl+h,ctrl+j").describe("Toggle history navigation mode"),
+      history_mode_toggle: z.string().optional().default("ctrl+y").describe("Toggle history navigation mode"),
       input_clear: z.string().optional().default("ctrl+c").describe("Clear input field"),
       input_paste: z.string().optional().default("ctrl+v").describe("Paste from clipboard"),
       input_submit: z.string().optional().default("return").describe("Submit input"),
@@ -936,6 +948,20 @@ export namespace Config {
       ref: "ServerConfig",
     })
 
+  export const Daemon = z
+    .object({
+      idle_timeout_ms: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Idle timeout in milliseconds before the shared local daemon exits (default: 1800000)."),
+    })
+    .strict()
+    .meta({
+      ref: "DaemonConfig",
+    })
+
   export const Layout = z.enum(["auto", "stretch"]).meta({
     ref: "LayoutConfig",
   })
@@ -999,6 +1025,7 @@ export namespace Config {
       $schema: z.string().optional().describe("JSON schema reference for configuration validation"),
       logLevel: Log.Level.optional().describe("Log level"),
       server: Server.optional().describe("Server configuration for slopcode serve and web commands"),
+      daemon: Daemon.optional().describe("Shared local daemon configuration for TUI sessions"),
       command: z
         .record(z.string(), Command)
         .optional()
@@ -1147,6 +1174,10 @@ export namespace Config {
           url: z.string().optional().describe("Enterprise URL"),
         })
         .optional(),
+      queue_mode: z
+        .enum(["serial", "injection"])
+        .optional()
+        .describe("How follow-up prompts are handled while a session is already running (default: serial)"),
       compaction: z
         .object({
           auto: z.boolean().optional().describe("Enable automatic compaction when context is full (default: true)"),
@@ -1159,10 +1190,69 @@ export namespace Config {
             .describe("Token buffer for compaction. Leaves enough window to avoid overflow during compaction."),
         })
         .optional(),
+      autocomplete: z
+        .object({
+          enabled: z.boolean().optional().describe("Enable model-powered prompt autocomplete (default: true)"),
+          debounce_ms: z
+            .number()
+            .int()
+            .min(0)
+            .optional()
+            .describe("Debounce delay in milliseconds before requesting autocomplete (default: 180)"),
+          min_prefix_chars: z
+            .number()
+            .int()
+            .min(0)
+            .optional()
+            .describe("Minimum prefix characters required to request autocomplete (default: 12)"),
+          timeout_ms: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Timeout in milliseconds for autocomplete requests (default: 4000)"),
+          max_output_tokens: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Maximum output tokens for autocomplete generation (default: 48)"),
+          max_completion_chars: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Maximum completion characters returned to the client (default: 96)"),
+          provider_model_overrides: z
+            .record(z.string(), z.union([z.string(), z.null()]))
+            .optional()
+            .describe(
+              "Override autocomplete model per provider. Key is provider ID, value is model ID. Set null to use the selected model for that provider.",
+            ),
+          model_strategy: z
+            .enum(["same_exact", "family_fast", "custom_map"])
+            .optional()
+            .describe("@deprecated Legacy autocomplete routing strategy. Ignored by runtime."),
+          model_map: z
+            .record(z.string(), z.string())
+            .optional()
+            .describe("@deprecated Legacy autocomplete model map. Ignored by runtime."),
+        })
+        .optional(),
       experimental: z
         .object({
           disable_paste_summary: z.boolean().optional(),
           batch_tool: z.boolean().optional().describe("Enable the batch tool"),
+          hashline_edit: z
+            .boolean()
+            .optional()
+            .describe("Enable hashline-backed edit/read tool behavior (default true, set false to disable)"),
+          hashline_autocorrect: z
+            .boolean()
+            .optional()
+            .describe(
+              "Enable hashline autocorrect cleanup for copied prefixes and formatting artifacts (default true)",
+            ),
           openTelemetry: z
             .boolean()
             .optional()
@@ -1189,7 +1279,7 @@ export namespace Config {
   export type Info = z.output<typeof Info>
 
   export const global = lazy(async () => {
-    const legacyDir = path.join(path.dirname(Global.Path.config), "opencode")
+    const legacyDir = path.join(path.dirname(Global.Path.config), product.legacy_id)
     let result: Info = {}
 
     for (const file of [
@@ -1211,7 +1301,7 @@ export namespace Config {
         .then(async (mod) => {
           const { provider, model, ...rest } = mod.default
           if (provider && model) result.model = `${provider}/${model}`
-          result["$schema"] = "https://slopcode.dev/config.json"
+          result["$schema"] = product.config.schema
           result = mergeDeep(result, rest)
           await Filesystem.writeJson(path.join(Global.Path.config, "config.json"), result)
           await fs.unlink(toml)
@@ -1255,8 +1345,12 @@ export namespace Config {
     const parsed = Info.safeParse(normalized)
     if (parsed.success) {
       if (!parsed.data.$schema && isFile) {
-        parsed.data.$schema = "https://slopcode.dev/config.json"
-        const updated = original.replace(/^\s*\{/, '{\n  "$schema": "https://slopcode.dev/config.json",')
+        parsed.data.$schema = product.config.schema
+        const updated = original.replace(
+          /^\s*\{/,
+          `{
+  "$schema": "${product.config.schema}",`,
+        )
         await Bun.write(options.path, updated).catch(() => {})
       }
       const data = parsed.data
@@ -1312,19 +1406,11 @@ export namespace Config {
   }
 
   function globalConfigFile() {
-    const legacyDir = path.join(path.dirname(Global.Path.config), "opencode")
-    const candidates = [
-      path.join(Global.Path.config, "slopcode.jsonc"),
-      path.join(Global.Path.config, "slopcode.json"),
-      path.join(Global.Path.config, "config.json"),
-      path.join(Global.Path.config, "opencode.jsonc"),
-      path.join(Global.Path.config, "opencode.json"),
-      path.join(legacyDir, "slopcode.jsonc"),
-      path.join(legacyDir, "slopcode.json"),
-      path.join(legacyDir, "opencode.jsonc"),
-      path.join(legacyDir, "opencode.json"),
-      path.join(legacyDir, "config.json"),
-    ]
+    // Legacy OpenCode config is read-only for compatibility.
+    // New writes should always target SlopCode-owned paths.
+    const candidates = product.config.global_files
+      .filter((file) => !file.startsWith(product.legacy_id))
+      .map((file) => path.join(Global.Path.config, file))
     for (const file of candidates) {
       if (existsSync(file)) return file
     }

@@ -203,11 +203,11 @@ export function StatusPopover() {
       triggerProps={{
         variant: "ghost",
         class:
-          "rounded-md h-[24px] pr-3 pl-0.5 gap-2 border border-border-weak-base bg-surface-panel shadow-none data-[expanded]:bg-surface-base-active",
+          "rounded-md h-[24px] pr-2 pl-1 gap-1.5 border border-border-weak-base bg-surface-panel shadow-none data-[expanded]:bg-surface-base-active",
         style: { scale: 1 },
       }}
       trigger={
-        <div class="flex items-center gap-0.5">
+        <div class="flex items-center gap-1">
           <div class="size-4 flex items-center justify-center">
             <div
               classList={{

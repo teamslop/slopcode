@@ -548,24 +548,23 @@ export type EventMessagePartRemoved = {
   }
 }
 
-export type PermissionRequest = {
-  id: string
-  sessionID: string
-  permission: string
-  patterns: Array<string>
-  metadata: {
-    [key: string]: unknown
-  }
-  always: Array<string>
-  tool?: {
-    messageID: string
-    callID: string
-  }
-}
-
 export type EventPermissionAsked = {
   type: "permission.asked"
-  properties: PermissionRequest
+  properties: {
+    id: string
+    sessionID: string
+    permission: string
+    patterns: Array<string>
+    metadata: {
+      [key: string]: unknown
+    }
+    always: Array<string>
+    tool?: {
+      messageID: string
+      callID: string
+    }
+    viewID?: string
+  }
 }
 
 export type EventPermissionReplied = {
@@ -574,6 +573,7 @@ export type EventPermissionReplied = {
     sessionID: string
     requestID: string
     reply: "once" | "always" | "reject"
+    viewID?: string
   }
 }
 
@@ -596,6 +596,7 @@ export type EventSessionStatus = {
   properties: {
     sessionID: string
     status: SessionStatus
+    viewID?: string
   }
 }
 
@@ -603,6 +604,7 @@ export type EventSessionIdle = {
   type: "session.idle"
   properties: {
     sessionID: string
+    viewID?: string
   }
 }
 
@@ -640,22 +642,21 @@ export type QuestionInfo = {
   custom?: boolean
 }
 
-export type QuestionRequest = {
-  id: string
-  sessionID: string
-  /**
-   * Questions to ask
-   */
-  questions: Array<QuestionInfo>
-  tool?: {
-    messageID: string
-    callID: string
-  }
-}
-
 export type EventQuestionAsked = {
   type: "question.asked"
-  properties: QuestionRequest
+  properties: {
+    id: string
+    sessionID: string
+    /**
+     * Questions to ask
+     */
+    questions: Array<QuestionInfo>
+    tool?: {
+      messageID: string
+      callID: string
+    }
+    viewID?: string
+  }
 }
 
 export type QuestionAnswer = Array<string>
@@ -666,6 +667,7 @@ export type EventQuestionReplied = {
     sessionID: string
     requestID: string
     answers: Array<QuestionAnswer>
+    viewID?: string
   }
 }
 
@@ -674,6 +676,7 @@ export type EventQuestionRejected = {
   properties: {
     sessionID: string
     requestID: string
+    viewID?: string
   }
 }
 
@@ -719,6 +722,7 @@ export type EventTuiPromptAppend = {
   type: "tui.prompt.append"
   properties: {
     text: string
+    viewID?: string
   }
 }
 
@@ -743,6 +747,7 @@ export type EventTuiCommandExecute = {
       | "prompt.submit"
       | "agent.cycle"
       | string
+    viewID?: string
   }
 }
 
@@ -756,6 +761,7 @@ export type EventTuiToastShow = {
      * Duration in milliseconds
      */
     duration?: number
+    viewID?: string
   }
 }
 
@@ -766,6 +772,7 @@ export type EventTuiSessionSelect = {
      * Session ID to navigate to
      */
     sessionID: string
+    viewID?: string
   }
 }
 
@@ -877,6 +884,7 @@ export type EventSessionError = {
       | StructuredOutputError
       | ContextOverflowError
       | ApiError
+    viewID?: string
   }
 }
 
@@ -924,6 +932,7 @@ export type Pty = {
   cwd: string
   status: "running" | "exited"
   pid: number
+  sessionID?: string
 }
 
 export type EventPtyCreated = {
@@ -945,6 +954,7 @@ export type EventPtyExited = {
   properties: {
     id: string
     exitCode: number
+    sessionID: string
   }
 }
 
@@ -952,6 +962,7 @@ export type EventPtyDeleted = {
   type: "pty.deleted"
   properties: {
     id: string
+    sessionID: string
   }
 }
 
@@ -1036,6 +1047,16 @@ export type ServerConfig = {
    * Additional domains to allow for CORS
    */
   cors?: Array<string>
+}
+
+/**
+ * Shared local daemon configuration for TUI sessions
+ */
+export type DaemonConfig = {
+  /**
+   * Idle timeout in milliseconds before the shared local daemon exits (default: 1800000).
+   */
+  idle_timeout_ms?: number
 }
 
 export type PermissionActionConfig = "ask" | "allow" | "deny"
@@ -1308,6 +1329,7 @@ export type Config = {
   $schema?: string
   logLevel?: LogLevel
   server?: ServerConfig
+  daemon?: DaemonConfig
   /**
    * Command configuration, see https://slopcode.dev/docs/commands
    */
@@ -1458,6 +1480,10 @@ export type Config = {
      */
     url?: string
   }
+  /**
+   * How follow-up prompts are handled while a session is already running (default: serial)
+   */
+  queue_mode?: "serial" | "injection"
   compaction?: {
     /**
      * Enable automatic compaction when context is full (default: true)
@@ -1472,12 +1498,62 @@ export type Config = {
      */
     reserved?: number
   }
+  autocomplete?: {
+    /**
+     * Enable model-powered prompt autocomplete (default: true)
+     */
+    enabled?: boolean
+    /**
+     * Debounce delay in milliseconds before requesting autocomplete (default: 180)
+     */
+    debounce_ms?: number
+    /**
+     * Minimum prefix characters required to request autocomplete (default: 12)
+     */
+    min_prefix_chars?: number
+    /**
+     * Timeout in milliseconds for autocomplete requests (default: 4000)
+     */
+    timeout_ms?: number
+    /**
+     * Maximum output tokens for autocomplete generation (default: 48)
+     */
+    max_output_tokens?: number
+    /**
+     * Maximum completion characters returned to the client (default: 96)
+     */
+    max_completion_chars?: number
+    /**
+     * Override autocomplete model per provider. Key is provider ID, value is model ID. Set null to use the selected model for that provider.
+     */
+    provider_model_overrides?: {
+      [key: string]: string | null
+    }
+    /**
+     * @deprecated Legacy autocomplete routing strategy. Ignored by runtime.
+     */
+    model_strategy?: "same_exact" | "family_fast" | "custom_map"
+    /**
+     * @deprecated Legacy autocomplete model map. Ignored by runtime.
+     */
+    model_map?: {
+      [key: string]: string
+    }
+  }
   experimental?: {
     disable_paste_summary?: boolean
     /**
      * Enable the batch tool
      */
     batch_tool?: boolean
+    /**
+     * Enable hashline-backed edit/read tool behavior (default true, set false to disable)
+     */
+    hashline_edit?: boolean
+    /**
+     * Enable hashline autocorrect cleanup for copied prefixes and formatting artifacts (default true)
+     */
+    hashline_autocorrect?: boolean
     /**
      * Enable OpenTelemetry spans for AI SDK calls (using the 'experimental_telemetry' flag)
      */
@@ -1756,6 +1832,34 @@ export type SubtaskPartInput = {
   command?: string
 }
 
+export type PermissionRequest = {
+  id: string
+  sessionID: string
+  permission: string
+  patterns: Array<string>
+  metadata: {
+    [key: string]: unknown
+  }
+  always: Array<string>
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
+export type QuestionRequest = {
+  id: string
+  sessionID: string
+  /**
+   * Questions to ask
+   */
+  questions: Array<QuestionInfo>
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
 export type ProviderAuthMethod = {
   type: "oauth" | "api"
   label: string
@@ -1992,6 +2096,52 @@ export type GlobalDisposeResponses = {
 
 export type GlobalDisposeResponse = GlobalDisposeResponses[keyof GlobalDisposeResponses]
 
+export type DaemonStatusData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/daemon/status"
+}
+
+export type DaemonStatusResponses = {
+  /**
+   * Daemon status
+   */
+  200: {
+    protocol: 1
+    version: string
+    directory: string
+    view_id?: string
+    pid: number
+    started_at: number
+    idle_timeout_ms: number
+    clients: number
+    busy: boolean
+    permissions: number
+    questions: number
+    pty: number
+    shutting_down: boolean
+  }
+}
+
+export type DaemonStatusResponse = DaemonStatusResponses[keyof DaemonStatusResponses]
+
+export type DaemonShutdownData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/daemon/shutdown"
+}
+
+export type DaemonShutdownResponses = {
+  /**
+   * Daemon shutdown requested
+   */
+  200: boolean
+}
+
+export type DaemonShutdownResponse = DaemonShutdownResponses[keyof DaemonShutdownResponses]
+
 export type AuthRemoveData = {
   body?: never
   path: {
@@ -2131,8 +2281,9 @@ export type ProjectUpdateResponse = ProjectUpdateResponses[keyof ProjectUpdateRe
 export type PtyListData = {
   body?: never
   path?: never
-  query?: {
+  query: {
     directory?: string
+    sessionID: string
   }
   url: "/pty"
 }
@@ -2155,6 +2306,7 @@ export type PtyCreateData = {
     env?: {
       [key: string]: string
     }
+    sessionID: string
   }
   path?: never
   query?: {
@@ -2186,8 +2338,9 @@ export type PtyRemoveData = {
   path: {
     ptyID: string
   }
-  query?: {
+  query: {
     directory?: string
+    sessionID: string
   }
   url: "/pty/{ptyID}"
 }
@@ -2215,8 +2368,9 @@ export type PtyGetData = {
   path: {
     ptyID: string
   }
-  query?: {
+  query: {
     directory?: string
+    sessionID: string
   }
   url: "/pty/{ptyID}"
 }
@@ -2250,8 +2404,9 @@ export type PtyUpdateData = {
   path: {
     ptyID: string
   }
-  query?: {
+  query: {
     directory?: string
+    sessionID: string
   }
   url: "/pty/{ptyID}"
 }
@@ -2696,6 +2851,10 @@ export type SessionListData = {
      */
     start?: number
     /**
+     * Return sessions updated before this timestamp (milliseconds since epoch)
+     */
+    cursor?: number
+    /**
      * Filter sessions by title (case-insensitive)
      */
     search?: string
@@ -2846,7 +3005,7 @@ export type SessionUpdateData = {
   body?: {
     title?: string
     time?: {
-      archived?: number
+      archived?: number | null
     }
   }
   path: {
@@ -3182,6 +3341,7 @@ export type SessionMessagesData = {
   query?: {
     directory?: string
     limit?: number
+    cursor?: number
   }
   url: "/session/{sessionID}/message"
 }
@@ -3438,6 +3598,55 @@ export type PartUpdateResponses = {
 }
 
 export type PartUpdateResponse = PartUpdateResponses[keyof PartUpdateResponses]
+
+export type SessionAutocompleteData = {
+  body?: {
+    model: {
+      providerID: string
+      modelID: string
+    }
+    agent?: string
+    variant?: string
+    mode?: "normal" | "shell"
+    prefix: string
+    suffix?: string
+  }
+  path: {
+    /**
+     * Session ID
+     */
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{sessionID}/autocomplete"
+}
+
+export type SessionAutocompleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionAutocompleteError = SessionAutocompleteErrors[keyof SessionAutocompleteErrors]
+
+export type SessionAutocompleteResponses = {
+  /**
+   * Autocomplete response
+   */
+  200: {
+    completion: string
+    model: string
+  }
+}
+
+export type SessionAutocompleteResponse = SessionAutocompleteResponses[keyof SessionAutocompleteResponses]
 
 export type SessionPromptAsyncData = {
   body?: {
@@ -3705,6 +3914,7 @@ export type PermissionReplyData = {
   }
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/permission/{requestID}/reply"
 }
@@ -3736,6 +3946,7 @@ export type PermissionListData = {
   path?: never
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/permission"
 }
@@ -3754,6 +3965,7 @@ export type QuestionListData = {
   path?: never
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/question"
 }
@@ -3779,6 +3991,7 @@ export type QuestionReplyData = {
   }
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/question/{requestID}/reply"
 }
@@ -3812,6 +4025,7 @@ export type QuestionRejectData = {
   }
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/question/{requestID}/reject"
 }
@@ -4388,6 +4602,7 @@ export type McpDisconnectResponse = McpDisconnectResponses[keyof McpDisconnectRe
 export type TuiAppendPromptData = {
   body?: {
     text: string
+    viewID?: string
   }
   path?: never
   query?: {
@@ -4560,6 +4775,7 @@ export type TuiShowToastData = {
      * Duration in milliseconds
      */
     duration?: number
+    viewID?: string
   }
   path?: never
   query?: {
@@ -4610,6 +4826,7 @@ export type TuiSelectSessionData = {
      * Session ID to navigate to
      */
     sessionID: string
+    viewID?: string
   }
   path?: never
   query?: {
@@ -4879,6 +5096,7 @@ export type EventSubscribeData = {
   path?: never
   query?: {
     directory?: string
+    sessionID?: string
   }
   url: "/event"
 }

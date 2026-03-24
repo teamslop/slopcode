@@ -171,6 +171,55 @@ test("loads legacy global opencode config directory", async () => {
   })
 })
 
+test("writes global updates to slopcode config without mutating legacy opencode config", async () => {
+  await using tmp = await tmpdir({
+    init: async () => {
+      for (const file of ["slopcode.jsonc", "slopcode.json", "config.json", "opencode.json", "opencode.jsonc"]) {
+        await fs.rm(path.join(Global.Path.config, file), { force: true }).catch(() => {})
+      }
+      await fs.mkdir(legacyGlobalConfigDir, { recursive: true })
+      await Filesystem.write(
+        path.join(legacyGlobalConfigDir, "opencode.json"),
+        JSON.stringify({
+          $schema: "https://opencode.ai/config.json",
+          model: "global/legacy",
+          username: "global-legacy-user",
+        }),
+      )
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      Config.global.reset()
+      const legacyPath = path.join(legacyGlobalConfigDir, "opencode.json")
+      const legacyBefore = await Filesystem.readText(legacyPath)
+
+      await Config.updateGlobal({
+        autocomplete: {
+          provider_model_overrides: {
+            openai: "codex-mini-latest",
+          },
+        },
+      })
+
+      const legacyAfter = await Filesystem.readText(legacyPath)
+      expect(legacyAfter).toBe(legacyBefore)
+
+      const modernPath = path.join(Global.Path.config, "slopcode.jsonc")
+      expect(await Filesystem.exists(modernPath)).toBe(true)
+
+      const modern = JSON.parse(await Filesystem.readText(modernPath))
+      expect(modern.autocomplete?.provider_model_overrides?.openai).toBe("codex-mini-latest")
+
+      const global = await Config.getGlobal()
+      expect(global.model).toBe("global/legacy")
+      expect(global.autocomplete?.provider_model_overrides?.openai).toBe("codex-mini-latest")
+    },
+  })
+})
+
 test("ignores legacy tui keys in slopcode config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
@@ -215,6 +264,82 @@ test("loads JSONC config file", async () => {
       expect(config.username).toBe("testuser")
     },
   })
+})
+
+test("parses experimental.hashline_edit and experimental.hashline_autocorrect", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://opencode.ai/config.json",
+        experimental: {
+          hashline_edit: true,
+          hashline_autocorrect: true,
+        },
+      })
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.experimental?.hashline_edit).toBe(true)
+      expect(config.experimental?.hashline_autocorrect).toBe(true)
+    },
+  })
+})
+
+test("defaults queue_mode to serial and accepts explicit override", async () => {
+  await using defaults = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://slopcode.dev/config.json",
+      })
+    },
+  })
+  await Instance.provide({
+    directory: defaults.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.queue_mode).toBe("serial")
+    },
+  })
+
+  await using injection = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://slopcode.dev/config.json",
+        queue_mode: "injection",
+      })
+    },
+  })
+  await Instance.provide({
+    directory: injection.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.queue_mode).toBe("injection")
+    },
+  })
+})
+
+test("rejects invalid queue_mode", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Filesystem.write(
+        path.join(dir, "slopcode.json"),
+        JSON.stringify({
+          $schema: "https://slopcode.dev/config.json",
+          queue_mode: "parallel",
+        }),
+      )
+    },
+  })
+
+  await expect(
+    Instance.provide({
+      directory: tmp.path,
+      fn: async () => Config.get(),
+    }),
+  ).rejects.toThrow(/ConfigInvalidError/)
 })
 
 test("merges multiple config files with correct precedence", async () => {
