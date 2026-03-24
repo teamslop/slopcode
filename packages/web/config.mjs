@@ -3,6 +3,12 @@ const stage = process.env.SST_STAGE || (process.env.VERCEL_ENV === "production" 
 export default {
   url: stage === "production" ? "https://slopcode.dev" : `https://${stage}.slopcode.ai`,
   console: stage === "production" ? "https://slopcode.dev/auth" : `https://${stage}.slopcode.ai/auth`,
+  share:
+    stage === "production"
+      ? "https://opncd.ai"
+      : stage === "dev"
+        ? "https://dev.opncd.ai"
+        : `https://${stage}.dev.opncd.ai`,
   email: "contact@slopcode.dev",
   socialCard: "https://social-cards.sst.dev",
   github: "https://github.com/teamslop/slopcode",

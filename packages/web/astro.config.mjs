@@ -316,6 +316,8 @@ function configSchema() {
                 },
               ],
               rewrites: [
+                { source: "/api/share/:path*", destination: `${config.share}/api/share/:path*` },
+                { source: "/share/:path*", destination: `${config.share}/share/:path*` },
                 { source: "/docs", destination: "/" },
                 { source: "/docs/", destination: "/" },
                 { source: "/docs/:path+", destination: "/:path*" },
