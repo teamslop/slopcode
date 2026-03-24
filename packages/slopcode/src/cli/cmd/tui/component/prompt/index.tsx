@@ -819,13 +819,14 @@ export function Prompt(props: PromptProps) {
 
     // Capture mode before it gets reset
     const currentMode = store.mode
+    const agent = local.agent.current().name
     const variant = local.model.variant.current()
 
     if (store.mode === "shell") {
       runSafe(
         sdk.client.session.shell({
           sessionID,
-          agent: local.agent.current().name,
+          agent,
           model: {
             providerID: selectedModel.providerID,
             modelID: selectedModel.modelID,
@@ -854,7 +855,7 @@ export function Prompt(props: PromptProps) {
           sessionID,
           command: command.slice(1),
           arguments: args,
-          agent: local.agent.current().name,
+          agent,
           model: `${selectedModel.providerID}/${selectedModel.modelID}`,
           messageID,
           variant,
@@ -872,7 +873,7 @@ export function Prompt(props: PromptProps) {
           sessionID,
           ...selectedModel,
           messageID,
-          agent: local.agent.current().name,
+          agent,
           model: selectedModel,
           variant,
           parts: [
@@ -898,6 +899,7 @@ export function Prompt(props: PromptProps) {
           key: sessionID,
           id: messageID,
           mode: store.mode,
+          agent,
           summary: queued.summary,
           detail: queued.detail,
           ready: () => idle(sync.data as QueueStore, sessionID),

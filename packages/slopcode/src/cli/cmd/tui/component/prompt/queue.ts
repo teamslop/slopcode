@@ -4,6 +4,7 @@ export type PromptQueueItem = {
   key: string
   id: string
   mode: "normal" | "shell"
+  agent: string
   summary: string
   detail?: string
   ready: () => boolean
