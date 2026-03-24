@@ -12,10 +12,29 @@ type Entry<T extends Item> = {
   running: boolean
 }
 
+type Snapshot<T extends Item> = {
+  active?: T
+  queue: T[]
+}
+
 export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) {
   const poll = input?.poll_ms ?? 32
   const state = new Map<string, Entry<T>>()
+  const listeners = new Set<(key: string, snapshot: Snapshot<T>) => void>()
   const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+  const read = (key: string) => {
+    const match = state.get(key)
+    return {
+      active: match?.active,
+      queue: match ? [...match.queue] : [],
+    }
+  }
+
+  const notify = (key: string) => {
+    const next = read(key)
+    listeners.forEach((listener) => listener(key, next))
+  }
 
   const ensure = (key: string) => {
     const match = state.get(key)
@@ -50,7 +69,10 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
           while (entry.active === current && !current.done()) {
             await sleep(poll)
           }
-          if (entry.active === current) entry.active = undefined
+          if (entry.active === current) {
+            entry.active = undefined
+            notify(key)
+          }
           continue
         }
 
@@ -63,8 +85,12 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
 
         entry.queue.shift()
         entry.active = next
+        notify(key)
         await next.run().catch((error) => {
-          if (entry.active === next) entry.active = undefined
+          if (entry.active === next) {
+            entry.active = undefined
+            notify(key)
+          }
           next.reject?.(error)
         })
       }
@@ -78,6 +104,7 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
   return {
     push(item: T) {
       ensure(item.key).queue.push(item)
+      notify(item.key)
       void drain(item.key)
     },
     clear(key: string, input?: { active?: boolean; error?: unknown }) {
@@ -87,6 +114,7 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
       const removed = entry.queue.splice(0)
       if (input?.active) entry.active = undefined
       reject(removed, error)
+      notify(key)
       trim(key)
       return removed
     },
@@ -96,6 +124,13 @@ export function createSerialQueue<T extends Item>(input?: { poll_ms?: number }) 
     },
     queued(key: string) {
       return state.get(key)?.queue.length ?? 0
+    },
+    snapshot(key: string) {
+      return read(key)
+    },
+    subscribe(listener: (key: string, snapshot: Snapshot<T>) => void) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
     },
   }
 }

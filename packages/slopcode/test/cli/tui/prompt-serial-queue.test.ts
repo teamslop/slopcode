@@ -96,4 +96,100 @@ describe("serial prompt queue", () => {
     expect(rejected).toEqual(["second"])
     expect(queue.busy("ses_1")).toBe(false)
   })
+
+  test("publishes queue snapshots for rendering", async () => {
+    const done = {
+      first: false,
+      second: false,
+    }
+    const seen: Array<{ active?: string; queue: string[] }> = []
+    const queue = createSerialQueue<{
+      key: string
+      label: string
+      ready: () => boolean
+      done: () => boolean
+      run: () => Promise<void>
+    }>({ poll_ms: 5 })
+
+    const off = queue.subscribe((key: string, snapshot: { active?: { label: string }; queue: Array<{ label: string }> }) => {
+      if (key !== "ses_1") return
+      seen.push({
+        active: snapshot.active?.label,
+        queue: snapshot.queue.map((item) => item.label),
+      })
+    })
+
+    queue.push({
+      key: "ses_1",
+      label: "first",
+      ready: () => true,
+      done: () => done.first,
+      run: async () => {},
+    })
+    queue.push({
+      key: "ses_1",
+      label: "second",
+      ready: () => true,
+      done: () => done.second,
+      run: async () => {},
+    })
+
+    await eventually(() => {
+      const snapshot = queue.snapshot("ses_1")
+      return snapshot.active?.label === "first" && snapshot.queue[0]?.label === "second"
+    })
+
+    expect(seen.some((item) => item.active === "first" && item.queue[0] === "second")).toBe(true)
+
+    done.first = true
+
+    await eventually(() => queue.snapshot("ses_1").active?.label === "second")
+
+    done.second = true
+
+    await eventually(() => !queue.busy("ses_1"))
+    off()
+  })
+
+  test("clears queued items without dropping the active snapshot", async () => {
+    const done = {
+      first: false,
+      second: false,
+    }
+    const queue = createSerialQueue<{
+      key: string
+      label: string
+      ready: () => boolean
+      done: () => boolean
+      run: () => Promise<void>
+    }>({ poll_ms: 5 })
+
+    queue.push({
+      key: "ses_1",
+      label: "first",
+      ready: () => true,
+      done: () => done.first,
+      run: async () => {},
+    })
+    queue.push({
+      key: "ses_1",
+      label: "second",
+      ready: () => true,
+      done: () => done.second,
+      run: async () => {},
+    })
+
+    await eventually(() => queue.snapshot("ses_1").queue.length === 1)
+
+    queue.clear("ses_1")
+
+    const snapshot = queue.snapshot("ses_1")
+    expect(snapshot.active?.label).toBe("first")
+    expect(snapshot.queue).toHaveLength(0)
+
+    done.first = true
+    await eventually(() => !queue.busy("ses_1"))
+  })
 })
+
+

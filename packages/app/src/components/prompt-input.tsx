@@ -52,6 +52,7 @@ import { PromptContextItems } from "./prompt-input/context-items"
 import { PromptImageAttachments } from "./prompt-input/image-attachments"
 import { PromptDragOverlay } from "./prompt-input/drag-overlay"
 import { promptPlaceholder } from "./prompt-input/placeholder"
+import { PromptQueueDock } from "./prompt-input/queue-dock"
 import { ImagePreview } from "@slopcode-ai/ui/image-preview"
 
 interface PromptInputProps {
@@ -1283,6 +1284,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         commandKeybind={command.keybind}
         t={(key) => language.t(key as Parameters<typeof language.t>[0])}
       />
+      <PromptQueueDock />
       <DockShellForm
         onSubmit={handleSubmit}
         classList={{

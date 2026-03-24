@@ -1,7 +1,6 @@
 import type { Message } from "@slopcode-ai/sdk/v2/client"
 import { showToast } from "@slopcode-ai/ui/toast"
 import { base64Encode } from "@slopcode-ai/util/encode"
-import { createSerialQueue } from "@slopcode-ai/util/serial-queue"
 import { useNavigate, useParams } from "@solidjs/router"
 import type { Accessor } from "solid-js"
 import type { FileSelection } from "@/context/file"
@@ -16,6 +15,7 @@ import { Identifier } from "@/utils/id"
 import { Worktree as WorktreeState } from "@/utils/worktree"
 import { buildRequestParts } from "./build-request-parts"
 import { setCursorPosition } from "./editor-dom"
+import { describePromptQueue, promptQueue, promptQueueKey } from "./queue"
 
 type PendingPrompt = {
   abort: AbortController
@@ -29,15 +29,7 @@ type Store = {
   session_status: Record<string, { type: string } | undefined>
 }
 
-const prompts = createSerialQueue<{
-  key: string
-  ready: () => boolean
-  done: () => boolean
-  run: () => Promise<void>
-  reject: (error: unknown) => void
-}>()
 
-const key = (directory: string, sessionID: string) => `${directory}\n${sessionID}`
 
 const idle = (store: Store, sessionID: string) => (store.session_status[sessionID]?.type ?? "idle") === "idle"
 
@@ -110,7 +102,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     const sessionID = params.id
     if (!sessionID) return Promise.resolve()
 
-    prompts.clear(key(sdk.directory, sessionID), { active: true })
+    promptQueue.clear(promptQueueKey(sdk.directory, sessionID), { active: true })
 
     globalSync.todo.set(sessionID, [])
     const [, setStore] = globalSync.child(sdk.directory)
@@ -332,6 +324,11 @@ export function createPromptSubmit(input: PromptSubmitInput) {
 
     const context = prompt.context.items().slice()
     const commentItems = context.filter((item) => item.type === "file" && !!item.comment?.trim())
+    const queued = describePromptQueue({
+      text,
+      images: images.length,
+      comments: commentItems.length,
+    })
 
     const messageID = Identifier.ascending("message")
     const { requestParts, optimisticParts } = buildRequestParts({
@@ -459,8 +456,11 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     }
 
     if (queueMode === "serial") {
-      prompts.push({
-        key: key(sessionDirectory, session.id),
+      promptQueue.push({
+        key: promptQueueKey(sessionDirectory, session.id),
+        id: messageID,
+        summary: queued.summary,
+        detail: queued.detail,
         ready: () => idle(sessionStore as Store, session.id),
         done: () => done(sessionStore as Store, session.id, messageID),
         run: send,

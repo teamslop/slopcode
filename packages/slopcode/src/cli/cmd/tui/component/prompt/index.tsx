@@ -15,7 +15,6 @@ import {
 import "opentui-spinner/solid"
 import path from "path"
 import { Filesystem } from "@/util/filesystem"
-import { createSerialQueue } from "@slopcode-ai/util/serial-queue"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
 import { useSessionTabs } from "@tui/context/session-tabs"
@@ -50,6 +49,7 @@ import { useToast } from "../../ui/toast"
 import { useKV } from "../../context/kv"
 import { useTextareaKeybindings } from "../textarea-keybindings"
 import { DialogSkill } from "../dialog-skill"
+import { describePromptQueue, promptQueue } from "./queue"
 
 export type PromptProps = {
   sessionID?: string
@@ -87,13 +87,6 @@ type QueueStore = {
   }
 }
 
-const prompts = createSerialQueue<{
-  key: string
-  ready: () => boolean
-  done: () => boolean
-  run: () => Promise<void>
-  reject: (error: unknown) => void
-}>()
 
 const idle = (store: QueueStore, sessionID: string) => (store.session_status[sessionID]?.type ?? "idle") === "idle"
 
@@ -383,7 +376,7 @@ export function Prompt(props: PromptProps) {
           }, 5000)
 
           if (store.interrupt >= 2) {
-            prompts.clear(props.sessionID, { active: true })
+            promptQueue.clear(props.sessionID, { active: true })
             runSafe(
               sdk.client.session.abort({
                 sessionID: props.sessionID,
@@ -898,8 +891,15 @@ export function Prompt(props: PromptProps) {
       }
 
       if (queueMode === "serial") {
-        prompts.push({
+        const queued = describePromptQueue({
+          text: inputText,
+          files: nonTextParts.length,
+        })
+        promptQueue.push({
           key: sessionID,
+          id: messageID,
+          summary: queued.summary,
+          detail: queued.detail,
           ready: () => idle(sync.data as QueueStore, sessionID),
           done: () => done(sync.data as QueueStore, sessionID, messageID),
           run: send,

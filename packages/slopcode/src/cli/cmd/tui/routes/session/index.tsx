@@ -7,10 +7,12 @@ import {
   For,
   Match,
   on,
+  onCleanup,
   Show,
   Switch,
   useContext,
 } from "solid-js"
+import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import path from "path"
 import { useRoute, useRouteData } from "@tui/context/route"
@@ -28,6 +30,7 @@ import {
   RGBA,
 } from "@opentui/core"
 import { Prompt, type PromptRef } from "@tui/component/prompt"
+import { promptQueue, type PromptQueueItem } from "@tui/component/prompt/queue"
 import type { AssistantMessage, Part, ToolPart, UserMessage, TextPart, ReasoningPart } from "@slopcode-ai/sdk/v2"
 import { useLocal } from "@tui/context/local"
 import { Locale } from "@/util/locale"
@@ -114,6 +117,7 @@ const REASONING_EXPAND_CHARS = 1200
 const OUTPUT_EXPAND_LINES = 20
 const TODO_EXPAND_ITEMS = 8
 const QUESTION_EXPAND_ITEMS = 4
+const QUEUE_VISIBLE_ITEMS = 4
 
 const OUTPUT_EXPAND_TOOL_PARTS = new Set([
   "read",
@@ -1827,6 +1831,7 @@ export function Session() {
                 <Show when={permissions().length === 0 && questions().length > 0}>
                   <QuestionPrompt request={questions()[0]} />
                 </Show>
+                <PromptQueuePanel sessionID={route.sessionID} />
                 <Prompt
                   visible={!session()?.parentID && permissions().length === 0 && questions().length === 0}
                   historyMode={history()}
@@ -1877,6 +1882,154 @@ export function Session() {
         </Show>
       </box>
     </context.Provider>
+  )
+}
+
+type QueueRow = {
+  id: string
+  label: string
+  summary: string
+  detail?: string
+}
+
+function PromptQueuePanel(props: { sessionID: string }) {
+  const { theme } = useTheme()
+  const renderer = useRenderer()
+  const [store, setStore] = createStore({
+    active: undefined as PromptQueueItem | undefined,
+    queue: [] as PromptQueueItem[],
+    collapsed: false,
+  })
+
+  const sync = () => {
+    const next = promptQueue.snapshot(props.sessionID)
+    setStore("active", next.active)
+    setStore("queue", next.queue)
+  }
+
+  createEffect(on(() => props.sessionID, sync))
+
+  const off = promptQueue.subscribe((key: string) => {
+    if (key !== props.sessionID) return
+    sync()
+  })
+
+  onCleanup(off)
+
+  const rows = createMemo<QueueRow[]>(() => {
+    const active = store.active
+      ? [
+          {
+            id: store.active.id,
+            label: "SENDING",
+            summary: store.active.summary,
+            detail: store.active.detail,
+          },
+        ]
+      : []
+
+    return [
+      ...active,
+      ...store.queue.map((item: PromptQueueItem) => ({
+        id: item.id,
+        label: "QUEUED",
+        summary: item.summary,
+        detail: item.detail,
+      })),
+    ]
+  })
+
+  const visible = createMemo(() => rows().slice(0, QUEUE_VISIBLE_ITEMS))
+  const hidden = createMemo(() => Math.max(0, rows().length - QUEUE_VISIBLE_ITEMS))
+  const status = createMemo(() => {
+    const sending = store.active ? 1 : 0
+    const queued = store.queue.length
+    return [
+      sending ? `${sending} sending` : undefined,
+      queued ? `${queued} queued` : undefined,
+    ]
+      .filter((item): item is string => !!item)
+      .join(" · ")
+  })
+  const preview = createMemo(() => {
+    const text = store.active?.summary ?? store.queue[0]?.summary ?? ""
+    if (text.length <= 48) return text
+    return text.slice(0, 45).trimEnd() + "..."
+  })
+
+  const toggle = () => {
+    setStore("collapsed", (value) => !value)
+  }
+
+  const clear = () => {
+    promptQueue.clear(props.sessionID)
+  }
+
+  return (
+    <Show when={rows().length > 0}>
+      <box
+        border={["left"]}
+        customBorderChars={SplitBorder.customBorderChars}
+        borderColor={theme.background}
+        backgroundColor={theme.backgroundPanel}
+        marginBottom={1}
+        paddingTop={1}
+        paddingBottom={1}
+        paddingLeft={2}
+        gap={1}
+      >
+        <box paddingLeft={3} paddingRight={3} flexDirection="row" justifyContent="space-between">
+          <box
+            flexDirection="row"
+            gap={2}
+            onMouseUp={() => {
+              if (renderer.getSelection()?.getSelectedText()) return
+              toggle()
+            }}
+          >
+            <text fg={theme.textMuted}># Queue{status() ? ` · ${status()}` : ""}</text>
+            <Show when={store.collapsed && preview()}>
+              <text fg={theme.text}>{preview()}</text>
+            </Show>
+            <text fg={theme.textMuted}>{store.collapsed ? "Click to expand" : "Click to collapse"}</text>
+          </box>
+          <Show when={store.queue.length > 0}>
+            <box
+              onMouseUp={(evt) => {
+                evt.stopPropagation()
+                clear()
+              }}
+            >
+              <text fg={theme.textMuted}>Clear queued</text>
+            </box>
+          </Show>
+        </box>
+        <Show when={!store.collapsed}>
+          <box paddingLeft={3} paddingRight={3} flexDirection="column" gap={1}>
+            <For each={visible()}>
+              {(item: QueueRow) => {
+                const bg = createMemo(() => (item.label === "SENDING" ? theme.primary : theme.secondary))
+                const fg = createMemo(() => selectedForeground(theme, bg()))
+                return (
+                  <box flexDirection="column">
+                    <text fg={theme.text}>
+                      <span style={{ bg: bg(), fg: fg(), bold: true }}> {item.label} </span>
+                      <span> {item.summary}</span>
+                    </text>
+                    <Show when={item.detail}>
+                      <text fg={theme.textMuted}>{item.detail}</text>
+                    </Show>
+                  </box>
+                )
+              }}
+            </For>
+            <Show when={hidden() > 0}>
+              <text fg={theme.textMuted}>... {hidden()} more</text>
+            </Show>
+          </box>
+        </Show>
+      </box>
+    </Show>
   )
 }
 
