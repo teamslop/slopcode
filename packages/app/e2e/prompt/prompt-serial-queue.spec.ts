@@ -104,6 +104,10 @@ async function mockProvider(input: { firstToken: string; secondToken: string }) 
       ])
     })()
 
+    if (hasTool) {
+      await new Promise((resolve) => setTimeout(resolve, 2_000))
+    }
+
     res.writeHead(200, { "Content-Type": "text/event-stream" })
     res.end(reply)
   })
@@ -217,10 +221,10 @@ test("serial queue delays second prompt_async request until first turn completes
       await expect(prompt).toContainText(secondToken)
       await page.getByRole("button", { name: "Send" }).click()
 
-      await expect.poll(() => requests.length, { timeout: 1_500 }).toBe(1)
+      await page.waitForTimeout(4_500)
+      expect(requests).toHaveLength(1)
       await expect.poll(async () => await assistantText(sdk, session.id), { timeout: 90_000 }).toContain(firstToken)
 
-      expect(requests).toHaveLength(1)
       await expect.poll(() => requests.length, { timeout: 30_000 }).toBe(2)
       await expect.poll(async () => await assistantText(sdk, session.id), { timeout: 90_000 }).toContain(secondToken)
       expect(JSON.stringify(requests[1]?.body ?? {})).toContain(secondToken)

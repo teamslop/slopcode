@@ -1,6 +1,6 @@
 import { createStore, type SetStoreFunction, type Store } from "solid-js/store"
 import { createSimpleContext } from "@slopcode-ai/ui/context"
-import { batch, createMemo, createRoot, onCleanup } from "solid-js"
+import { batch, createMemo, createRoot, getOwner, onCleanup, runWithOwner } from "solid-js"
 import { useParams } from "@solidjs/router"
 import type { PromptHistoryStoredEntry } from "@/components/prompt-input/history"
 import type { FileSelection, SelectedLineRange } from "@/context/file"
@@ -281,6 +281,7 @@ export const { use: usePrompt, provider: PromptProvider } = createSimpleContext(
   init: () => {
     const params = useParams()
     const cache = new Map<string, PromptCacheEntry>()
+    const owner = getOwner()
 
     const disposeAll = () => {
       for (const entry of cache.values()) {
@@ -310,10 +311,17 @@ export const { use: usePrompt, provider: PromptProvider } = createSimpleContext(
         return existing.value
       }
 
-      const entry = createRoot((dispose) => ({
-        value: createPromptSession(dir, id),
-        dispose,
-      }))
+      const entry = owner
+        ? runWithOwner(owner, () =>
+            createRoot((dispose) => ({
+              value: createPromptSession(dir, id),
+              dispose,
+            })),
+          )
+        : createRoot((dispose) => ({
+            value: createPromptSession(dir, id),
+            dispose,
+          }))
 
       cache.set(key, entry)
       prune()
