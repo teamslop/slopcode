@@ -10,6 +10,7 @@ import { useSDK } from "../context/sdk"
 import { DialogSessionRename } from "./dialog-session-rename"
 import { useKV } from "../context/kv"
 import { createDebouncedSignal } from "../util/signal"
+import { sessionWaiting } from "../context/session-tabs-state"
 import { Spinner } from "./spinner"
 
 export function DialogSessionList() {
@@ -47,14 +48,20 @@ export function DialogSessionList() {
         }
         const isDeleting = toDelete() === x.id
         const status = sync.data.session_status?.[x.id]
-        const isWorking = status?.type === "busy"
+        const isWaiting = sessionWaiting({
+          sessionID: x.id,
+          sessions: sync.data.session,
+          permission: sync.data.permission,
+          question: sync.data.question,
+        })
+        const isWorking = !isWaiting && (status?.type === "busy" || status?.type === "retry")
         return {
           title: isDeleting ? `Press ${keybind.print("session_delete")} again to confirm` : x.title,
           bg: isDeleting ? theme.error : undefined,
           value: x.id,
           category,
           footer: Locale.time(x.time.updated),
-          gutter: isWorking ? <Spinner /> : undefined,
+          gutter: isWorking ? <Spinner /> : isWaiting ? <text fg={theme.textMuted}>■</text> : undefined,
         }
       })
   })

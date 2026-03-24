@@ -181,7 +181,7 @@ describe("session strip layout", () => {
     expect(result.underline[12]).toBe("┴")
   })
 
-  test("splits underline into hover-aware bridge segments without changing the text", () => {
+  test("splits underline into hover-aware segments without changing the text", () => {
     const result = layoutSessionStrip(
       [
         { id: "a", title: "A" },
@@ -196,31 +196,6 @@ describe("session strip layout", () => {
     })
 
     expect(segments.map((segment) => segment.text).join("")).toBe(result.underline)
-    expect(segments.map((segment) => segment.owners)).toEqual([["a"], ["a", "b"], ["b"], ["b"], []])
-  })
-
-  test("keeps overflow bridges owned by the surrounding tab and next control", () => {
-    const result = layoutSessionStrip(
-      [
-        { id: "a", title: "A" },
-        { id: "b", title: "B" },
-        { id: "c", title: "Long" },
-      ],
-      { width: 22 },
-    )
-    const segments = layoutSessionStripUnderlineSegments(result, {
-      prevOwner: "__prev__",
-      nextOwner: "__next__",
-    })
-
-    expect(segments.map((segment) => segment.owners)).toEqual([
-      ["a"],
-      ["a", "b"],
-      ["b"],
-      ["b", "__next__"],
-      ["b", "__next__"],
-      ["b", "__next__"],
-      ["__next__"],
-    ])
+    expect(segments.map((segment) => segment.owners)).toEqual([["a"], [], ["b"], [], []])
   })
 })

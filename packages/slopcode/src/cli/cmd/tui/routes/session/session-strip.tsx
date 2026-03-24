@@ -106,7 +106,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                             }
                             wrapMode="none"
                           >
-                            {tab.status === "done" || tab.status === "ready" ? "■" : " "}
+                            {tab.status === "done" || tab.status === "ready" || tab.status === "waiting" ? "■" : " "}
                           </text>
                         }
                       >

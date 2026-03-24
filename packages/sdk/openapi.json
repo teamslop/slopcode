@@ -435,6 +435,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            }
           }
         ],
         "summary": "List PTY sessions",
@@ -525,6 +533,10 @@
                     "additionalProperties": {
                       "type": "string"
                     }
+                  },
+                  "sessionID": {
+                    "type": "string",
+                    "pattern": "^ses.*"
                   }
                 }
               }
@@ -557,6 +569,14 @@
               "type": "string"
             },
             "required": true
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            }
           }
         ],
         "summary": "Get PTY session",
@@ -607,6 +627,14 @@
               "type": "string"
             },
             "required": true
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            }
           }
         ],
         "summary": "Update PTY session",
@@ -683,6 +711,14 @@
               "type": "string"
             },
             "required": true
+          },
+          {
+            "in": "query",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            }
           }
         ],
         "summary": "Remove PTY session",
@@ -8843,6 +8879,10 @@
           },
           "pid": {
             "type": "number"
+          },
+          "sessionID": {
+            "type": "string",
+            "pattern": "^ses.*"
           }
         },
         "required": ["id", "title", "command", "args", "cwd", "status", "pid"]

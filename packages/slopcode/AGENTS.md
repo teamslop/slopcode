@@ -1,5 +1,11 @@
 # slopcode database guide
 
+## Release
+
+- The default release flow is `bun run release <patch|minor|major|version>` from the repo root.
+- That flow builds and uploads release assets locally, then dispatches `.github/workflows/publish.yml` for npm trusted publishing.
+- Do not use local `npm publish` as the normal release path; keep GitHub Actions publish-only.
+
 ## Database
 
 - **Schema**: Drizzle schema lives in `src/**/*.sql.ts`.

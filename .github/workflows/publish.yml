@@ -1,8 +1,8 @@
 name: publish
-run-name: "${{ format('release {0}', inputs.bump) }}"
+run-name: "${{ format('release {0}', inputs.version || inputs.bump || 'manual') }}"
 
 on:
-  workflow_dispatch: # Remote fallback; default releases run locally via `bun run release`
+  workflow_dispatch: # Default release path; `bun run release` prepares assets locally and dispatches this workflow
     inputs:
       bump:
         description: "Bump major, minor, or patch"
@@ -20,7 +20,7 @@ on:
 concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.version || inputs.bump }}
 
 permissions:
-  id-token: write
+  id-token: write # npm trusted publishing
   contents: write
   packages: write
 
@@ -250,8 +250,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends dpkg-dev gnupg rpm createrepo-c
 
-      - run: ./script/publish.ts
+      - name: Publish release
+        run: ./script/publish.ts
         env:
+          SLOPCODE_PUBLISH_ONLY: true
+          # npm trusted publishing uses GitHub Actions OIDC; prebuilt release assets are downloaded above.
           # Homebrew tap sync
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || steps.committer.outputs.token }}
           HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO || 'teamslop/homebrew-slopcode' }}

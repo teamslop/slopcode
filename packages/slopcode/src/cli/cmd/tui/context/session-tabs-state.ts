@@ -18,12 +18,42 @@ export type SessionTabsState = {
   active?: string
 }
 
+type PendingMap = Record<string, unknown[] | undefined>
+type SessionFamilyMember = {
+  id: string
+  parentID?: string
+}
+
 const isDraft = (tab: SessionTab): tab is Extract<SessionTab, { type: "draft" }> => tab.type === "draft"
 const isSession = (tab: SessionTab): tab is Extract<SessionTab, { type: "session" }> => tab.type === "session"
 
-export function tabStatus(input: { draft?: boolean; pending?: boolean; working: boolean; count: number }) {
+export function sessionWaiting(input: {
+  sessionID: string
+  sessions: SessionFamilyMember[]
+  permission: PendingMap
+  question: PendingMap
+}) {
+  const root = input.sessions.find((session) => session.id === input.sessionID)?.parentID ?? input.sessionID
+  return [
+    ...new Set(
+      input.sessions
+        .filter((session) => session.id === root || session.parentID === root)
+        .map((session) => session.id)
+        .concat(root),
+    ),
+  ].some((id) => (input.permission[id]?.length ?? 0) > 0 || (input.question[id]?.length ?? 0) > 0)
+}
+
+export function tabStatus(input: {
+  draft?: boolean
+  pending?: boolean
+  waiting?: boolean
+  working: boolean
+  count: number
+}) {
   if (input.working) return "working" as const
-  if (input.draft || input.pending) return "ready" as const
+  if (input.waiting || input.draft) return "waiting" as const
+  if (input.pending) return "ready" as const
   if (input.count > 0) return "done" as const
   return "none" as const
 }

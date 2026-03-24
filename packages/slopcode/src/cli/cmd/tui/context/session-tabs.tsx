@@ -11,6 +11,7 @@ import {
   openDraftTab,
   promoteDraftTab,
   pruneSessionTabs,
+  sessionWaiting,
   tabStatus,
   visitSessionTabs,
   type SessionTabsState,
@@ -84,10 +85,17 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
         const session = sync.session.get(tab.id)
         const current = sync.data.session_status?.[tab.id]
         const fallback = sync.session.status(tab.id)
-        const working = current ? current.type !== "idle" : fallback === "working" || fallback === "compacting"
+        const waiting = sessionWaiting({
+          sessionID: tab.id,
+          sessions: sync.data.session,
+          permission: sync.data.permission,
+          question: sync.data.question,
+        })
+        const working =
+          !waiting && (current ? current.type !== "idle" : fallback === "working" || fallback === "compacting")
         const count = sync.data.message[tab.id]?.length ?? 0
         const pending = tab.pendingTitle && (!session || SessionApi.isDefaultTitle(session.title))
-        const status = tabStatus({ pending, working, count })
+        const status = tabStatus({ pending, waiting, working, count })
         if (pending) {
           return {
             id: tab.id,

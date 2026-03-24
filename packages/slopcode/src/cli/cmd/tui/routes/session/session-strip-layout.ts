@@ -1,4 +1,4 @@
-export type SessionStripStatus = "none" | "working" | "ready" | "done"
+export type SessionStripStatus = "none" | "working" | "waiting" | "ready" | "done"
 
 export type SessionStripTab = {
   id: string
@@ -135,38 +135,25 @@ export function layoutSessionStripUnderlineSegments(
   const parts = [
     ...(layout.before > 0
       ? [
-          { kind: "item" as const, width: width(PREV), owners: input.prevOwner ? [input.prevOwner] : [] },
-          { kind: "bridge" as const, width: width(SEP), owners: [] as string[] },
+          { width: width(PREV), owners: input.prevOwner ? [input.prevOwner] : [] },
+          { width: width(SEP), owners: [] as string[] },
         ]
       : []),
     ...layout.tabs.flatMap((tab) => [
-      { kind: "item" as const, width: tabWidth(tab, tab.id === input.active), owners: [tab.id] },
-      { kind: "bridge" as const, width: width(SEP), owners: [] as string[] },
+      { width: tabWidth(tab, tab.id === input.active), owners: [tab.id] },
+      { width: width(SEP), owners: [] as string[] },
     ]),
-    ...(layout.hidden > 0
-      ? [{ kind: "bridge" as const, width: width(`+${layout.hidden}`), owners: [] as string[] }]
-      : []),
+    ...(layout.hidden > 0 ? [{ width: width(`+${layout.hidden}`), owners: [] as string[] }] : []),
     ...(layout.after > 0
       ? [
-          { kind: "bridge" as const, width: width(SEP), owners: [] as string[] },
-          { kind: "item" as const, width: width(NEXT), owners: input.nextOwner ? [input.nextOwner] : [] },
+          { width: width(SEP), owners: [] as string[] },
+          { width: width(NEXT), owners: input.nextOwner ? [input.nextOwner] : [] },
         ]
       : []),
   ]
-  const seek = (index: number, dir: -1 | 1) =>
-    (dir < 0 ? parts.slice(0, index).reverse() : parts.slice(index + 1)).find(
-      (part) => part.kind === "item" && part.owners.length > 0,
-    )?.owners ?? []
-  const linked = parts.map((part, index) => {
-    if (part.kind === "item") return part
-    return {
-      ...part,
-      owners: [...new Set([...seek(index, -1), ...seek(index, 1)])],
-    }
-  })
   const full = Array.from(layout.underline)
-  const used = linked.reduce((sum, part) => sum + part.width, 0)
-  const padded = used < full.length ? [...linked, { width: full.length - used, owners: [] as string[] }] : linked
+  const used = parts.reduce((sum, part) => sum + part.width, 0)
+  const padded = used < full.length ? [...parts, { width: full.length - used, owners: [] as string[] }] : parts
   let offset = 0
   return padded.flatMap((part) => {
     if (part.width <= 0) return []
