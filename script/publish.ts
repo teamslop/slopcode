@@ -67,6 +67,15 @@ if (mode !== "publish") {
 const forceBuild = process.env.SLOPCODE_FORCE_BUILD === "true"
 const skipBuild = process.env.SLOPCODE_SKIP_BUILD === "true"
 const buildLocal = async () => {
+  if (Script.release) {
+    if (skipBuild) {
+      throw new Error("Local build skipped but release assets must be generated")
+    }
+    console.log("\n=== local build ===\n")
+    await import(`../packages/slopcode/script/build.ts`)
+    return
+  }
+
   const dist = await Array.fromAsync(new Bun.Glob("packages/slopcode/dist/*/package.json").scan())
   if (!forceBuild && dist.length > 0) {
     console.log("build: using existing ./packages/slopcode/dist bundle")
