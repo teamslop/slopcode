@@ -4,7 +4,6 @@ import { createMemo, createSignal, For, Show } from "solid-js"
 import "opentui-spinner/solid"
 import { useSessionTabs } from "@tui/context/session-tabs"
 import { useTheme } from "@tui/context/theme"
-import { Locale } from "@/util/locale"
 import {
   layoutSessionStrip,
   layoutSessionStripUnderlineSegments,
@@ -17,7 +16,6 @@ import {
 } from "./session-strip-layout"
 import { SPINNER_FRAMES, SPINNER_INTERVAL } from "../../component/spinner"
 
-const MAX_TITLE = 15
 const INSET = 0
 
 type SessionStripViewProps = {
@@ -191,7 +189,7 @@ export function SessionStrip() {
     tabs.tabs().map((tab) => ({
       id: tab.id,
       status: tab.status,
-      title: Locale.truncate(tab.title, MAX_TITLE),
+      title: tab.title,
     })),
   )
   const layout = createMemo(() =>

@@ -32,6 +32,9 @@ const JOINT = "┴"
 const PREV = "<"
 const NEXT = ">"
 const SEP_MARK = 0
+const MIN_TITLE = 10
+const MAX_TITLE = 40
+const ELLIPSIS = "…"
 
 function owners(...ids: Array<string | undefined>) {
   return ids.filter((id): id is string => !!id)
@@ -42,8 +45,32 @@ type Slice = {
   end: number
 }
 
+type Fit = Omit<SessionStripLayout, "underline"> & {
+  width: number
+  cap: number
+}
+
 function width(text: string) {
   return Bun.stringWidth(text)
+}
+
+function cut(text: string, cap: number) {
+  if (cap <= 0) return ""
+  if (width(text) <= cap) return text
+
+  const ellipsis = width(ELLIPSIS)
+  if (cap <= ellipsis) return ELLIPSIS
+
+  let out = ""
+  let used = 0
+  for (const char of text) {
+    const size = width(char)
+    if (used + size + ellipsis > cap) break
+    out += char
+    used += size
+  }
+  if (out) return out + ELLIPSIS
+  return ELLIPSIS
 }
 
 function item(tab: SessionStripTab, active: boolean) {
@@ -66,27 +93,43 @@ function tabWidth(tab: SessionStripTab, active: boolean) {
   return width(STATUS_SLOT + item(tab, active) + CLOSE_SLOT)
 }
 
-function measure(tabs: SessionStripTab[], slice: Slice, active: string | undefined) {
-  const visible = tabs.slice(slice.start, slice.end + 1)
+function measure(
+  tabs: SessionStripTab[],
+  slice: Slice,
+  input: {
+    active?: string
+    width: number
+  },
+): Fit | undefined {
+  const raw = tabs.slice(slice.start, slice.end + 1)
   const before = slice.start
   const after = tabs.length - slice.end - 1
   const hidden = before + after
-  const lead = before === 0 && visible.length > 0 ? width(SEP) : 0
-  const body =
-    lead +
-    visible.reduce((sum, tab) => {
-      return sum + tabWidth(tab, tab.id === active) + width(SEP)
-    }, 0)
-  const nav =
-    (before > 0 ? width(PREV + SEP) : 0) + (hidden > 0 ? width(`+${hidden}`) : 0) + (after > 0 ? width(SEP + NEXT) : 0)
-  return {
-    tabs: visible,
-    hidden,
-    before,
-    after,
-    prev: before > 0 ? tabs[slice.start - 1]?.id : undefined,
-    next: after > 0 ? tabs[slice.end + 1]?.id : undefined,
-    width: body + nav,
+  const nav = (before > 0 ? width(PREV + SEP) : 0) + (hidden > 0 ? width(`+${hidden}`) : 0) + (after > 0 ? width(SEP + NEXT) : 0)
+
+  for (let cap = MAX_TITLE; cap >= MIN_TITLE; cap--) {
+    const visible = raw.map((tab) => ({
+      ...tab,
+      title: cut(tab.title, cap),
+    }))
+    const lead = before === 0 && visible.length > 0 ? width(SEP) : 0
+    const body =
+      lead +
+      visible.reduce((sum, tab) => {
+        return sum + tabWidth(tab, tab.id === input.active) + width(SEP)
+      }, 0)
+    const total = body + nav
+    if (total > input.width) continue
+    return {
+      tabs: visible,
+      hidden,
+      before,
+      after,
+      prev: before > 0 ? tabs[slice.start - 1]?.id : undefined,
+      next: after > 0 ? tabs[slice.end + 1]?.id : undefined,
+      width: total,
+      cap,
+    }
   }
 }
 
@@ -119,8 +162,7 @@ function underline(width: number, points: number[]) {
   return Array.from({ length: width }, (_, index) => (set.has(index) ? JOINT : RULE)).join("")
 }
 
-function result(tabs: SessionStripTab[], slice: Slice, active: string | undefined, width: number): SessionStripLayout {
-  const layout = measure(tabs, slice, active)
+function result(layout: Fit, active: string | undefined, width: number): SessionStripLayout {
   return {
     tabs: layout.tabs,
     hidden: layout.hidden,
@@ -132,11 +174,34 @@ function result(tabs: SessionStripTab[], slice: Slice, active: string | undefine
   }
 }
 
-function better(next: Slice, best: Slice) {
-  const size = next.end - next.start
-  const current = best.end - best.start
-  if (size !== current) return size > current
-  return next.start < best.start
+function gap(layout: Fit, active: number) {
+  return Math.abs(layout.before * 2 + layout.tabs.length - 1 - active * 2)
+}
+
+function better(next: Fit, best: Fit, active?: number) {
+  if (next.tabs.length !== best.tabs.length) return next.tabs.length > best.tabs.length
+
+  if (active !== undefined) {
+    const nextGap = gap(next, active)
+    const bestGap = gap(best, active)
+    if (nextGap !== bestGap) return nextGap < bestGap
+  }
+
+  if (next.cap !== best.cap) return next.cap > best.cap
+  if (next.before !== best.before) return next.before < best.before
+  return next.width < best.width
+}
+
+function empty(tabs: SessionStripTab[], width: number): SessionStripLayout {
+  return {
+    tabs: [],
+    hidden: tabs.length,
+    before: 0,
+    after: 0,
+    prev: undefined,
+    next: undefined,
+    underline: underline(Math.max(0, width), []),
+  }
 }
 
 export function layoutSessionStripUnderlineSegments(
@@ -190,39 +255,40 @@ export function layoutSessionStrip(
     width: number
   },
 ): SessionStripLayout {
-  if (tabs.length === 0 || input.width <= 0) {
-    return {
-      tabs: [],
-      hidden: tabs.length,
-      before: 0,
-      after: 0,
-      prev: undefined,
-      next: undefined,
-      underline: "",
-    }
-  }
+  if (tabs.length === 0 || input.width <= 0) return empty(tabs, 0)
 
   const active = tabs.findIndex((tab) => tab.id === input.active)
   if (active === -1) {
-    let best = { start: 0, end: 0 }
-    for (let end = 0; end < tabs.length; end++) {
-      const next = { start: 0, end }
-      if (measure(tabs, next, input.active).width > input.width) continue
-      best = next
-    }
-    return result(tabs, best, input.active, input.width)
+    const fits = tabs
+      .map((_, end) => measure(tabs, { start: 0, end }, input))
+      .filter((layout): layout is Fit => !!layout)
+    if (fits.length === 0) return empty(tabs, input.width)
+    return result(
+      fits.reduce((best, next) => {
+        if (better(next, best)) return next
+        return best
+      }),
+      input.active,
+      input.width,
+    )
   }
 
-  let best = { start: active, end: active }
-  for (let start = 0; start <= active; start++) {
-    for (let end = active; end < tabs.length; end++) {
-      const next = { start, end }
-      if (measure(tabs, next, input.active).width > input.width) continue
-      if (better(next, best)) best = next
-    }
-  }
-
-  return result(tabs, best, input.active, input.width)
+  const fits = Array.from({ length: active + 1 }, (_, start) => {
+    return Array.from({ length: tabs.length - active }, (_, offset) => {
+      return measure(tabs, { start, end: active + offset }, input)
+    })
+  })
+    .flat()
+    .filter((layout): layout is Fit => !!layout)
+  if (fits.length === 0) return empty(tabs, input.width)
+  return result(
+    fits.reduce((best, next) => {
+      if (better(next, best, active)) return next
+      return best
+    }),
+    input.active,
+    input.width,
+  )
 }
 
 export const SessionStripText = {
