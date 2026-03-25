@@ -32,16 +32,13 @@ export const { use: useTabState, provider: TabStateProvider } = createSimpleCont
 
     const currentID = createMemo(() => {
       if (route.data.type === "home") return DRAFT_TAB_ID
-      const child = route.data.source === "child" || !!sync.session.get(route.data.sessionID)?.parentID
-      if (child) return tabs.active() ?? route.data.sessionID
       return route.data.sessionID
     })
 
     createEffect(() => {
       const keep = new Set(tabs.ids().filter((id) => id !== DRAFT_TAB_ID))
       if (route.data.type === "session") {
-        const child = route.data.source === "child" || !!sync.session.get(route.data.sessionID)?.parentID
-        if (!child) keep.add(route.data.sessionID)
+        keep.add(route.data.sessionID)
       }
       setStore(
         produce((draft) => {

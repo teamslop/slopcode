@@ -370,8 +370,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     createEffect(() => {
       const data = route.data
       if (data.type !== "session") return
-      const child = data.source === "child" || !!sync.session.get(data.sessionID)?.parentID
-      if (child) return
       const messages = sync.data.message[data.sessionID] ?? []
       const last = messages.findLast((x) => x.role === "user")
       if (!last) return

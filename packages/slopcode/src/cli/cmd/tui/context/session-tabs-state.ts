@@ -27,6 +27,19 @@ type SessionFamilyMember = {
 const isDraft = (tab: SessionTab): tab is Extract<SessionTab, { type: "draft" }> => tab.type === "draft"
 const isSession = (tab: SessionTab): tab is Extract<SessionTab, { type: "session" }> => tab.type === "session"
 
+const root = (id: string, sessions: SessionFamilyMember[]) => {
+  const by = new Map(sessions.map((session) => [session.id, session]))
+  const seen = new Set<string>()
+  let current = id
+  while (!seen.has(current)) {
+    seen.add(current)
+    const parent = by.get(current)?.parentID
+    if (!parent) return current
+    current = parent
+  }
+  return current
+}
+
 export function sessionWaiting(input: {
   sessionID: string
   sessions: SessionFamilyMember[]
@@ -118,23 +131,38 @@ export function visitSessionTabs(
     root?: boolean
   },
 ): SessionTabsState {
-  if (input.source === "child") return state
-  if (input.root === false) return state
-  if (input.source === "new") {
-    return {
-      tabs: [{ type: "session", id: input.sessionID, pendingTitle: true }],
-      active: input.sessionID,
-    }
-  }
+  const pendingTitle = input.source === "new"
   if (state.tabs.some((tab) => isSession(tab) && tab.id === input.sessionID)) {
     return {
-      tabs: state.tabs,
+      tabs: state.tabs.map((tab) => {
+        if (!pendingTitle || !isSession(tab) || tab.id !== input.sessionID) return tab
+        return { ...tab, pendingTitle: true }
+      }),
       active: input.sessionID,
     }
   }
   return {
-    tabs: [...state.tabs, { type: "session", id: input.sessionID }],
+    tabs: [
+      ...state.tabs,
+      pendingTitle
+        ? { type: "session", id: input.sessionID, pendingTitle: true }
+        : { type: "session", id: input.sessionID },
+    ],
     active: input.sessionID,
+  }
+}
+
+export function moveSessionTab(state: SessionTabsState, input: { id: string; target: string }): SessionTabsState {
+  const from = state.tabs.findIndex((tab) => tab.id === input.id)
+  const to = state.tabs.findIndex((tab) => tab.id === input.target)
+  if (from === -1 || to === -1 || from === to) return state
+  const tabs = state.tabs.slice()
+  const [tab] = tabs.splice(from, 1)
+  if (!tab) return state
+  tabs.splice(to, 0, tab)
+  return {
+    tabs,
+    active: state.active,
   }
 }
 
@@ -152,6 +180,17 @@ export function closeSessionTab(state: SessionTabsState, id: string): SessionTab
     tabs,
     active: tabs[index]?.id ?? tabs[index - 1]?.id,
   }
+}
+
+export function shouldArchiveSessionTab(input: {
+  state: SessionTabsState
+  sessionID: string
+  sessions: SessionFamilyMember[]
+}) {
+  const family = root(input.sessionID, input.sessions)
+  return !input.state.tabs.some(
+    (tab) => isSession(tab) && tab.id !== input.sessionID && root(tab.id, input.sessions) === family,
+  )
 }
 
 export function pruneSessionTabs(state: SessionTabsState, keep: Set<string>): SessionTabsState {

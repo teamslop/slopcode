@@ -26,7 +26,6 @@ const SEP = SEP_GLYPH
 const ACTIVE = "* "
 const CLOSE = "X"
 const CLOSE_SLOT = ` ${CLOSE}`
-const STATUS_SLOT = "■ "
 const RULE = "─"
 const JOINT = "┴"
 const PREV = "<"
@@ -90,7 +89,7 @@ export function sessionStripWidth(total: number, inset: number) {
 }
 
 function tabWidth(tab: SessionStripTab, active: boolean) {
-  return width(STATUS_SLOT + item(tab, active) + CLOSE_SLOT)
+  return width(item(tab, active) + CLOSE_SLOT)
 }
 
 function measure(
