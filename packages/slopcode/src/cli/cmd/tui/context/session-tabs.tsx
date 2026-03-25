@@ -9,7 +9,6 @@ import {
   activateTab,
   closeSessionTab,
   hasDraftTab,
-  moveSessionTab,
   openDraftTab,
   promoteDraftTab,
   pruneSessionTabs,
@@ -135,9 +134,6 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
           sessionID: id,
           source: "switch",
         })
-      },
-      move(id: string, target: string) {
-        setState((state) => moveSessionTab(state, { id, target }))
       },
       close(id: string) {
         const current = state()

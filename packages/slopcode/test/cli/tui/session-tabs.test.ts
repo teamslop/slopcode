@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test"
 import {
   closeSessionTab,
   DRAFT_TAB_ID,
-  moveSessionTab,
   openDraftTab,
   promoteDraftTab,
   pruneSessionTabs,
@@ -336,31 +335,6 @@ describe("session tabs", () => {
     expect(next).toEqual({
       tabs: [],
       active: undefined,
-    })
-  })
-
-  test("moving a tab reorders the strip without changing the active tab", () => {
-    const next = moveSessionTab(
-      {
-        tabs: [
-          { type: "session", id: "ses_1" },
-          { type: "draft", id: DRAFT_TAB_ID },
-          { type: "session", id: "ses_2" },
-          { type: "session", id: "ses_3" },
-        ],
-        active: "ses_2",
-      },
-      { id: "ses_1", target: "ses_3" },
-    )
-
-    expect(next).toEqual({
-      tabs: [
-        { type: "draft", id: DRAFT_TAB_ID },
-        { type: "session", id: "ses_2" },
-        { type: "session", id: "ses_3" },
-        { type: "session", id: "ses_1" },
-      ],
-      active: "ses_2",
     })
   })
 

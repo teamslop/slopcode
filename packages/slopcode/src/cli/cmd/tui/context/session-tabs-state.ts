@@ -152,20 +152,6 @@ export function visitSessionTabs(
   }
 }
 
-export function moveSessionTab(state: SessionTabsState, input: { id: string; target: string }): SessionTabsState {
-  const from = state.tabs.findIndex((tab) => tab.id === input.id)
-  const to = state.tabs.findIndex((tab) => tab.id === input.target)
-  if (from === -1 || to === -1 || from === to) return state
-  const tabs = state.tabs.slice()
-  const [tab] = tabs.splice(from, 1)
-  if (!tab) return state
-  tabs.splice(to, 0, tab)
-  return {
-    tabs,
-    active: state.active,
-  }
-}
-
 export function closeSessionTab(state: SessionTabsState, id: string): SessionTabsState {
   const index = state.tabs.findIndex((tab) => tab.id === id)
   if (index === -1) return state

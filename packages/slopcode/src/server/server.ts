@@ -55,6 +55,14 @@ export namespace Server {
   let _corsWhitelist: string[] = []
   let _daemonToken: string | undefined
 
+  function secure(input: { daemonToken?: string }) {
+    if (input.daemonToken) return
+    if (Flag.SLOPCODE_SERVER_PASSWORD) return
+    throw new Error(
+      "SLOPCODE_SERVER_PASSWORD is required to start the slopcode server. Refusing to run an unauthenticated server.",
+    )
+  }
+
   const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
 
   const session = (event: { type: string; properties?: unknown }) => {
@@ -114,15 +122,18 @@ export namespace Server {
             status: 500,
           })
         })
-        .use((c, next) => {
+        .use(async (c, next) => {
           // Allow CORS preflight requests to succeed without auth.
           // Browser clients sending Authorization headers will preflight with OPTIONS.
           if (c.req.method === "OPTIONS") return next()
           if (_daemonToken && DaemonAuth.valid(c.req.header(DaemonAuth.Header))) return next()
           const password = Flag.SLOPCODE_SERVER_PASSWORD
-          if (!password) return next()
-          const username = Flag.SLOPCODE_SERVER_USERNAME ?? "slopcode"
-          return basicAuth({ username, password })(c, next)
+          if (password) {
+            const username = Flag.SLOPCODE_SERVER_USERNAME ?? "slopcode"
+            return basicAuth({ username, password })(c, next)
+          }
+          if (_daemonToken) return c.text("Unauthorized", 401)
+          return next()
         })
         .use(async (c, next) => {
           const skipLogging = c.req.path === "/log"
@@ -633,6 +644,7 @@ export namespace Server {
     cors?: string[]
     daemonToken?: string
   }) {
+    secure(opts)
     _corsWhitelist = opts.cors ?? []
     _daemonToken = opts.daemonToken
     DaemonAuth.set(opts.daemonToken)

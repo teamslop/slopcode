@@ -1418,7 +1418,7 @@ export function Prompt(props: PromptProps) {
                 )}
               </Show>
             </box>
-            <box flexDirection="row" flexShrink={0} gap={1}>
+            <box flexDirection="row" flexShrink={0} gap={1} marginTop={1}>
               <text fg={highlight()}>
                 {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
               </text>
