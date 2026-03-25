@@ -2,10 +2,12 @@ import { describe, expect, test } from "bun:test"
 import {
   closeSessionTab,
   DRAFT_TAB_ID,
+  moveSessionTab,
   openDraftTab,
   promoteDraftTab,
   pruneSessionTabs,
   sessionWaiting,
+  shouldArchiveSessionTab,
   tabStatus,
   visitSessionTabs,
 } from "../../../src/cli/cmd/tui/context/session-tabs-state"
@@ -58,7 +60,7 @@ describe("session tabs", () => {
     })
   })
 
-  test("new sessions reset the strip back to a single tab", () => {
+  test("new sessions append to the strip with a pending title", () => {
     const next = visitSessionTabs(
       {
         tabs: [
@@ -72,7 +74,12 @@ describe("session tabs", () => {
     )
 
     expect(next).toEqual({
-      tabs: [{ type: "session", id: "ses_3", pendingTitle: true }],
+      tabs: [
+        { type: "session", id: "ses_1" },
+        { type: "draft", id: DRAFT_TAB_ID },
+        { type: "session", id: "ses_2" },
+        { type: "session", id: "ses_3", pendingTitle: true },
+      ],
       active: "ses_3",
     })
   })
@@ -101,7 +108,7 @@ describe("session tabs", () => {
     })
   })
 
-  test("child routes never enter the top strip", () => {
+  test("child routes enter the strip as their own tabs", () => {
     const next = visitSessionTabs(
       {
         tabs: [
@@ -117,20 +124,30 @@ describe("session tabs", () => {
       tabs: [
         { type: "session", id: "ses_1" },
         { type: "session", id: "ses_2" },
+        { type: "session", id: "ses_child" },
       ],
-      active: "ses_2",
+      active: "ses_child",
     })
   })
 
-  test("known non-root sessions are ignored", () => {
+  test("known child sessions can be revisited without duplication", () => {
     const next = visitSessionTabs(
-      { tabs: [{ type: "session", id: "ses_1" }], active: "ses_1" },
+      {
+        tabs: [
+          { type: "session", id: "ses_1" },
+          { type: "session", id: "ses_child" },
+        ],
+        active: "ses_1",
+      },
       { sessionID: "ses_child", source: "switch", root: false },
     )
 
     expect(next).toEqual({
-      tabs: [{ type: "session", id: "ses_1" }],
-      active: "ses_1",
+      tabs: [
+        { type: "session", id: "ses_1" },
+        { type: "session", id: "ses_child" },
+      ],
+      active: "ses_child",
     })
   })
 
@@ -320,6 +337,60 @@ describe("session tabs", () => {
       tabs: [],
       active: undefined,
     })
+  })
+
+  test("moving a tab reorders the strip without changing the active tab", () => {
+    const next = moveSessionTab(
+      {
+        tabs: [
+          { type: "session", id: "ses_1" },
+          { type: "draft", id: DRAFT_TAB_ID },
+          { type: "session", id: "ses_2" },
+          { type: "session", id: "ses_3" },
+        ],
+        active: "ses_2",
+      },
+      { id: "ses_1", target: "ses_3" },
+    )
+
+    expect(next).toEqual({
+      tabs: [
+        { type: "draft", id: DRAFT_TAB_ID },
+        { type: "session", id: "ses_2" },
+        { type: "session", id: "ses_3" },
+        { type: "session", id: "ses_1" },
+      ],
+      active: "ses_2",
+    })
+  })
+
+  test("closing the last tab in a family should archive it", () => {
+    expect(
+      shouldArchiveSessionTab({
+        state: {
+          tabs: [{ type: "session", id: "ses_root" }],
+          active: undefined,
+        },
+        sessionID: "ses_root",
+        sessions: [{ id: "ses_root" }, { id: "ses_child", parentID: "ses_root" }],
+      }),
+    ).toBe(true)
+  })
+
+  test("closing a tab with active family siblings keeps it unarchived", () => {
+    expect(
+      shouldArchiveSessionTab({
+        state: {
+          tabs: [
+            { type: "session", id: "ses_root" },
+            { type: "session", id: "ses_child" },
+          ],
+          active: "ses_root",
+        },
+        sessionID: "ses_root",
+        sessions: [{ id: "ses_root" }, { id: "ses_child", parentID: "ses_root" }],
+      }),
+    ).toBe(false)
   })
 
   test("prunes deleted sessions and keeps the current active tab when possible", () => {

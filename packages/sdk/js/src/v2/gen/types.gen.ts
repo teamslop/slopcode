@@ -3203,6 +3203,72 @@ export type SessionAbortResponses = {
 
 export type SessionAbortResponse = SessionAbortResponses[keyof SessionAbortResponses]
 
+export type SessionPauseData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{sessionID}/pause"
+}
+
+export type SessionPauseErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionPauseError = SessionPauseErrors[keyof SessionPauseErrors]
+
+export type SessionPauseResponses = {
+  /**
+   * Paused session
+   */
+  200: boolean
+}
+
+export type SessionPauseResponse = SessionPauseResponses[keyof SessionPauseResponses]
+
+export type SessionResumeData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{sessionID}/resume"
+}
+
+export type SessionResumeErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionResumeError = SessionResumeErrors[keyof SessionResumeErrors]
+
+export type SessionResumeResponses = {
+  /**
+   * Resumed session
+   */
+  200: boolean
+}
+
+export type SessionResumeResponse = SessionResumeResponses[keyof SessionResumeResponses]
+
 export type SessionUnshareData = {
   body?: never
   path: {
@@ -3380,6 +3446,7 @@ export type SessionPromptData = {
     }
     agent?: string
     noReply?: boolean
+    front?: boolean
     /**
      * @deprecated tools and permissions have been merged, you can set permissions on the session itself now
      */
@@ -3657,6 +3724,7 @@ export type SessionPromptAsyncData = {
     }
     agent?: string
     noReply?: boolean
+    front?: boolean
     /**
      * @deprecated tools and permissions have been merged, you can set permissions on the session itself now
      */

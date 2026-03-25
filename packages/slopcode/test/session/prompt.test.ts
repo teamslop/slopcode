@@ -48,6 +48,19 @@ function stream(input: { text: string; finishReason: string; wait?: Promise<void
   } as unknown as Awaited<ReturnType<typeof LLM.stream>>
 }
 
+function live() {
+  return {
+    fullStream: (async function* () {
+      yield { type: "start" }
+      yield { type: "text-start", id: "txt-0" }
+      while (true) {
+        await Bun.sleep(10)
+        yield { type: "text-delta", id: "txt-0", text: "." }
+      }
+    })(),
+  } as unknown as Awaited<ReturnType<typeof LLM.stream>>
+}
+
 async function eventually(check: () => boolean | Promise<boolean>, timeout = 5000) {
   const start = Date.now()
   while (Date.now() - start < timeout) {
@@ -197,6 +210,175 @@ describe("session.prompt special characters", () => {
         const hasContent = textParts.some((part) => part.text.includes("special content"))
         expect(hasContent).toBe(true)
         await Session.remove(session.id)
+      },
+    })
+  })
+})
+
+describe("session.prompt pause and resume", () => {
+  test("pauses the active prompt, preserves the queue, and resumes the paused prompt first", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        queue_mode: "serial",
+        agent: {
+          build: {
+            model: "slopcode/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "Pause Test" })
+        const seen: string[] = []
+        let calls = 0
+
+        spyOn(LLM, "stream").mockImplementation(async (input) => {
+          calls++
+          seen.push(JSON.stringify(input.messages))
+          if (calls === 1) return live()
+          if (calls === 2) return stream({ text: "first resumed done", finishReason: "stop" })
+          if (calls === 3) return stream({ text: "second queued done", finishReason: "stop" })
+          throw new Error(`unexpected llm call ${calls}`)
+        })
+
+        const first = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "first prompt" }],
+        })
+
+        await eventually(() => calls === 1)
+
+        const second = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "second prompt" }],
+        })
+
+        await eventually(async () => {
+          const messages = await Session.messages({ sessionID: session.id })
+          return messages.filter((msg) => msg.info.role === "user").length === 2
+        })
+
+        expect(await SessionPrompt.pause(session.id)).toBe(true)
+        const error = await first.then(
+          () => undefined,
+          (cause) => cause as { name?: string },
+        )
+        expect(error?.name).toBe("MessageAbortedError")
+
+        await Bun.sleep(50)
+        expect(calls).toBe(1)
+
+        expect(await SessionPrompt.resume(session.id)).toBe(true)
+        const secondResult = await second
+
+        expect(calls).toBe(3)
+        expect(seen[1]).toContain("first prompt")
+        expect(seen[1]).not.toContain("second prompt")
+        expect(seen[2]).toContain("second prompt")
+
+        const messages = await Session.messages({ sessionID: session.id })
+        const firstUser = messages.find((msg) => msg.info.role === "user" && text(msg) === "first prompt")
+        if (!firstUser || firstUser.info.role !== "user") throw new Error("expected first user prompt")
+        const replies = messages.filter(
+          (msg): msg is MessageV2.WithParts & { info: MessageV2.Assistant } =>
+            msg.info.role === "assistant" && msg.info.parentID === firstUser.info.id,
+        )
+
+        expect(replies.some((msg) => msg.info.error?.name === "MessageAbortedError")).toBe(true)
+        expect(replies.some((msg) => text(msg) === "first resumed done")).toBe(true)
+        expect(text(secondResult)).toBe("second queued done")
+      },
+    })
+  })
+
+  test("injects a replacement prompt ahead of the queue and hides the paused prompt from later context", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        queue_mode: "serial",
+        agent: {
+          build: {
+            model: "slopcode/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "Inject Test" })
+        const seen: string[] = []
+        let calls = 0
+
+        spyOn(LLM, "stream").mockImplementation(async (input) => {
+          calls++
+          seen.push(JSON.stringify(input.messages))
+          if (calls === 1) return live()
+          if (calls === 2) return stream({ text: "third injected done", finishReason: "stop" })
+          if (calls === 3) return stream({ text: "second queued done", finishReason: "stop" })
+          throw new Error(`unexpected llm call ${calls}`)
+        })
+
+        const first = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "first prompt" }],
+        })
+
+        await eventually(() => calls === 1)
+
+        const second = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "second prompt" }],
+        })
+
+        await eventually(async () => {
+          const messages = await Session.messages({ sessionID: session.id })
+          return messages.filter((msg) => msg.info.role === "user").length === 2
+        })
+
+        expect(await SessionPrompt.pause(session.id)).toBe(true)
+        const error = await first.then(
+          () => undefined,
+          (cause) => cause as { name?: string },
+        )
+        expect(error?.name).toBe("MessageAbortedError")
+
+        const third = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          front: true,
+          parts: [{ type: "text", text: "third prompt" }],
+        })
+        const secondResult = await second
+
+        expect(calls).toBe(3)
+        expect(text(third)).toBe("third injected done")
+        expect(text(secondResult)).toBe("second queued done")
+        expect(seen[1]).toContain("third prompt")
+        expect(seen[1]).not.toContain("first prompt")
+        expect(seen[1]).not.toContain("second prompt")
+        expect(seen[2]).toContain("second prompt")
+        expect(seen[2]).not.toContain("first prompt")
+
+        const messages = await Session.messages({ sessionID: session.id })
+        const firstUser = messages.find((msg) => msg.info.role === "user" && text(msg) === "first prompt")
+        if (!firstUser || firstUser.info.role !== "user") throw new Error("expected first user prompt")
+        const replies = messages.filter(
+          (msg): msg is MessageV2.WithParts & { info: MessageV2.Assistant } =>
+            msg.info.role === "assistant" && msg.info.parentID === firstUser.info.id,
+        )
+
+        expect(replies.some((msg) => msg.info.error?.name === "MessageAbortedError")).toBe(true)
+        expect(replies.some((msg) => text(msg) === "first resumed done")).toBe(false)
       },
     })
   })

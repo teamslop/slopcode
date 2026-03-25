@@ -1,10 +1,8 @@
 import { useTerminalDimensions } from "@opentui/solid"
-import { TextAttributes, type RGBA } from "@opentui/core"
-import { createMemo, createSignal, For, Show } from "solid-js"
-import "opentui-spinner/solid"
+import { MouseButton, TextAttributes, type MouseEvent, type RGBA } from "@opentui/core"
+import { createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 import { useSessionTabs } from "@tui/context/session-tabs"
 import { useTheme } from "@tui/context/theme"
-import { Locale } from "@/util/locale"
 import {
   layoutSessionStrip,
   layoutSessionStripUnderlineSegments,
@@ -15,9 +13,7 @@ import {
   type SessionStripTab,
   type SessionStripUnderlineSegment,
 } from "./session-strip-layout"
-import { SPINNER_FRAMES, SPINNER_INTERVAL } from "../../component/spinner"
 
-const MAX_TITLE = 15
 const INSET = 0
 
 type SessionStripViewProps = {
@@ -32,19 +28,26 @@ type SessionStripViewProps = {
     edge: RGBA
     hover: RGBA
     panel: RGBA
-    success: RGBA
     text: RGBA
     muted: RGBA
   }
   open(id: string): void
+  move(id: string, target: string): void
   close(id: string): void
 }
 
 export function SessionStripView(props: SessionStripViewProps) {
   const [hover, setHover] = createSignal<string>()
+  const [drag, setDrag] = createSignal<string>()
+  const [skip, setSkip] = createSignal(false)
   const prev = "__prev__"
   const next = "__next__"
-  const bg = (id: string) => (hover() === id ? props.colors.hover : props.colors.panel)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  onCleanup(() => {
+    if (timer !== undefined) clearTimeout(timer)
+  })
+
+  const bg = (id: string) => (hover() === id || drag() === id ? props.colors.hover : props.colors.panel)
   const owners = (...ids: Array<string | undefined>) => ids.filter((id): id is string => !!id)
   const fill = (owners: string[]) => (owners.some((id) => hover() === id) ? props.colors.hover : props.colors.panel)
   const sep = (owners: string[]) => (
@@ -52,9 +55,43 @@ export function SessionStripView(props: SessionStripViewProps) {
       <text fg={props.colors.edge}>{SessionStripText.SEP}</text>
     </box>
   )
-  const closeVisible = (id: string) => hover() === id
+  const closeVisible = (id: string) => hover() === id && !drag()
   const closeFg = (id: string) => (closeVisible(id) ? props.colors.text : props.colors.muted)
   const controlFg = (id: string) => (hover() === id ? props.colors.text : props.colors.muted)
+  const stop = (evt: MouseEvent) => {
+    evt.preventDefault()
+    evt.stopPropagation()
+  }
+  const run = (fn: () => void) => {
+    if (drag()) return
+    if (skip()) {
+      setSkip(false)
+      return
+    }
+    fn()
+  }
+  const start = (evt: MouseEvent, id: string) => {
+    if (evt.button !== MouseButton.LEFT) return
+    if (drag() === id) return
+    stop(evt)
+    setDrag(id)
+    setHover(id)
+  }
+  const end = (evt: MouseEvent) => {
+    if (!drag()) return
+    stop(evt)
+    setDrag(undefined)
+    setHover(undefined)
+    setSkip(true)
+    if (timer !== undefined) clearTimeout(timer)
+    timer = setTimeout(() => setSkip(false), 0)
+  }
+  const drop = (evt: MouseEvent, id: string) => {
+    const current = drag()
+    if (!current || current === id) return
+    stop(evt)
+    props.move(current, id)
+  }
 
   return (
     <box flexShrink={0} flexDirection="column" backgroundColor={props.colors.panel}>
@@ -66,7 +103,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                 backgroundColor={bg(prev)}
                 onMouseOver={() => setHover(prev)}
                 onMouseOut={() => setHover(undefined)}
-                onMouseUp={() => props.open(id())}
+                onMouseUp={() => run(() => props.open(id()))}
               >
                 <text fg={controlFg(prev)} wrapMode="none">
                   {SessionStripText.PREV}
@@ -97,27 +134,11 @@ export function SessionStripView(props: SessionStripViewProps) {
                   backgroundColor={bg(tab.id)}
                   onMouseOver={() => setHover(tab.id)}
                   onMouseOut={() => setHover(undefined)}
+                  onMouseDrag={(evt) => start(evt, tab.id)}
+                  onMouseDragEnd={end}
+                  onMouseDrop={(evt) => drop(evt, tab.id)}
                 >
-                  <box flexDirection="row" onMouseUp={() => props.open(tab.id)}>
-                    <box width={2} backgroundColor={bg(tab.id)}>
-                      <Show
-                        when={tab.status === "working"}
-                        fallback={
-                          <text
-                            fg={
-                              tab.status === "done" || tab.status === "ready"
-                                ? props.colors.success
-                                : props.colors.muted
-                            }
-                            wrapMode="none"
-                          >
-                            {tab.status === "done" || tab.status === "ready" || tab.status === "waiting" ? "■" : " "}
-                          </text>
-                        }
-                      >
-                        <spinner color={props.colors.muted} frames={SPINNER_FRAMES} interval={SPINNER_INTERVAL} />
-                      </Show>
-                    </box>
+                  <box flexDirection="row" onMouseUp={() => run(() => props.open(tab.id))}>
                     <box backgroundColor={bg(tab.id)} paddingRight={1}>
                       <text fg={fg()} attributes={active() ? TextAttributes.BOLD : undefined} wrapMode="none">
                         {sessionStripTabLabel(tab, active())}
@@ -132,7 +153,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                         ? (evt) => {
                             evt.stopPropagation()
                             setHover(undefined)
-                            props.close(tab.id)
+                            run(() => props.close(tab.id))
                           }
                         : undefined
                     }
@@ -158,7 +179,7 @@ export function SessionStripView(props: SessionStripViewProps) {
                 backgroundColor={bg(next)}
                 onMouseOver={() => setHover(next)}
                 onMouseOut={() => setHover(undefined)}
-                onMouseUp={() => props.open(id())}
+                onMouseUp={() => run(() => props.open(id()))}
               >
                 <text fg={controlFg(next)} wrapMode="none">
                   {SessionStripText.NEXT}
@@ -191,7 +212,7 @@ export function SessionStrip() {
     tabs.tabs().map((tab) => ({
       id: tab.id,
       status: tab.status,
-      title: Locale.truncate(tab.title, MAX_TITLE),
+      title: tab.title,
     })),
   )
   const layout = createMemo(() =>
@@ -212,7 +233,6 @@ export function SessionStrip() {
     edge: theme.border,
     hover: theme.backgroundElement,
     panel: theme.backgroundPanel,
-    success: theme.success,
     text: theme.text,
     muted: theme.textMuted,
   }))
@@ -228,6 +248,7 @@ export function SessionStrip() {
         underlineSegments={underlineSegments()}
         colors={colors()}
         open={(id) => tabs.open(id)}
+        move={(id, target) => tabs.move(id, target)}
         close={(id) => tabs.close(id)}
       />
     </Show>

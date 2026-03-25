@@ -2,16 +2,19 @@ import { createEffect, createMemo, createSignal, on } from "solid-js"
 import { Session as SessionApi } from "@/session"
 import { createSimpleContext } from "./helper"
 import { useRoute } from "./route"
+import { useSDK } from "./sdk"
 import { useSync } from "./sync"
 import {
   DRAFT_TAB_ID,
   activateTab,
   closeSessionTab,
   hasDraftTab,
+  moveSessionTab,
   openDraftTab,
   promoteDraftTab,
   pruneSessionTabs,
   sessionWaiting,
+  shouldArchiveSessionTab,
   tabStatus,
   visitSessionTabs,
   type SessionTabsState,
@@ -21,6 +24,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
   name: "SessionTabs",
   init: () => {
     const route = useRoute()
+    const sdk = useSDK()
     const sync = useSync()
     const [state, setState] = createSignal<SessionTabsState>({ tabs: [] })
 
@@ -37,13 +41,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
         },
         (next) => {
           if (!next) return
-          setState((state) =>
-            visitSessionTabs(state, {
-              sessionID: next.sessionID,
-              source: next.source,
-              root: next.source === "child" ? false : next.parentID === undefined ? undefined : !next.parentID,
-            }),
-          )
+          setState((state) => visitSessionTabs(state, { sessionID: next.sessionID, source: next.source }))
         },
         { defer: true },
       ),
@@ -58,15 +56,12 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
     createEffect(() => {
       const data = route.data
       const current = data.type === "session" ? data.sessionID : undefined
-      const currentChild =
-        data.type === "session" ? data.source === "child" || !!sync.session.get(data.sessionID)?.parentID : false
       const keep = new Set<string>(
         state().tabs.flatMap((tab) => {
           if (tab.type !== "session") return []
-          if (tab.id === current) return currentChild ? [] : [tab.id]
-          const session = sync.session.get(tab.id)
-          if (!session) return []
-          return session.parentID ? [] : [tab.id]
+          if (tab.id === current) return [tab.id]
+          if (!sync.session.get(tab.id)) return []
+          return [tab.id]
         }),
       )
       setState((state) => pruneSessionTabs(state, keep))
@@ -118,8 +113,6 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
     const draftActive = createMemo(() => route.data.type === "home" && active() === DRAFT_TAB_ID)
     const visible = createMemo(() => {
       if (route.data.type === "home") return hasDraft()
-      if (route.data.source === "child") return false
-      if (sync.session.get(route.data.sessionID)?.parentID) return false
       return tabs().length > 1
     })
 
@@ -136,17 +129,29 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
           route.navigate({ type: "home" })
           return
         }
+        setState((state) => activateTab(state, id))
         route.navigate({
           type: "session",
           sessionID: id,
           source: "switch",
         })
       },
+      move(id: string, target: string) {
+        setState((state) => moveSessionTab(state, { id, target }))
+      },
       close(id: string) {
         const current = state()
         const next = closeSessionTab(current, id)
         if (next === current) return
         setState(next)
+        if (
+          id !== DRAFT_TAB_ID &&
+          shouldArchiveSessionTab({ state: next, sessionID: id, sessions: sync.data.session })
+        ) {
+          sdk.client.session.update({ sessionID: id, time: { archived: Date.now() } }).catch((error) => {
+            console.error("Failed to archive closed session tab", error)
+          })
+        }
         const routeID = route.data.type === "home" ? DRAFT_TAB_ID : route.data.sessionID
         if (routeID !== id) return
         if (!next.active || next.active === DRAFT_TAB_ID) {

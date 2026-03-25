@@ -637,6 +637,62 @@ export const SessionRoutes = lazy(() =>
       },
     )
     .post(
+      "/:sessionID/pause",
+      describeRoute({
+        summary: "Pause session",
+        description: "Pause the active prompt while preserving the remaining serial queue.",
+        operationId: "session.pause",
+        responses: {
+          200: {
+            description: "Paused session",
+            content: {
+              "application/json": {
+                schema: resolver(z.boolean()),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: z.string(),
+        }),
+      ),
+      async (c) => {
+        return c.json(await SessionPrompt.pause(c.req.valid("param").sessionID))
+      },
+    )
+    .post(
+      "/:sessionID/resume",
+      describeRoute({
+        summary: "Resume session",
+        description: "Resume a previously paused prompt and continue the remaining serial queue.",
+        operationId: "session.resume",
+        responses: {
+          200: {
+            description: "Resumed session",
+            content: {
+              "application/json": {
+                schema: resolver(z.boolean()),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: z.string(),
+        }),
+      ),
+      async (c) => {
+        return c.json(await SessionPrompt.resume(c.req.valid("param").sessionID))
+      },
+    )
+    .post(
       "/:sessionID/share",
       describeRoute({
         summary: "Share session",

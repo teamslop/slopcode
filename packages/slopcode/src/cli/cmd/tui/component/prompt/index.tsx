@@ -95,7 +95,7 @@ const assistants = (messages: Message[], messageID: string) =>
 const finished = (message: Message) => {
   if (message.role !== "assistant") return false
   if (!message.time.completed) return false
-  if (message.error) return true
+  if (message.error) return message.error.name !== "MessageAbortedError"
   if (!message.finish) return false
   return !["tool-calls", "unknown"].includes(message.finish)
 }
@@ -375,11 +375,20 @@ export function Prompt(props: PromptProps) {
           }, 5000)
 
           if (store.interrupt >= 2) {
-            promptQueue.clear(props.sessionID, { active: true })
+            const paused = promptQueue.pause(props.sessionID)
             runSafe(
-              sdk.client.session.abort({
-                sessionID: props.sessionID,
-              }),
+              sdk.client.session
+                .pause({
+                  sessionID: props.sessionID,
+                })
+                .then((result: { data?: boolean }) => {
+                  if (result.data) return
+                  if (paused) promptQueue.resume(props.sessionID!)
+                })
+                .catch((error: unknown) => {
+                  if (paused) promptQueue.resume(props.sessionID!)
+                  throw error
+                }),
             )
             setStore("interrupt", 0)
           }
@@ -775,8 +784,26 @@ export function Prompt(props: PromptProps) {
     if (props.disabled) return
     clearGhost()
     if (autocomplete?.visible) return
-    if (!store.prompt.input) return
     const trimmed = store.prompt.input.trim()
+    if (props.sessionID && !trimmed) {
+      const paused = promptQueue.snapshot(props.sessionID).paused
+      if (paused) {
+        promptQueue.resume(props.sessionID)
+        runSafe(
+          sdk.client.session
+            .resume({
+              sessionID: props.sessionID,
+            })
+            .then((result: { data?: boolean }) => {
+              if (result.data) return
+              promptQueue.pause(props.sessionID!)
+            }),
+        )
+        props.onSubmit?.()
+        return
+      }
+    }
+    if (!trimmed) return
     if (trimmed === "exit" || trimmed === "quit" || trimmed === ":q") {
       exit()
       return
@@ -868,11 +895,13 @@ export function Prompt(props: PromptProps) {
         }),
       )
     } else {
+      const paused = queueMode === "serial" ? promptQueue.snapshot(sessionID).paused : undefined
       const send = async () => {
         await sdk.client.session.promptAsync({
           sessionID,
           ...selectedModel,
           messageID,
+          front: queueMode === "serial" && !!paused,
           agent,
           model: selectedModel,
           variant,
@@ -895,21 +924,29 @@ export function Prompt(props: PromptProps) {
           text: inputText,
           files: nonTextParts.length,
         })
-        promptQueue.push({
+        const item = {
           key: sessionID,
           id: messageID,
           mode: store.mode,
           agent,
           summary: queued.summary,
           detail: queued.detail,
-          ready: () => idle(sync.data as QueueStore, sessionID),
+          ready: () => idle(sync.data as QueueStore, sessionID) && !promptQueue.snapshot(sessionID).paused,
           done: () => done(sync.data as QueueStore, sessionID, messageID),
           run: send,
-          reject: (error) => {
+          reject: (error: unknown) => {
             if (abort(error)) return
+            if (paused) promptQueue.setPaused(paused)
             console.error("Prompt request failed", error)
           },
-        })
+        }
+        if (paused) {
+          promptQueue.clearPaused(sessionID)
+          promptQueue.unshift(item)
+        }
+        if (!paused) {
+          promptQueue.push(item)
+        }
       } else {
         runSafe(send())
       }
@@ -1050,7 +1087,12 @@ export function Prompt(props: PromptProps) {
   })
 
   const placeholderText = createMemo(() => {
-    if (props.sessionID) return undefined
+    if (props.sessionID) {
+      if (promptQueue.snapshot(props.sessionID).paused) {
+        return "Press enter to resume, or type a prompt to inject it ahead of the queue"
+      }
+      return undefined
+    }
     if (store.mode === "shell") {
       const example = SHELL_PLACEHOLDERS[store.placeholder % SHELL_PLACEHOLDERS.length]
       return `Run a command... "${example}"`

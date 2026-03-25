@@ -73,7 +73,9 @@ export namespace SessionPrompt {
     abort: AbortController
     callbacks: Waiter[]
     current?: string
+    paused?: string
     queued: string[]
+    hidden: Set<string>
     pending: Set<string>
     running: boolean
     generation: number
@@ -95,7 +97,7 @@ export namespace SessionPrompt {
 
   export function assertNotBusy(sessionID: string) {
     const match = state()[sessionID]
-    if (match) throw new Session.BusyError(sessionID)
+    if (match && busy(match)) throw new Session.BusyError(sessionID)
   }
 
   export const PromptInput = z.object({
@@ -109,6 +111,7 @@ export namespace SessionPrompt {
       .optional(),
     agent: z.string().optional(),
     noReply: z.boolean().optional(),
+    front: z.boolean().optional(),
     tools: z
       .record(z.string(), z.boolean())
       .optional()
@@ -187,10 +190,11 @@ export namespace SessionPrompt {
     const messageID = input.messageID ?? Identifier.ascending("message")
     const mode = await queueMode()
     const wait = input.noReply ? undefined : createWaiter()
-    await admit({
+    const admission = await admit({
       mode,
       messageID,
       sessionID: input.sessionID,
+      front: input.front,
       waiter: wait?.waiter,
     })
 
@@ -198,6 +202,7 @@ export namespace SessionPrompt {
       const next = await rollback({
         mode,
         messageID,
+        replaced: admission.replaced,
         sessionID: input.sessionID,
         waiter: wait?.waiter,
       })
@@ -295,6 +300,7 @@ export namespace SessionPrompt {
       abort: new AbortController(),
       callbacks: [],
       queued: [],
+      hidden: new Set<string>(),
       pending: new Set<string>(),
       running: false,
       generation: 0,
@@ -350,15 +356,25 @@ export namespace SessionPrompt {
     }
   }
 
-  function idle(entry: Entry) {
+  function busy(entry: Entry) {
     return (
-      !entry.current &&
-      entry.queued.length === 0 &&
-      entry.pending.size === 0 &&
-      !entry.running &&
-      entry.callbacks.length === 0 &&
-      Object.keys(entry.waiters).length === 0
+      !!entry.current ||
+      !!entry.paused ||
+      entry.queued.length > 0 ||
+      entry.pending.size > 0 ||
+      !!entry.running ||
+      entry.callbacks.length > 0 ||
+      Object.keys(entry.waiters).length > 0
     )
+  }
+
+  function empty(entry: Entry) {
+    return !busy(entry) && entry.hidden.size === 0
+  }
+
+  function held(entry: Entry | undefined, id: string | undefined) {
+    if (!entry || !id) return false
+    return entry.paused === id || entry.hidden.has(id)
   }
 
   function abortReason(reason: unknown) {
@@ -377,24 +393,37 @@ export namespace SessionPrompt {
     sessionID: string
     messageID: string
     mode: Awaited<ReturnType<typeof queueMode>>
+    front?: boolean
     waiter?: Waiter
   }) {
     const existing = state()[input.sessionID]
     const entry = existing ?? ensure(input.sessionID)
     return withLock(entry, () => {
-      const busy = !!existing || !!entry.current || entry.queued.length > 0 || entry.running
+      const blocked = busy(entry)
       entry.pending.add(input.messageID)
-      if (!busy) {
+      if (!blocked) {
         entry.current = input.messageID
         if (input.waiter) pushWaiter(entry, input.messageID, input.waiter)
-        return
+        return {}
       }
       if (input.mode === "serial") {
+        if (input.front) {
+          const current = entry.paused === entry.current ? entry.current : undefined
+          if (current) {
+            entry.hidden.add(current)
+            entry.paused = undefined
+            entry.current = undefined
+          }
+          entry.queued.unshift(input.messageID)
+          if (input.waiter) pushWaiter(entry, input.messageID, input.waiter)
+          return { replaced: current }
+        }
         entry.queued.push(input.messageID)
         if (input.waiter) pushWaiter(entry, input.messageID, input.waiter)
-        return
+        return {}
       }
       if (input.waiter) entry.callbacks.push(input.waiter)
+      return {}
     })
   }
 
@@ -402,7 +431,7 @@ export namespace SessionPrompt {
     const entry = state()[sessionID]
     if (!entry) return false
     return withLock(entry, () => {
-      if (entry.running) return false
+      if (entry.running || entry.paused) return false
       if (entry.current) {
         return !entry.pending.has(entry.current)
       }
@@ -426,6 +455,7 @@ export namespace SessionPrompt {
     sessionID: string
     messageID: string
     mode: Awaited<ReturnType<typeof queueMode>>
+    replaced?: string
     waiter?: Waiter
   }) {
     const entry = state()[input.sessionID]
@@ -443,9 +473,16 @@ export namespace SessionPrompt {
       if (index !== -1) {
         entry.queued.splice(index, 1)
       }
-      if (idle(entry)) {
-        delete state()[input.sessionID]
+      if (input.replaced && !entry.current && !entry.paused && entry.hidden.has(input.replaced)) {
+        entry.hidden.delete(input.replaced)
+        entry.current = input.replaced
+        entry.paused = input.replaced
+      }
+      if (!busy(entry)) {
         SessionStatus.set(input.sessionID, { type: "idle" })
+      }
+      if (empty(entry)) {
+        delete state()[input.sessionID]
       }
     })
     return kick(input.sessionID)
@@ -459,14 +496,14 @@ export namespace SessionPrompt {
 
   function start(sessionID: string) {
     const s = state()
-    if (s[sessionID]) return
+    if (s[sessionID] && busy(s[sessionID])) return
     return ensure(sessionID).abort.signal
   }
 
   async function claim(sessionID: string) {
     const entry = ensure(sessionID)
     return withLock(entry, () => {
-      if (entry.running) return
+      if (entry.running || entry.paused) return
       entry.running = true
       entry.generation += 1
       if (entry.abort.signal.aborted) {
@@ -509,6 +546,7 @@ export namespace SessionPrompt {
           waiter.resolve(item)
         }
         entry.current = undefined
+        entry.paused = undefined
       }
       if (mode === "serial" && entry.queued.length > 0) {
         const next = entry.queued[0]
@@ -536,7 +574,7 @@ export namespace SessionPrompt {
       entry.abort.abort()
       if (active) {
         entry.queued = []
-        for (const id of [...entry.pending]) {
+        for (const id of Array.from(entry.pending)) {
           if (id !== current) entry.pending.delete(id)
         }
         for (const [id, waiters] of Object.entries(entry.waiters)) {
@@ -562,6 +600,44 @@ export namespace SessionPrompt {
     })
   }
 
+  export async function pause(sessionID: string, reason: unknown = new DOMException("Paused", "AbortError")) {
+    log.info("pause", { sessionID })
+    const entry = state()[sessionID]
+    if (!entry) return false
+    return withLock(entry, () => {
+      const current = entry.current
+      if (!current || entry.pending.has(current)) return false
+      if (entry.paused === current) return true
+      const error = aborted(reason) ? abortReason(reason) : reason
+      entry.paused = current
+      entry.abort.abort()
+      const waiters = entry.waiters[current] ?? []
+      delete entry.waiters[current]
+      for (const waiter of waiters) {
+        waiter.reject(error)
+      }
+      SessionStatus.set(sessionID, { type: "idle" })
+      return true
+    })
+  }
+
+  export async function resume(sessionID: string) {
+    log.info("resume", { sessionID })
+    const entry = state()[sessionID]
+    if (!entry) return false
+    const next = await withLock(entry, () => {
+      if (!entry.paused || entry.running || entry.current !== entry.paused) return false
+      entry.paused = undefined
+      return true
+    })
+    if (!next) return false
+    void loop({ sessionID, resume_existing: true }).catch((error) => {
+      log.error("session loop failed after resume", { sessionID, error })
+      void cancel(sessionID, error)
+    })
+    return true
+  }
+
   export const LoopInput = z.object({
     sessionID: Identifier.schema("session"),
     resume_existing: z.boolean().optional(),
@@ -571,6 +647,7 @@ export namespace SessionPrompt {
 
     const runner = await claim(sessionID)
     if (!runner) {
+      if (state()[sessionID]?.paused) return
       return waitForLoop(sessionID)
     }
 
@@ -589,7 +666,13 @@ export namespace SessionPrompt {
       while (true) {
         SessionStatus.set(sessionID, { type: "busy" })
         log.info("loop", { step, sessionID })
-        if (abort.aborted) break
+        if (abort.aborted) {
+          if (held(state()[sessionID], state()[sessionID]?.current)) {
+            next = "hold"
+            return
+          }
+          break
+        }
         let msgs = filterQueuedMessages(
           await MessageV2.filterCompacted(MessageV2.stream(sessionID)),
           state()[sessionID],
@@ -1023,6 +1106,11 @@ export namespace SessionPrompt {
           }
         }
 
+        if (held(state()[sessionID], lastUser?.id)) {
+          next = "hold"
+          return
+        }
+
         if (result === "stop") break
         if (result === "compact") {
           await SessionCompaction.create({
@@ -1086,12 +1174,13 @@ export namespace SessionPrompt {
     mode: Awaited<ReturnType<typeof queueMode>>,
   ) {
     if (!entry) return messages
-    const queued = new Set([...entry.queued, ...entry.pending])
+    const queued = new Set([...entry.queued, ...Array.from(entry.pending), ...Array.from(entry.hidden)])
     return messages.filter((msg) => {
       if (msg.info.role !== "user") return true
       if (queued.has(msg.info.id)) return false
       if (mode !== "serial") return true
       if (!entry.current) return true
+      if (msg.info.id === entry.paused) return false
       if (msg.info.id === entry.current) return true
       if (msg.info.id > entry.current && !isInternalUserMessage(msg)) return false
       return true
