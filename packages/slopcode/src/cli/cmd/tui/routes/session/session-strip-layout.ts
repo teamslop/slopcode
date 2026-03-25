@@ -105,7 +105,8 @@ function measure(
   const before = slice.start
   const after = tabs.length - slice.end - 1
   const hidden = before + after
-  const nav = (before > 0 ? width(PREV + SEP) : 0) + (hidden > 0 ? width(`+${hidden}`) : 0) + (after > 0 ? width(SEP + NEXT) : 0)
+  const nav =
+    (before > 0 ? width(PREV + SEP) : 0) + (hidden > 0 ? width(`+${hidden}`) : 0) + (after > 0 ? width(SEP + NEXT) : 0)
 
   for (let cap = MAX_TITLE; cap >= MIN_TITLE; cap--) {
     const visible = raw.map((tab) => ({
