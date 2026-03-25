@@ -29,8 +29,8 @@ export namespace Flag {
   export declare const SLOPCODE_DISABLE_PROJECT_CONFIG: boolean
   export const SLOPCODE_FAKE_VCS = process.env["SLOPCODE_FAKE_VCS"]
   export declare const SLOPCODE_CLIENT: string
-  export const SLOPCODE_SERVER_PASSWORD = process.env["SLOPCODE_SERVER_PASSWORD"]
-  export const SLOPCODE_SERVER_USERNAME = process.env["SLOPCODE_SERVER_USERNAME"]
+  export declare const SLOPCODE_SERVER_PASSWORD: string | undefined
+  export declare const SLOPCODE_SERVER_USERNAME: string | undefined
   export const SLOPCODE_ENABLE_QUESTION_TOOL = truthy("SLOPCODE_ENABLE_QUESTION_TOOL")
 
   // Experimental
@@ -105,6 +105,22 @@ Object.defineProperty(Flag, "SLOPCODE_CONFIG_DIR", {
 Object.defineProperty(Flag, "SLOPCODE_CLIENT", {
   get() {
     return process.env["SLOPCODE_CLIENT"] ?? "cli"
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "SLOPCODE_SERVER_PASSWORD", {
+  get() {
+    return process.env["SLOPCODE_SERVER_PASSWORD"]
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "SLOPCODE_SERVER_USERNAME", {
+  get() {
+    return process.env["SLOPCODE_SERVER_USERNAME"]
   },
   enumerable: true,
   configurable: false,
