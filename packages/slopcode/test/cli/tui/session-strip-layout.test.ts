@@ -12,6 +12,8 @@ const tabs = [
   { id: "ses_4", title: "Four" },
 ]
 
+const long = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
 describe("session strip layout", () => {
   test("shows every tab when there is enough width", () => {
     const result = layoutSessionStrip(tabs, {
@@ -98,6 +100,89 @@ describe("session strip layout", () => {
   test("keeps the full terminal width when the strip inset is zero", () => {
     expect(sessionStripWidth(80, 0)).toBe(80)
     expect(sessionStripWidth(3, 2)).toBe(0)
+  })
+
+  test("caps wide tabs at 40 chars on roomy terminals", () => {
+    const result = layoutSessionStrip([{ id: "a", title: long }], {
+      active: "a",
+      width: 80,
+    })
+
+    expect(Bun.stringWidth(result.tabs[0]!.title)).toBe(40)
+    expect(result.tabs[0]!.title.endsWith("…")).toBe(true)
+  })
+
+  test("shrinks titles before hiding tabs while the screen narrows", () => {
+    const wide = layoutSessionStrip(
+      [
+        { id: "a", title: long },
+        { id: "b", title: long },
+      ],
+      { active: "a", width: 35 },
+    )
+    const tight = layoutSessionStrip(
+      [
+        { id: "a", title: long },
+        { id: "b", title: long },
+      ],
+      { active: "a", width: 34 },
+    )
+    const narrow = layoutSessionStrip(
+      [
+        { id: "a", title: long },
+        { id: "b", title: long },
+      ],
+      { active: "a", width: 32 },
+    )
+
+    expect(wide.tabs.map((tab) => tab.id)).toEqual(["a", "b"])
+    expect(tight.tabs.map((tab) => tab.id)).toEqual(["a", "b"])
+    expect(narrow.tabs.map((tab) => tab.id)).toEqual(["a"])
+    expect(Bun.stringWidth(wide.tabs[0]!.title)).toBe(11)
+    expect(Bun.stringWidth(tight.tabs[0]!.title)).toBe(10)
+  })
+
+  test("prefers the slice that keeps the active tab centered on ties", () => {
+    const result = layoutSessionStrip(
+      [
+        { id: "a", title: "A" },
+        { id: "b", title: "B" },
+        { id: "c", title: "C" },
+        { id: "d", title: "D" },
+        { id: "e", title: "E" },
+      ],
+      { active: "c", width: 26 },
+    )
+
+    expect(result.tabs.map((tab) => tab.id)).toEqual(["b", "c", "d"])
+    expect(result.before).toBe(1)
+    expect(result.after).toBe(1)
+  })
+
+  test("keeps wide glyph titles inside the minimum tab cap", () => {
+    const result = layoutSessionStrip([{ id: "a", title: "你好世界你好世界你好世界" }], {
+      active: "a",
+      width: 18,
+    })
+
+    expect(Bun.stringWidth(result.tabs[0]!.title)).toBeLessThanOrEqual(10)
+    expect(result.tabs[0]!.title.endsWith("…")).toBe(true)
+    expect(result.underline).toHaveLength(18)
+  })
+
+  test("handles two-digit hidden counts without overflowing the strip", () => {
+    const result = layoutSessionStrip(
+      Array.from({ length: 12 }, (_, index) => ({
+        id: String.fromCharCode(97 + index),
+        title: String.fromCharCode(65 + index),
+      })),
+      { active: "a", width: 24 },
+    )
+
+    expect(result.tabs.map((tab) => tab.id)).toEqual(["a", "b"])
+    expect(result.hidden).toBe(10)
+    expect(result.next).toBe("c")
+    expect(result.underline).toHaveLength(24)
   })
 
   test("draws joints under tab separators including the closing divider", () => {
@@ -215,7 +300,7 @@ describe("session strip layout", () => {
         { id: "b", title: "B" },
         { id: "c", title: "C" },
       ],
-      { active: "b", width: 13 },
+      { active: "b", width: 14 },
     )
 
     const segments = layoutSessionStripUnderlineSegments(result, {
