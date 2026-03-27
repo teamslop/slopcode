@@ -500,12 +500,14 @@ export function Session() {
 
     if (keybind.match("session_tabs_previous", evt)) {
       if (!openTab(-1)) return
+      keybind.keep()
       evt.preventDefault()
       return
     }
 
     if (keybind.match("session_tabs_next", evt)) {
       if (!openTab(1)) return
+      keybind.keep()
       evt.preventDefault()
       return
     }

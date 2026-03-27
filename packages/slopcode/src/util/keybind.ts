@@ -54,6 +54,12 @@ export namespace Keybind {
     return result
   }
 
+  export function nextLeader(input: { active: boolean; name?: string; keep?: boolean }) {
+    if (!input.active) return false
+    if (!input.name) return input.active
+    return input.keep === true
+  }
+
   export function parse(key: string): Info[] {
     if (key === "none") return []
 

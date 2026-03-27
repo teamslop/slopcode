@@ -27,22 +27,29 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
 
     let focus: Renderable | null
     let timeout: NodeJS.Timeout
+    let keep = false
+
+    function refresh() {
+      if (timeout) clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        if (!store.leader) return
+        leader(false)
+      }, 2000)
+    }
+
     function leader(active: boolean) {
       if (active) {
         setStore("leader", true)
+        keep = false
         focus = renderer.currentFocusedRenderable
         focus?.blur()
-        if (timeout) clearTimeout(timeout)
-        timeout = setTimeout(() => {
-          if (!store.leader) return
-          leader(false)
-          if (!focus || focus.isDestroyed) return
-          focus.focus()
-        }, 2000)
+        refresh()
         return
       }
 
       if (!active) {
+        keep = false
+        if (timeout) clearTimeout(timeout)
         if (focus && !renderer.currentFocusedRenderable) {
           focus.focus()
         }
@@ -58,8 +65,11 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
 
       if (store.leader && evt.name) {
         setImmediate(() => {
-          if (focus && renderer.currentFocusedRenderable === focus) {
-            focus.focus()
+          const next = Keybind.nextLeader({ active: store.leader, name: evt.name, keep })
+          keep = false
+          if (next) {
+            refresh()
+            return
           }
           leader(false)
         })
@@ -72,6 +82,10 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
       },
       get leader() {
         return store.leader
+      },
+      keep() {
+        if (!store.leader) return
+        keep = true
       },
       parse(evt: ParsedKey): Keybind.Info {
         // Handle special case for Ctrl+Underscore (represented as \x1F)
