@@ -752,7 +752,6 @@ describe("session.prompt shell", () => {
   })
 })
 
-
 describe("session.prompt turn timeout", () => {
   test("times out the active turn, rejects queued work, and allows recovery", async () => {
     await using tmp = await tmpdir({

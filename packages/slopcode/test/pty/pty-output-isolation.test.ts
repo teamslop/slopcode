@@ -192,7 +192,6 @@ describe("pty", () => {
   })
 })
 
-
 describe("pty idle cleanup", () => {
   test("removes orphaned PTYs after the configured idle timeout", async () => {
     await using dir = await tmpdir({ git: true, config: { pty: { idle_timeout_ms: 50 } } })

@@ -7424,6 +7424,28 @@
         },
         "required": ["name", "data"]
       },
+      "MessageTimeoutError": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "MessageTimeoutError"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "timeout": {
+                "type": "number"
+              }
+            },
+            "required": ["message", "timeout"]
+          }
+        },
+        "required": ["name", "data"]
+      },
       "StructuredOutputError": {
         "type": "object",
         "properties": {
@@ -7552,6 +7574,9 @@
               },
               {
                 "$ref": "#/components/schemas/MessageAbortedError"
+              },
+              {
+                "$ref": "#/components/schemas/MessageTimeoutError"
               },
               {
                 "$ref": "#/components/schemas/StructuredOutputError"
@@ -9385,6 +9410,9 @@
                     "$ref": "#/components/schemas/MessageAbortedError"
                   },
                   {
+                    "$ref": "#/components/schemas/MessageTimeoutError"
+                  },
+                  {
                     "$ref": "#/components/schemas/StructuredOutputError"
                   },
                   {
@@ -9819,6 +9847,32 @@
         "properties": {
           "idle_timeout_ms": {
             "description": "Idle timeout in milliseconds before the shared local daemon exits (default: 1800000).",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      },
+      "PtyConfig": {
+        "description": "Pseudo-terminal configuration for detached terminal sessions",
+        "type": "object",
+        "properties": {
+          "idle_timeout_ms": {
+            "description": "Idle timeout in milliseconds before an orphaned PTY is removed (default: 600000).",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      },
+      "SessionConfig": {
+        "description": "Session runtime configuration for turn processing limits",
+        "type": "object",
+        "properties": {
+          "turn_timeout_ms": {
+            "description": "Timeout in milliseconds for a single session turn before it is aborted (default: 900000).",
             "type": "integer",
             "exclusiveMinimum": 0,
             "maximum": 9007199254740991
@@ -10389,6 +10443,12 @@
           },
           "daemon": {
             "$ref": "#/components/schemas/DaemonConfig"
+          },
+          "pty": {
+            "$ref": "#/components/schemas/PtyConfig"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SessionConfig"
           },
           "shell": {
             "$ref": "#/components/schemas/ShellConfig"
