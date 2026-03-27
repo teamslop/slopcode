@@ -307,7 +307,9 @@ export function SessionSidePanel(props: {
                             variant="ghost"
                             iconSize="large"
                             class="!rounded-md"
-                            onClick={() => dialog.show(() => <DialogSelectFile mode="files" onOpenFile={showAllFiles} />)}
+                            onClick={() =>
+                              dialog.show(() => <DialogSelectFile mode="files" onOpenFile={showAllFiles} />)
+                            }
                             aria-label={language.t("command.file.open")}
                           />
                         </TooltipKeybind>
