@@ -282,20 +282,36 @@ export function SessionSidePanel(props: {
                       <For each={openedTabs()}>{(tab) => <SortableTab tab={tab} onTabClose={tabs().close} />}</For>
                     </SortableProvider>
                     <StickyAddButton>
-                      <TooltipKeybind
-                        title={language.t("command.file.open")}
-                        keybind={command.keybind("file.open")}
-                        class="flex items-center"
-                      >
-                        <IconButton
-                          icon="plus-small"
-                          variant="ghost"
-                          iconSize="large"
-                          class="!rounded-md"
-                          onClick={() => dialog.show(() => <DialogSelectFile mode="files" onOpenFile={showAllFiles} />)}
-                          aria-label={language.t("command.file.open")}
-                        />
-                      </TooltipKeybind>
+                      <div class="flex items-center gap-1">
+                        <TooltipKeybind
+                          title={language.t("command.palette")}
+                          keybind={command.keybind("command.palette")}
+                          class="flex items-center"
+                        >
+                          <IconButton
+                            icon="magnifying-glass"
+                            variant="ghost"
+                            iconSize="small"
+                            class="!rounded-md"
+                            onClick={() => command.show()}
+                            aria-label={language.t("command.palette")}
+                          />
+                        </TooltipKeybind>
+                        <TooltipKeybind
+                          title={language.t("command.file.open")}
+                          keybind={command.keybind("file.open")}
+                          class="flex items-center"
+                        >
+                          <IconButton
+                            icon="plus-small"
+                            variant="ghost"
+                            iconSize="large"
+                            class="!rounded-md"
+                            onClick={() => dialog.show(() => <DialogSelectFile mode="files" onOpenFile={showAllFiles} />)}
+                            aria-label={language.t("command.file.open")}
+                          />
+                        </TooltipKeybind>
+                      </div>
                     </StickyAddButton>
                   </Tabs.List>
                 </div>

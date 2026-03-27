@@ -248,6 +248,7 @@ export function SessionHeader() {
   const showShare = createMemo(() => shareEnabled() && !!currentSession())
   const sessionKey = createMemo(() => `${params.dir}${params.id ? "/" + params.id : ""}`)
   const view = createMemo(() => layout.view(sessionKey))
+  const panelOpen = createMemo(() => view().reviewPanel.opened() || layout.fileTree.opened())
   const os = createMemo(() => detectOS(platform))
 
   const [exists, setExists] = createStore<Partial<Record<OpenApp, boolean>>>({
@@ -391,6 +392,20 @@ export function SessionHeader() {
           <Portal mount={mount()}>
             <div class="flex items-center gap-1.5 xl:gap-2">
               <StatusPopover />
+              <Show when={!panelOpen()}>
+                <TooltipKeybind title={language.t("command.palette")} keybind={command.keybind("command.palette")}>
+                  <Button
+                    variant="ghost"
+                    class="titlebar-icon w-7 h-6 p-0 box-border"
+                    onClick={() => command.show()}
+                    aria-label={language.t("command.palette")}
+                  >
+                    <div class="relative flex items-center justify-center size-4">
+                      <Icon name="magnifying-glass" size="small" class="text-icon-weak" />
+                    </div>
+                  </Button>
+                </TooltipKeybind>
+              </Show>
               <Show when={projectDirectory()}>
                 <div class="hidden xl:flex items-center">
                   <Show
