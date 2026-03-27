@@ -9826,6 +9826,19 @@
         },
         "additionalProperties": false
       },
+      "ShellConfig": {
+        "description": "Shell command configuration for session-driven shell executions",
+        "type": "object",
+        "properties": {
+          "timeout_ms": {
+            "description": "Timeout in milliseconds for session shell commands before the process is terminated (default: 300000).",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      },
       "PermissionActionConfig": {
         "type": "string",
         "enum": ["ask", "allow", "deny"]
@@ -10376,6 +10389,9 @@
           },
           "daemon": {
             "$ref": "#/components/schemas/DaemonConfig"
+          },
+          "shell": {
+            "$ref": "#/components/schemas/ShellConfig"
           },
           "command": {
             "description": "Command configuration, see https://slopcode.dev/docs/commands",

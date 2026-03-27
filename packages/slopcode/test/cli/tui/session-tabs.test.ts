@@ -415,7 +415,6 @@ describe("session tabs", () => {
   })
 })
 
-
 test("adjacentTab wraps forward across visible strip ids", () => {
   expect(adjacentTab(["ses_1", "ses_2", "ses_3"], "ses_3", 1)).toBe("ses_1")
 })
