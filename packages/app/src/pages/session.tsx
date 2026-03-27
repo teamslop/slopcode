@@ -779,13 +779,9 @@ export default function Page() {
   createEffect(() => {
     const id = params.id
     if (!id) return
-
-    const wants = isDesktop()
-      ? desktopFileTreeOpen() || (desktopReviewOpen() && activeTab() === "review")
-      : view().mobileTab() === "changes"
-    if (!wants) return
-    if (sync.data.session_diff[id] !== undefined) return
+    if (!hasReview()) return
     if (sync.status === "loading") return
+    if (sync.session.diffComplete(id)) return
 
     void sync.session.diff(id)
   })

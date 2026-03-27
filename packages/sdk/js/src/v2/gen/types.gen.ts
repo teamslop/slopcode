@@ -1784,6 +1784,16 @@ export type McpResource = {
   client: string
 }
 
+export type SessionDiffEntry = {
+  file: string
+  additions: number
+  deletions: number
+  status?: "added" | "deleted" | "modified"
+  before?: string
+  after?: string
+  bytes?: number
+}
+
 export type TextPartInput = {
   id?: string
   type: "text"
@@ -3356,6 +3366,66 @@ export type SessionDiffResponses = {
 
 export type SessionDiffResponse = SessionDiffResponses[keyof SessionDiffResponses]
 
+export type SessionDiffIndexData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{sessionID}/diff/index"
+}
+
+export type SessionDiffIndexErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type SessionDiffIndexError = SessionDiffIndexErrors[keyof SessionDiffIndexErrors]
+
+export type SessionDiffIndexResponses = {
+  /**
+   * Successfully retrieved diff index
+   */
+  200: Array<SessionDiffEntry>
+}
+
+export type SessionDiffIndexResponse = SessionDiffIndexResponses[keyof SessionDiffIndexResponses]
+
+export type SessionDiffChunkData = {
+  body?: {
+    files: Array<string>
+  }
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{sessionID}/diff/chunk"
+}
+
+export type SessionDiffChunkErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type SessionDiffChunkError = SessionDiffChunkErrors[keyof SessionDiffChunkErrors]
+
+export type SessionDiffChunkResponses = {
+  /**
+   * Successfully retrieved diff chunk
+   */
+  200: Array<SessionDiffEntry>
+}
+
+export type SessionDiffChunkResponse = SessionDiffChunkResponses[keyof SessionDiffChunkResponses]
+
 export type SessionSummarizeData = {
   body?: {
     providerID: string
@@ -3494,6 +3564,85 @@ export type SessionPromptResponses = {
 }
 
 export type SessionPromptResponse = SessionPromptResponses[keyof SessionPromptResponses]
+
+export type SessionMessageIndexData = {
+  body?: never
+  path: {
+    /**
+     * Session ID
+     */
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    limit?: number
+    cursor?: number
+  }
+  url: "/session/{sessionID}/message/index"
+}
+
+export type SessionMessageIndexErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionMessageIndexError = SessionMessageIndexErrors[keyof SessionMessageIndexErrors]
+
+export type SessionMessageIndexResponses = {
+  /**
+   * List of message metadata
+   */
+  200: Array<Message>
+}
+
+export type SessionMessageIndexResponse = SessionMessageIndexResponses[keyof SessionMessageIndexResponses]
+
+export type SessionMessageChunkData = {
+  body?: {
+    messageIDs: Array<string>
+  }
+  path: {
+    /**
+     * Session ID
+     */
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{sessionID}/message/chunk"
+}
+
+export type SessionMessageChunkErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionMessageChunkError = SessionMessageChunkErrors[keyof SessionMessageChunkErrors]
+
+export type SessionMessageChunkResponses = {
+  /**
+   * List of message parts grouped by message
+   */
+  200: Array<{
+    messageID: string
+    parts: Array<Part>
+  }>
+}
+
+export type SessionMessageChunkResponse = SessionMessageChunkResponses[keyof SessionMessageChunkResponses]
 
 export type SessionDeleteMessageData = {
   body?: never

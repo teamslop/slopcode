@@ -762,6 +762,76 @@ export const SessionRoutes = lazy(() =>
         return c.json(result)
       },
     )
+    .get(
+      "/:sessionID/diff/index",
+      describeRoute({
+        summary: "Get session diff index",
+        description: "Get the file list and metadata for a session diff without loading full file contents.",
+        operationId: "session.diffIndex",
+        responses: {
+          200: {
+            description: "Successfully retrieved diff index",
+            content: {
+              "application/json": {
+                schema: resolver(Snapshot.FileDiffEntry.array()),
+              },
+            },
+          },
+          ...errors(400),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: SessionSummary.diffIndex.schema,
+        }),
+      ),
+      async (c) => {
+        const sessionID = c.req.valid("param").sessionID
+        const result = await SessionSummary.diffIndex(sessionID)
+        return c.json(result)
+      },
+    )
+    .post(
+      "/:sessionID/diff/chunk",
+      describeRoute({
+        summary: "Get session diff chunk",
+        description: "Get full diff contents for a subset of files in a session diff.",
+        operationId: "session.diffChunk",
+        responses: {
+          200: {
+            description: "Successfully retrieved diff chunk",
+            content: {
+              "application/json": {
+                schema: resolver(Snapshot.FileDiffEntry.array()),
+              },
+            },
+          },
+          ...errors(400),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: SessionSummary.diffChunk.schema.shape.sessionID,
+        }),
+      ),
+      validator(
+        "json",
+        z.object({
+          files: SessionSummary.diffChunk.schema.shape.files,
+        }),
+      ),
+      async (c) => {
+        const sessionID = c.req.valid("param").sessionID
+        const body = c.req.valid("json")
+        const result = await SessionSummary.diffChunk({
+          sessionID,
+          files: body.files,
+        })
+        return c.json(result)
+      },
+    )
     .delete(
       "/:sessionID/share",
       describeRoute({
@@ -898,6 +968,94 @@ export const SessionRoutes = lazy(() =>
           c.header("x-next-cursor", String(list[0].info.time.created))
         }
         return c.json(list)
+      },
+    )
+    .get(
+      "/:sessionID/message/index",
+      describeRoute({
+        summary: "Get session message index",
+        description: "Retrieve message metadata for a session without loading full message parts.",
+        operationId: "session.messageIndex",
+        responses: {
+          200: {
+            description: "List of message metadata",
+            content: {
+              "application/json": {
+                schema: resolver(MessageV2.Info.array()),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: z.string().meta({ description: "Session ID" }),
+        }),
+      ),
+      validator(
+        "query",
+        z.object({
+          limit: z.coerce.number().optional(),
+          cursor: z.coerce.number().optional(),
+        }),
+      ),
+      async (c) => {
+        const query = c.req.valid("query")
+        const limit = query.limit
+        const messages = await MessageV2.index({
+          sessionID: c.req.valid("param").sessionID,
+          limit: limit ? limit + 1 : undefined,
+          cursor: query.cursor,
+        })
+        if (!limit) return c.json(messages)
+        const hasMore = messages.length > limit
+        const list = hasMore ? messages.slice(1) : messages
+        if (hasMore && list.length > 0) {
+          c.header("x-next-cursor", String(list[0].time.created))
+        }
+        return c.json(list)
+      },
+    )
+    .post(
+      "/:sessionID/message/chunk",
+      describeRoute({
+        summary: "Get session message chunk",
+        description: "Retrieve message parts for a subset of messages in a session.",
+        operationId: "session.messageChunk",
+        responses: {
+          200: {
+            description: "List of message parts grouped by message",
+            content: {
+              "application/json": {
+                schema: resolver(MessageV2.PartChunk.array()),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: z.string().meta({ description: "Session ID" }),
+        }),
+      ),
+      validator(
+        "json",
+        z.object({
+          messageIDs: MessageV2.chunk.schema.shape.messageIDs,
+        }),
+      ),
+      async (c) => {
+        const params = c.req.valid("param")
+        const body = c.req.valid("json")
+        const result = await MessageV2.chunk({
+          sessionID: params.sessionID,
+          messageIDs: body.messageIDs,
+        })
+        return c.json(result)
       },
     )
     .get(

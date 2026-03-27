@@ -119,6 +119,10 @@ import type {
   SessionDeleteMessageErrors,
   SessionDeleteMessageResponses,
   SessionDeleteResponses,
+  SessionDiffChunkErrors,
+  SessionDiffChunkResponses,
+  SessionDiffIndexErrors,
+  SessionDiffIndexResponses,
   SessionDiffResponses,
   SessionForkResponses,
   SessionGetErrors,
@@ -126,7 +130,11 @@ import type {
   SessionInitErrors,
   SessionInitResponses,
   SessionListResponses,
+  SessionMessageChunkErrors,
+  SessionMessageChunkResponses,
   SessionMessageErrors,
+  SessionMessageIndexErrors,
+  SessionMessageIndexResponses,
   SessionMessageResponses,
   SessionMessagesErrors,
   SessionMessagesResponses,
@@ -1659,6 +1667,73 @@ export class Session2 extends HeyApiClient {
   }
 
   /**
+   * Get session diff index
+   *
+   * Get the file list and metadata for a session diff without loading full file contents.
+   */
+  public diffIndex<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<SessionDiffIndexResponses, SessionDiffIndexErrors, ThrowOnError>({
+      url: "/session/{sessionID}/diff/index",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get session diff chunk
+   *
+   * Get full diff contents for a subset of files in a session diff.
+   */
+  public diffChunk<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      files?: Array<string>
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "body", key: "files" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionDiffChunkResponses, SessionDiffChunkErrors, ThrowOnError>({
+      url: "/session/{sessionID}/diff/chunk",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
    * Summarize session
    *
    * Generate a concise summary of the session using AI compaction to preserve key information.
@@ -1791,6 +1866,79 @@ export class Session2 extends HeyApiClient {
         ...params.headers,
       },
     })
+  }
+
+  /**
+   * Get session message index
+   *
+   * Retrieve message metadata for a session without loading full message parts.
+   */
+  public messageIndex<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      limit?: number
+      cursor?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "limit" },
+            { in: "query", key: "cursor" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<SessionMessageIndexResponses, SessionMessageIndexErrors, ThrowOnError>({
+      url: "/session/{sessionID}/message/index",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get session message chunk
+   *
+   * Retrieve message parts for a subset of messages in a session.
+   */
+  public messageChunk<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      messageIDs?: Array<string>
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "body", key: "messageIDs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionMessageChunkResponses, SessionMessageChunkErrors, ThrowOnError>(
+      {
+        url: "/session/{sessionID}/message/chunk",
+        ...options,
+        ...params,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+          ...params.headers,
+        },
+      },
+    )
   }
 
   /**

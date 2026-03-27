@@ -6,7 +6,7 @@ import { Identifier } from "../id/id"
 import { LSP } from "../lsp"
 import { Snapshot } from "@/snapshot"
 import { fn } from "@/util/fn"
-import { Database, eq, desc, inArray } from "@/storage/db"
+import { Database, and, desc, eq, inArray, lt } from "@/storage/db"
 import { MessageTable, PartTable } from "./session.sql"
 import { ProviderTransform } from "@/provider/transform"
 import { STATUS_CODES } from "http"
@@ -488,6 +488,12 @@ export namespace MessageV2 {
   })
   export type WithParts = z.infer<typeof WithParts>
 
+  export const PartChunk = z.object({
+    messageID: Identifier.schema("message"),
+    parts: Part.array(),
+  })
+  export type PartChunk = z.infer<typeof PartChunk>
+
   export function toModelMessages(input: WithParts[], model: Provider.Model): ModelMessage[] {
     const result: UIMessage[] = []
     const toolNames = new Set<string>()
@@ -712,6 +718,57 @@ export namespace MessageV2 {
       },
     )
   }
+
+  export const index = fn(
+    z.object({
+      sessionID: Identifier.schema("session"),
+      limit: z.number().optional(),
+      cursor: z.number().optional(),
+    }),
+    async (input) => {
+      const rows = Database.use((db) => {
+        const where = input.cursor
+          ? and(eq(MessageTable.session_id, input.sessionID), lt(MessageTable.time_created, input.cursor))
+          : eq(MessageTable.session_id, input.sessionID)
+        return db
+          .select()
+          .from(MessageTable)
+          .where(where)
+          .orderBy(desc(MessageTable.time_created))
+          .limit(input.limit ?? 400)
+          .all()
+      })
+      return rows.map((row) => ({ ...row.data, id: row.id, sessionID: row.session_id }) as MessageV2.Info)
+    },
+  )
+
+  export const chunk = fn(
+    z.object({
+      sessionID: Identifier.schema("session"),
+      messageIDs: z.array(Identifier.schema("message")).min(1).max(100),
+    }),
+    async (input) => {
+      const rows = Database.use((db) =>
+        db
+          .select()
+          .from(PartTable)
+          .where(and(eq(PartTable.session_id, input.sessionID), inArray(PartTable.message_id, input.messageIDs)))
+          .orderBy(PartTable.message_id, PartTable.id)
+          .all(),
+      )
+      const map = new Map<string, MessageV2.Part[]>()
+      for (const row of rows) {
+        const part = { ...row.data, id: row.id, sessionID: row.session_id, messageID: row.message_id } as MessageV2.Part
+        const list = map.get(row.message_id)
+        if (list) list.push(part)
+        else map.set(row.message_id, [part])
+      }
+      return input.messageIDs.map((messageID) => ({
+        messageID,
+        parts: map.get(messageID) ?? [],
+      }))
+    },
+  )
 
   export const stream = fn(Identifier.schema("session"), async function* (sessionID) {
     const size = 50

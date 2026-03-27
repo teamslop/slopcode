@@ -1,5 +1,5 @@
 import { createEffect, on, onCleanup, type JSX } from "solid-js"
-import type { FileDiff } from "@slopcode-ai/sdk/v2"
+import type { SessionDiffEntry } from "@slopcode-ai/sdk/v2"
 import { SessionReview } from "@slopcode-ai/ui/session-review"
 import type {
   SessionReviewCommentActions,
@@ -16,7 +16,7 @@ export type DiffStyle = "unified" | "split"
 export interface SessionReviewTabProps {
   title?: JSX.Element
   empty?: JSX.Element
-  diffs: () => FileDiff[]
+  diffs: () => SessionDiffEntry[]
   view: () => ReturnType<ReturnType<typeof useLayout>["view"]>
   diffStyle: DiffStyle
   onDiffStyleChange?: (style: DiffStyle) => void

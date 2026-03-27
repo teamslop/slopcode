@@ -12,6 +12,7 @@ import type {
   Todo,
 } from "@slopcode-ai/sdk/v2/client"
 import type { State, VcsCache } from "./types"
+import { mergeDiffs } from "../session-diff"
 import { trimSessions } from "./session-trim"
 
 export function applyGlobalEvent(input: {
@@ -161,7 +162,7 @@ export function applyDirectoryEvent(input: {
     }
     case "session.diff": {
       const props = event.properties as { sessionID: string; diff: FileDiff[] }
-      input.setStore("session_diff", props.sessionID, reconcile(props.diff, { key: "file" }))
+      input.setStore("session_diff", props.sessionID, (current) => mergeDiffs(current, props.diff))
       break
     }
     case "todo.updated": {

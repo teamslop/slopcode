@@ -260,7 +260,13 @@ function createGlobalSync() {
 
     historyApi.write(directory, sessionID, {
       message: messages,
-      part: Object.fromEntries(messages.map((message) => [message.id, store.part[message.id] ?? []])),
+      part: Object.fromEntries(
+        messages.flatMap((message) => {
+          const parts = store.part[message.id]
+          if (parts === undefined) return []
+          return [[message.id, parts] as const]
+        }),
+      ),
       limit: history.limit,
       complete: history.complete,
     })

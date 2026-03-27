@@ -15,6 +15,7 @@ import {
 import { A, useNavigate, useParams } from "@solidjs/router"
 import { useLayout, LocalProject } from "@/context/layout"
 import { useGlobalSync } from "@/context/global-sync"
+import { messageBatches } from "@/context/session-message"
 import { Persist, persisted } from "@/utils/persist"
 import { base64Encode } from "@slopcode-ai/util/encode"
 import { decode64 } from "@/utils/base64"
@@ -698,12 +699,11 @@ export default function Layout(props: ParentProps) {
   async function prefetchMessages(directory: string, sessionID: string, token: number) {
     const [store, setStore] = globalSync.child(directory, { bootstrap: false })
 
-    return retry(() => globalSDK.client.session.messages({ directory, sessionID, limit: prefetchChunk }))
-      .then((messages) => {
+    return retry(() => globalSDK.client.session.messageIndex({ directory, sessionID, limit: prefetchChunk }))
+      .then(async (messages) => {
         if (prefetchToken.value !== token) return
 
-        const items = (messages.data ?? []).filter((x) => !!x?.info?.id)
-        const next = items.map((x) => x.info).filter((m): m is Message => !!m?.id)
+        const next = (messages.data ?? []).filter((m): m is Message => !!m?.id)
         const sorted = mergeByID([], next)
 
         const current = store.message[sessionID] ?? []
@@ -712,17 +712,18 @@ export default function Layout(props: ParentProps) {
           sorted,
         )
 
+        setStore("message", sessionID, reconcile(merged, { key: "id" }))
+
+        const batchIDs = messageBatches(merged, store.part, 20)[0]
+        if (!batchIDs || batchIDs.length === 0) return
+
+        const chunk = await retry(() => globalSDK.client.session.messageChunk({ directory, sessionID, messageIDs: batchIDs }))
+        if (prefetchToken.value !== token) return
+
         batch(() => {
-          setStore("message", sessionID, reconcile(merged, { key: "id" }))
-
-          for (const message of items) {
-            const currentParts = store.part[message.info.id] ?? []
-            const mergedParts = mergeByID(
-              currentParts.filter((item): item is (typeof currentParts)[number] & { id: string } => !!item?.id),
-              message.parts.filter((item): item is (typeof message.parts)[number] & { id: string } => !!item?.id),
-            )
-
-            setStore("part", message.info.id, reconcile(mergedParts, { key: "id" }))
+          batchIDs.forEach((messageID) => setStore("part", messageID, []))
+          for (const item of chunk.data ?? []) {
+            setStore("part", item.messageID, reconcile(item.parts ?? [], { key: "id" }))
           }
         })
       })

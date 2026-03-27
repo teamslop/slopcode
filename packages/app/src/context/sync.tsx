@@ -4,6 +4,8 @@ import { Binary } from "@slopcode-ai/util/binary"
 import { retry } from "@slopcode-ai/util/retry"
 import { createSimpleContext } from "@slopcode-ai/ui/context"
 import { useGlobalSync } from "./global-sync"
+import { diffBatches, diffComplete as diffReady, mergeDiffs } from "./session-diff"
+import { messageBatches, messagePartsComplete } from "./session-message"
 import { useSDK } from "./sdk"
 import type { Message, Part } from "@slopcode-ai/sdk/v2/client"
 import type { SessionHistory } from "./global-sync/types"
@@ -23,6 +25,20 @@ function runInflight(map: Map<string, Promise<void>>, key: string, task: () => P
 }
 
 const keyFor = (directory: string, id: string) => `${directory}\n${id}`
+
+const nextFrame = () =>
+  new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame !== "function") {
+      queueMicrotask(resolve)
+      return
+    }
+    requestAnimationFrame(() => resolve())
+  })
+
+const afterPaint = async () => {
+  await nextFrame()
+  await nextFrame()
+}
 
 const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 
@@ -108,7 +124,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     const absolute = (path: string) => (current()[0].path.directory + "/" + path).replace("//", "/")
     const messagePageSize = 400
     const inflight = new Map<string, Promise<void>>()
+    const inflightMessageHydrate = new Map<string, Promise<void>>()
     const inflightDiff = new Map<string, Promise<void>>()
+    const inflightDiffHydrate = new Map<string, Promise<void>>()
     const inflightTodo = new Map<string, Promise<void>>()
     const [meta, setMeta] = createStore({
       loading: {} as Record<string, boolean>,
@@ -136,33 +154,61 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
       globalSync.history.write(directory, sessionID, {
         message: messages,
-        part: Object.fromEntries(messages.map((message) => [message.id, sortParts(store.part[message.id] ?? [])])),
+        part: Object.fromEntries(
+          messages.flatMap((message) => {
+            const parts = store.part[message.id]
+            if (parts === undefined) return []
+            return [[message.id, sortParts(parts)] as const]
+          }),
+        ),
         limit: history.limit,
         complete: history.complete,
       } satisfies SessionHistory)
     }
 
-    const fetchMessages = async (input: { client: typeof sdk.client; sessionID: string; limit: number }) => {
+    const fetchMessageIndex = async (input: { client: typeof sdk.client; sessionID: string; limit: number }) => {
       const messages = await retry(() =>
-        input.client.session.messages({ sessionID: input.sessionID, limit: input.limit }),
+        input.client.session.messageIndex({ sessionID: input.sessionID, limit: input.limit }),
       )
-      const items = (messages.data ?? []).filter((x) => !!x?.info?.id)
-      const session = items
-        .map((x) => x.info)
-        .filter((m) => !!m?.id)
-        .sort((a, b) => cmp(a.id, b.id))
-      const part = items.map((message) => ({ id: message.info.id, part: sortParts(message.parts) }))
+      const items = (messages.data ?? []).filter((message) => !!message?.id).sort((a, b) => cmp(a.id, b.id))
       return {
-        session,
-        part,
-        complete: session.length < input.limit,
+        session: items,
+        complete: items.length < input.limit,
       }
+    }
+
+    const hydrateMessages = async (input: {
+      directory: string
+      client: typeof sdk.client
+      setStore: Setter
+      store: Child[0]
+      sessionID: string
+    }) => {
+      const key = keyFor(input.directory, input.sessionID)
+      return runInflight(inflightMessageHydrate, key, async () => {
+        await afterPaint()
+
+        for (;;) {
+          const messages = input.store.message[input.sessionID] ?? []
+          if (messagePartsComplete(messages, input.store.part)) return
+          const batch = messageBatches(messages, input.store.part)[0]
+          if (!batch || batch.length === 0) return
+          const result = await retry(() => input.client.session.messageChunk({ sessionID: input.sessionID, messageIDs: batch }))
+          batch.forEach((messageID) => input.setStore("part", messageID, []))
+          for (const item of result.data ?? []) {
+            input.setStore("part", item.messageID, sortParts(item.parts ?? []))
+          }
+          persistHistory(input.directory, input.sessionID, input.store)
+          await nextFrame()
+        }
+      })
     }
 
     const loadMessages = async (input: {
       directory: string
       client: typeof sdk.client
       setStore: Setter
+      store: Child[0]
       sessionID: string
       limit: number
     }) => {
@@ -170,23 +216,22 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       if (meta.loading[key]) return
 
       setMeta("loading", key, true)
-      await fetchMessages(input)
+      await fetchMessageIndex(input)
         .then((next) => {
           batch(() => {
             input.setStore("message", input.sessionID, reconcile(next.session, { key: "id" }))
-            for (const message of next.part) {
-              input.setStore("part", message.id, reconcile(message.part, { key: "id" }))
-            }
             input.setStore("history", input.sessionID, {
               limit: input.limit,
               complete: next.complete,
             })
           })
-          persistHistory(input.directory, input.sessionID, target(input.directory)[0])
+          persistHistory(input.directory, input.sessionID, input.store)
         })
         .finally(() => {
           setMeta("loading", key, false)
         })
+
+      void hydrateMessages(input)
     }
 
     return {
@@ -257,7 +302,8 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
           const hasMessages = store.message[sessionID] !== undefined
           const hydrated = store.history[sessionID] !== undefined
-          if (hasSession && hasMessages && hydrated) return
+          const complete = messagePartsComplete(store.message[sessionID], store.part)
+          if (hasSession && hasMessages && hydrated && complete) return
 
           const count = store.message[sessionID]?.length ?? 0
           const limit = store.history[sessionID]?.limit ?? limitFor(count)
@@ -287,24 +333,46 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
                   directory,
                   client,
                   setStore,
+                  store,
                   sessionID,
                   limit,
                 })
 
           return runInflight(inflight, key, () => Promise.all([sessionReq, messagesReq]).then(() => {}))
         },
+        diffComplete(sessionID: string) {
+          const store = current()[0]
+          return diffReady(store.session_diff[sessionID])
+        },
         async diff(sessionID: string) {
           const directory = sdk.directory
           const client = sdk.client
           const [store, setStore] = globalSync.child(directory)
-          if (store.session_diff[sessionID] !== undefined) return
-
           const key = keyFor(directory, sessionID)
-          return runInflight(inflightDiff, key, () =>
-            retry(() => client.session.diff({ sessionID })).then((diff) => {
-              setStore("session_diff", sessionID, reconcile(diff.data ?? [], { key: "file" }))
-            }),
-          )
+
+          if (store.session_diff[sessionID] === undefined) {
+            await runInflight(inflightDiff, key, () =>
+              retry(() => client.session.diffIndex({ sessionID })).then((diff) => {
+                setStore("session_diff", sessionID, (current) => mergeDiffs(current, diff.data ?? []))
+              }),
+            )
+          }
+
+          if (diffReady(store.session_diff[sessionID])) return
+
+          return runInflight(inflightDiffHydrate, key, async () => {
+            await afterPaint()
+
+            for (;;) {
+              const next = store.session_diff[sessionID] ?? []
+              if (diffReady(next)) return
+              const batch = diffBatches(next)[0]
+              if (!batch || batch.length === 0) return
+              const diff = await retry(() => client.session.diffChunk({ sessionID, files: batch }))
+              setStore("session_diff", sessionID, (current) => mergeDiffs(current, diff.data ?? []))
+              await nextFrame()
+            }
+          })
         },
         async todo(sessionID: string) {
           const directory = sdk.directory
@@ -358,6 +426,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
               directory,
               client,
               setStore,
+              store,
               sessionID,
               limit: currentLimit + count,
             })
