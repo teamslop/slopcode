@@ -1127,11 +1127,14 @@ export namespace SessionPrompt {
       }
       SessionCompaction.prune({ sessionID })
       const item = await latestAssistant(sessionID)
-      if (!item) throw new Error("Impossible")
+      if (!item || item.info.role !== "assistant") throw new Error("Impossible")
 
       next = await settle(sessionID, mode, item)
+      if (item.info.error) {
+        next = "stop"
+      }
       if (next === "stop") {
-        await cancel(sessionID)
+        await cancel(sessionID, item.info.error)
       }
       return item
     } catch (error) {

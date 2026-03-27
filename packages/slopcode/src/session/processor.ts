@@ -16,9 +16,11 @@ import { SessionCompaction } from "./compaction"
 import { PermissionNext } from "@/permission/next"
 import { Question } from "@/question"
 import { Instance } from "@/project/instance"
+import { abortAfterAny } from "@/util/abort"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
+  const TURN_TIMEOUT = 15 * 60 * 1000
   const log = Log.create({ service: "session.processor" })
 
   export type Info = Awaited<ReturnType<typeof create>>
@@ -46,15 +48,24 @@ export namespace SessionProcessor {
       async process(streamInput: LLM.StreamInput) {
         log.info("process")
         needsCompaction = false
-        const shouldBreak = (await Config.get()).experimental?.continue_loop_on_deny !== true
-        while (true) {
+        const cfg = await Config.get()
+        const shouldBreak = cfg.experimental?.continue_loop_on_deny !== true
+        const timeout = cfg.session?.turn_timeout_ms ?? TURN_TIMEOUT
+        const timer = abortAfterAny(timeout, input.abort)
+        const abort = timer.signal
+        try {
+          while (true) {
           try {
+            abort.throwIfAborted()
             let currentText: MessageV2.TextPart | undefined
             let reasoningMap: Record<string, MessageV2.ReasoningPart> = {}
-            const stream = await LLM.stream(streamInput)
+            const stream = await LLM.stream({
+              ...streamInput,
+              abort,
+            })
 
             for await (const value of stream.fullStream) {
-              input.abort.throwIfAborted()
+              abort.throwIfAborted()
               switch (value.type) {
                 case "start":
                   SessionStatus.set(input.sessionID, { type: "busy" })
@@ -367,10 +378,17 @@ export namespace SessionProcessor {
                 message: retry,
                 next: Date.now() + delay,
               })
-              await SessionRetry.sleep(delay, input.abort).catch(() => {})
+              await SessionRetry.sleep(delay, abort).catch(() => {})
+              if (abort.aborted) continue
               continue
             }
-            input.assistantMessage.error = error
+            input.assistantMessage.error =
+              abort.aborted && !input.abort.aborted
+                ? new MessageV2.TimeoutError({
+                    message: `Session turn exceeded timeout ${timeout} ms`,
+                    timeout,
+                  }).toObject()
+                : error
             Bus.publish(Session.Event.Error, {
               sessionID: input.assistantMessage.sessionID,
               error: input.assistantMessage.error,
@@ -415,6 +433,9 @@ export namespace SessionProcessor {
           if (blocked) return "stop"
           if (input.assistantMessage.error) return "stop"
           return "continue"
+          }
+        } finally {
+          timer.clearTimeout()
         }
       },
     }

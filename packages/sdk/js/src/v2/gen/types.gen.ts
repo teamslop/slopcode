@@ -169,6 +169,14 @@ export type MessageAbortedError = {
   }
 }
 
+export type MessageTimeoutError = {
+  name: "MessageTimeoutError"
+  data: {
+    message: string
+    timeout: number
+  }
+}
+
 export type StructuredOutputError = {
   name: "StructuredOutputError"
   data: {
@@ -214,6 +222,7 @@ export type AssistantMessage = {
     | UnknownError
     | MessageOutputLengthError
     | MessageAbortedError
+    | MessageTimeoutError
     | StructuredOutputError
     | ContextOverflowError
     | ApiError
@@ -881,6 +890,7 @@ export type EventSessionError = {
       | UnknownError
       | MessageOutputLengthError
       | MessageAbortedError
+      | MessageTimeoutError
       | StructuredOutputError
       | ContextOverflowError
       | ApiError
@@ -1057,6 +1067,26 @@ export type DaemonConfig = {
    * Idle timeout in milliseconds before the shared local daemon exits (default: 1800000).
    */
   idle_timeout_ms?: number
+}
+
+/**
+ * Pseudo-terminal configuration for detached terminal sessions
+ */
+export type PtyConfig = {
+  /**
+   * Idle timeout in milliseconds before an orphaned PTY is removed (default: 600000).
+   */
+  idle_timeout_ms?: number
+}
+
+/**
+ * Session runtime configuration for turn processing limits
+ */
+export type SessionConfig = {
+  /**
+   * Timeout in milliseconds for a single session turn before it is aborted (default: 900000).
+   */
+  turn_timeout_ms?: number
 }
 
 /**
@@ -1340,6 +1370,8 @@ export type Config = {
   logLevel?: LogLevel
   server?: ServerConfig
   daemon?: DaemonConfig
+  pty?: PtyConfig
+  session?: SessionConfig
   shell?: ShellConfig
   /**
    * Command configuration, see https://slopcode.dev/docs/commands

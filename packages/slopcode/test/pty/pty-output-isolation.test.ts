@@ -191,3 +191,62 @@ describe("pty", () => {
     })
   })
 })
+
+
+describe("pty idle cleanup", () => {
+  test("removes orphaned PTYs after the configured idle timeout", async () => {
+    await using dir = await tmpdir({ git: true, config: { pty: { idle_timeout_ms: 50 } } })
+
+    await Instance.provide({
+      directory: dir.path,
+      fn: async () => {
+        const pty = await Pty.create({ command: "cat", title: "idle", sessionID: "ses_idle" })
+        const ws = {
+          readyState: 1,
+          data: { id: "idle" },
+          send: () => {},
+          close: () => {},
+        }
+        const handle = Pty.connect(pty.id, ws as any, undefined, { sessionID: "ses_idle" })
+        if (!handle) throw new Error("expected websocket handle")
+        handle.onClose()
+        await sleep(125)
+        expect(Pty.get(pty.id, { sessionID: "ses_idle" })).toBeUndefined()
+      },
+    })
+  })
+
+  test("clears pending PTY cleanup when a client reconnects", async () => {
+    await using dir = await tmpdir({ git: true, config: { pty: { idle_timeout_ms: 50 } } })
+
+    await Instance.provide({
+      directory: dir.path,
+      fn: async () => {
+        const pty = await Pty.create({ command: "cat", title: "reconnect", sessionID: "ses_idle" })
+        const first = {
+          readyState: 1,
+          data: { id: "first" },
+          send: () => {},
+          close: () => {},
+        }
+        const one = Pty.connect(pty.id, first as any, undefined, { sessionID: "ses_idle" })
+        if (!one) throw new Error("expected first websocket handle")
+        one.onClose()
+        await sleep(25)
+        const second = {
+          readyState: 1,
+          data: { id: "second" },
+          send: () => {},
+          close: () => {},
+        }
+        const two = Pty.connect(pty.id, second as any, undefined, { sessionID: "ses_idle" })
+        if (!two) throw new Error("expected second websocket handle")
+        await sleep(60)
+        expect(Pty.get(pty.id, { sessionID: "ses_idle" })?.id).toBe(pty.id)
+        two.onClose()
+        await sleep(125)
+        expect(Pty.get(pty.id, { sessionID: "ses_idle" })).toBeUndefined()
+      },
+    })
+  })
+})

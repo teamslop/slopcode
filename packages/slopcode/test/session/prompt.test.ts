@@ -751,3 +751,69 @@ describe("session.prompt shell", () => {
     })
   })
 })
+
+
+describe("session.prompt turn timeout", () => {
+  test("times out the active turn, rejects queued work, and allows recovery", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        queue_mode: "serial",
+        session: {
+          turn_timeout_ms: 50,
+        },
+        agent: {
+          build: {
+            model: "slopcode/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "Turn Timeout Test" })
+        let calls = 0
+
+        spyOn(LLM, "stream").mockImplementation(async () => {
+          calls++
+          if (calls === 1) return live()
+          if (calls === 2) return stream({ text: "recovered", finishReason: "stop" })
+          throw new Error(`unexpected llm call ${calls}`)
+        })
+
+        const first = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "first prompt" }],
+        })
+
+        await eventually(() => calls === 1)
+
+        const second = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "second prompt" }],
+        })
+
+        const firstResult = await first
+        if (firstResult.info.role !== "assistant") throw new Error("expected assistant reply")
+        expect(firstResult.info.error?.name).toBe("MessageTimeoutError")
+
+        const queued = await second.then(
+          () => undefined,
+          (cause) => cause as { name?: string },
+        )
+        expect(queued?.name).toBe("MessageTimeoutError")
+
+        const third = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "third prompt" }],
+        })
+        expect(text(third)).toBe("recovered")
+      },
+    })
+  })
+})

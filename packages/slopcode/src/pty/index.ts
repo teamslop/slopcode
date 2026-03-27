@@ -9,6 +9,7 @@ import { lazy } from "@slopcode-ai/util/lazy"
 import { Shell } from "@/shell/shell"
 import { Plugin } from "@/plugin"
 import { Env } from "@/env"
+import { Config } from "@/config/config"
 
 export namespace Pty {
   const log = Log.create({ service: "pty" })
@@ -109,6 +110,8 @@ export namespace Pty {
     bufferCursor: number
     cursor: number
     subscribers: Map<unknown, Socket>
+    idle_timeout_ms: number
+    idle?: ReturnType<typeof setTimeout>
   }
 
   function allowed(info: Info, sessionID?: string) {
@@ -116,20 +119,52 @@ export namespace Pty {
     return info.sessionID === sessionID
   }
 
+  function clear(session: ActiveSession) {
+    if (!session.idle) return
+    clearTimeout(session.idle)
+    session.idle = undefined
+  }
+
+  function schedule(id: string, session: ActiveSession) {
+    clear(session)
+    if (session.subscribers.size > 0) return
+    if (session.info.status !== "running") return
+    session.idle = setTimeout(() => {
+      if (state().get(id) !== session) return
+      if (session.subscribers.size > 0) return
+      log.info("removing idle session", { id, timeout: session.idle_timeout_ms })
+      void remove(id)
+    }, session.idle_timeout_ms)
+  }
+
+  function touch(id: string, session: ActiveSession) {
+    if (session.subscribers.size > 0) {
+      clear(session)
+      return
+    }
+    schedule(id, session)
+  }
+
+  function close(session: ActiveSession) {
+    for (const [key, ws] of session.subscribers.entries()) {
+      try {
+        if (ws.data === key) ws.close()
+      } catch {
+        // ignore
+      }
+    }
+    session.subscribers.clear()
+  }
+
   const state = Instance.state(
     () => new Map<string, ActiveSession>(),
     async (sessions) => {
       for (const session of sessions.values()) {
+        clear(session)
         try {
           session.process.kill()
         } catch {}
-        for (const [key, ws] of session.subscribers.entries()) {
-          try {
-            if (ws.data === key) ws.close()
-          } catch {
-            // ignore
-          }
-        }
+        close(session)
       }
       sessions.clear()
     },
@@ -161,6 +196,7 @@ export namespace Pty {
       Env.merge(input.env, { sessionID: input.sessionID })
     }
     const shellEnv = await Plugin.trigger("shell.env", { cwd, sessionID: input.sessionID }, { env: {} })
+    const idle_timeout_ms = (await Config.get()).pty?.idle_timeout_ms ?? 10 * 60 * 1000
     const env = {
       ...Env.all({ sessionID: input.sessionID }),
       ...input.env,
@@ -200,9 +236,12 @@ export namespace Pty {
       bufferCursor: 0,
       cursor: 0,
       subscribers: new Map(),
+      idle_timeout_ms,
     }
     state().set(id, session)
+    schedule(id, session)
     ptyProcess.onData((chunk) => {
+      touch(id, session)
       session.cursor += chunk.length
 
       for (const [key, ws] of session.subscribers.entries()) {
@@ -230,16 +269,11 @@ export namespace Pty {
       session.bufferCursor += excess
     })
     ptyProcess.onExit(({ exitCode }) => {
+      if (state().get(id) !== session) return
       log.info("session exited", { id, exitCode })
+      clear(session)
       session.info.status = "exited"
-      for (const [key, ws] of session.subscribers.entries()) {
-        try {
-          if (ws.data === key) ws.close()
-        } catch {
-          // ignore
-        }
-      }
-      session.subscribers.clear()
+      close(session)
       Bus.publish(Event.Exited, { id, exitCode, sessionID: session.info.sessionID! })
       state().delete(id)
     })
@@ -257,6 +291,7 @@ export namespace Pty {
     if (input.size) {
       session.process.resize(input.size.cols, input.size.rows)
     }
+    touch(id, session)
     Bus.publish(Event.Updated, { info: session.info })
     return session.info
   }
@@ -266,17 +301,11 @@ export namespace Pty {
     if (!session) return
     if (!allowed(session.info, access?.sessionID)) return
     log.info("removing session", { id })
+    clear(session)
     try {
       session.process.kill()
     } catch {}
-    for (const [key, ws] of session.subscribers.entries()) {
-      try {
-        if (ws.data === key) ws.close()
-      } catch {
-        // ignore
-      }
-    }
-    session.subscribers.clear()
+    close(session)
     state().delete(id)
     Bus.publish(Event.Deleted, { id, sessionID: session.info.sessionID! })
   }
@@ -285,6 +314,7 @@ export namespace Pty {
     const session = state().get(id)
     if (session && session.info.status === "running") {
       session.process.resize(cols, rows)
+      touch(id, session)
     }
   }
 
@@ -292,6 +322,7 @@ export namespace Pty {
     const session = state().get(id)
     if (session && session.info.status === "running") {
       session.process.write(data)
+      touch(id, session)
     }
   }
 
@@ -310,6 +341,7 @@ export namespace Pty {
     // Optionally cleanup if the key somehow exists
     session.subscribers.delete(connectionKey)
     session.subscribers.set(connectionKey, ws)
+    clear(session)
 
     const cleanup = () => {
       session.subscribers.delete(connectionKey)
@@ -351,10 +383,12 @@ export namespace Pty {
     return {
       onMessage: (message: string | ArrayBuffer) => {
         session.process.write(String(message))
+        touch(id, session)
       },
       onClose: () => {
         log.info("client disconnected from session", { id })
         cleanup()
+        touch(id, session)
       },
     }
   }

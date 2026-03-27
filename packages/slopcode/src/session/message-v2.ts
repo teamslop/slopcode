@@ -19,6 +19,13 @@ import type { Provider } from "@/provider/provider"
 export namespace MessageV2 {
   export const OutputLengthError = NamedError.create("MessageOutputLengthError", z.object({}))
   export const AbortedError = NamedError.create("MessageAbortedError", z.object({ message: z.string() }))
+  export const TimeoutError = NamedError.create(
+    "MessageTimeoutError",
+    z.object({
+      message: z.string(),
+      timeout: z.number(),
+    }),
+  )
   export const StructuredOutputError = NamedError.create(
     "StructuredOutputError",
     z.object({
@@ -400,6 +407,7 @@ export namespace MessageV2 {
         NamedError.Unknown.Schema,
         OutputLengthError.Schema,
         AbortedError.Schema,
+        TimeoutError.Schema,
         StructuredOutputError.Schema,
         ContextOverflowError.Schema,
         APIError.Schema,
