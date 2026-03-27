@@ -79,6 +79,13 @@ export function activateTab(state: SessionTabsState, id: string): SessionTabsSta
   }
 }
 
+export function adjacentTab(ids: string[], active: string | undefined, offset: 1 | -1) {
+  if (ids.length < 2) return
+  const index = active ? ids.indexOf(active) : -1
+  if (index === -1) return ids[0]
+  return ids[(index + offset + ids.length) % ids.length]
+}
+
 export function hasDraftTab(state: SessionTabsState) {
   return state.tabs.some(isDraft)
 }

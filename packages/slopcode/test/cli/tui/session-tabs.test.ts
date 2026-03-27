@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+  adjacentTab,
   closeSessionTab,
   DRAFT_TAB_ID,
   openDraftTab,
@@ -412,4 +413,22 @@ describe("session tabs", () => {
       active: "ses_3",
     })
   })
+})
+
+
+test("adjacentTab wraps forward across visible strip ids", () => {
+  expect(adjacentTab(["ses_1", "ses_2", "ses_3"], "ses_3", 1)).toBe("ses_1")
+})
+
+test("adjacentTab wraps backward across visible strip ids", () => {
+  expect(adjacentTab(["ses_1", "ses_2", "ses_3"], "ses_1", -1)).toBe("ses_3")
+})
+
+test("adjacentTab falls back to the first id when active is missing", () => {
+  expect(adjacentTab(["ses_1", "ses_2"], undefined, 1)).toBe("ses_1")
+})
+
+test("adjacentTab does nothing when the strip is unavailable", () => {
+  expect(adjacentTab(["ses_1"], "ses_1", 1)).toBeUndefined()
+  expect(adjacentTab([], undefined, -1)).toBeUndefined()
 })

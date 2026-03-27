@@ -16,6 +16,7 @@ import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import path from "path"
 import { useRoute, useRouteData } from "@tui/context/route"
+import { useSessionTabs } from "@tui/context/session-tabs"
 import { useSync } from "@tui/context/sync"
 import { SplitBorder } from "@tui/component/border"
 import { Spinner } from "@tui/component/spinner"
@@ -55,6 +56,7 @@ import type { DialogContext } from "@tui/ui/dialog"
 import { useKeybind } from "@tui/context/keybind"
 import { Header } from "./header"
 import { SessionStrip } from "./session-strip"
+import { adjacentTab } from "@tui/context/session-tabs-state"
 import { parsePatch } from "diff"
 import { useDialog } from "../../ui/dialog"
 import { TodoItem } from "../../component/todo-item"
@@ -248,6 +250,7 @@ export function Session() {
   const route = useRouteData("session")
   const { navigate } = useRoute()
   const sync = useSync()
+  const tabs = useSessionTabs()
   const tuiConfig = useTuiConfig()
   const kv = useKV()
   const { theme } = useTheme()
@@ -380,6 +383,13 @@ export function Session() {
   let scroll: ScrollBoxRenderable
   let prompt: PromptRef
   const keybind = useKeybind()
+  const openTab = (offset: 1 | -1) => {
+    if (!tabs.visible()) return false
+    const next = adjacentTab(tabs.ids(), tabs.active(), offset)
+    if (!next) return false
+    tabs.open(next)
+    return true
+  }
   const dialog = useDialog()
   const renderer = useRenderer()
 
@@ -484,6 +494,18 @@ export function Session() {
       }
 
       toggleHistoryMode()
+      evt.preventDefault()
+      return
+    }
+
+    if (keybind.match("session_tabs_previous", evt)) {
+      if (!openTab(-1)) return
+      evt.preventDefault()
+      return
+    }
+
+    if (keybind.match("session_tabs_next", evt)) {
+      if (!openTab(1)) return
       evt.preventDefault()
       return
     }
@@ -1570,6 +1592,30 @@ export function Session() {
         } catch (error) {
           toast.show({ message: "Failed to export session", variant: "error" })
         }
+        dialog.clear()
+      },
+    },
+    {
+      title: "Previous session tab",
+      value: "session.tabs.previous",
+      keybind: "session_tabs_previous",
+      category: "Session",
+      enabled: tabs.visible(),
+      hidden: true,
+      onSelect: (dialog) => {
+        openTab(-1)
+        dialog.clear()
+      },
+    },
+    {
+      title: "Next session tab",
+      value: "session.tabs.next",
+      keybind: "session_tabs_next",
+      category: "Session",
+      enabled: tabs.visible(),
+      hidden: true,
+      onSelect: (dialog) => {
+        openTab(1)
         dialog.clear()
       },
     },

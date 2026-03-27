@@ -786,6 +786,8 @@ export namespace Config {
       session_new: z.string().optional().default("<leader>n").describe("Create a new session"),
       session_list: z.string().optional().default("<leader>l").describe("List all sessions"),
       session_timeline: z.string().optional().default("<leader>g").describe("Show session timeline"),
+      session_tabs_previous: z.string().optional().default("<leader>[").describe("Activate the previous session tab in the strip"),
+      session_tabs_next: z.string().optional().default("<leader>]").describe("Activate the next session tab in the strip"),
       session_fork: z.string().optional().default("none").describe("Fork session from message"),
       session_rename: z.string().optional().default("ctrl+r").describe("Rename session"),
       session_delete: z.string().optional().default("ctrl+d").describe("Delete session"),
