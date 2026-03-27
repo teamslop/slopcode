@@ -43,6 +43,8 @@ export const dict = {
   "command.session.new": "새 세션",
   "command.file.open": "파일 열기",
   "command.tab.close": "탭 닫기",
+  "command.tab.previous": "이전 탭",
+  "command.tab.next": "다음 탭",
   "command.context.addSelection": "선택 영역을 컨텍스트에 추가",
   "command.context.addSelection.description": "현재 파일에서 선택한 줄을 추가",
   "command.input.focus": "입력창 포커스",

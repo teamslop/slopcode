@@ -45,6 +45,8 @@ export const dict = {
   "command.session.new": "Nova sesija",
   "command.file.open": "Otvori datoteku",
   "command.tab.close": "Zatvori karticu",
+  "command.tab.previous": "Prethodna kartica",
+  "command.tab.next": "Sljedeća kartica",
   "command.context.addSelection": "Dodaj odabir u kontekst",
   "command.context.addSelection.description": "Dodaj odabrane linije iz trenutne datoteke",
   "command.input.focus": "Fokusiraj polje za unos",

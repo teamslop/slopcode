@@ -43,6 +43,8 @@ export const dict = {
   "command.session.new": "Neue Sitzung",
   "command.file.open": "Datei öffnen",
   "command.tab.close": "Tab schließen",
+  "command.tab.previous": "Vorheriger Tab",
+  "command.tab.next": "Nächster Tab",
   "command.context.addSelection": "Auswahl zum Kontext hinzufügen",
   "command.context.addSelection.description": "Ausgewählte Zeilen aus der aktuellen Datei hinzufügen",
   "command.input.focus": "Eingabefeld fokussieren",

@@ -49,6 +49,8 @@ export const dict = {
   "command.session.new": "新增工作階段",
   "command.file.open": "開啟檔案",
   "command.tab.close": "關閉分頁",
+  "command.tab.previous": "上一個分頁",
+  "command.tab.next": "下一個分頁",
   "command.context.addSelection": "將選取內容加入上下文",
   "command.context.addSelection.description": "加入目前檔案中選取的行",
   "command.input.focus": "聚焦輸入框",

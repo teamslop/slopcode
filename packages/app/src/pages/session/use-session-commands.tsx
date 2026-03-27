@@ -20,6 +20,8 @@ import { findLast } from "@slopcode-ai/util/array"
 import { extractPromptFromParts } from "@/utils/prompt"
 import { UserMessage } from "@slopcode-ai/sdk/v2"
 import { canAddSelectionContext } from "@/pages/session/session-command-helpers"
+import { createMediaQuery } from "@solid-primitives/media"
+import { adjacentTab, visibleTabs } from "@/pages/session/helpers"
 
 export type SessionCommandContext = {
   navigateMessageByOffset: (offset: number) => void
@@ -54,6 +56,10 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const view = createMemo(() => layout.view(sessionKey))
   const info = createMemo(() => (params.id ? sync.session.get(params.id) : undefined))
 
+  const isDesktop = createMediaQuery("(min-width: 768px)")
+  const reviewTab = createMemo(() => isDesktop())
+  const contextOpen = createMemo(() => tabs().active() === "context" || tabs().all().includes("context"))
+  const openedTabs = createMemo(() => tabs().all().filter((t) => t !== "context" && t !== "review"))
   const idle = { type: "idle" as const }
   const status = createMemo(() => sync.data.session_status[params.id ?? ""] ?? idle)
   const messages = createMemo(() => (params.id ? (sync.data.message[params.id] ?? []) : []))
@@ -126,6 +132,32 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         const active = tabs().active()
         if (!active) return
         tabs().close(active)
+      },
+    }),
+    fileCommand({
+      id: "tab.previous",
+      title: language.t("command.tab.previous"),
+      keybind: "mod+shift+[",
+      onSelect: () => {
+        const target = adjacentTab(
+          visibleTabs({ reviewTab: reviewTab(), contextOpen: contextOpen(), openedTabs: openedTabs() }),
+          tabs().active(),
+          -1,
+        )
+        if (target) tabs().open(target)
+      },
+    }),
+    fileCommand({
+      id: "tab.next",
+      title: language.t("command.tab.next"),
+      keybind: "mod+shift+]",
+      onSelect: () => {
+        const target = adjacentTab(
+          visibleTabs({ reviewTab: reviewTab(), contextOpen: contextOpen(), openedTabs: openedTabs() }),
+          tabs().active(),
+          1,
+        )
+        if (target) tabs().open(target)
       },
     }),
   ])

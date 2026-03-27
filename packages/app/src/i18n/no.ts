@@ -48,6 +48,8 @@ export const dict = {
   "command.session.new": "Ny sesjon",
   "command.file.open": "Åpne fil",
   "command.tab.close": "Lukk fane",
+  "command.tab.previous": "Forrige fane",
+  "command.tab.next": "Neste fane",
   "command.context.addSelection": "Legg til markering i kontekst",
   "command.context.addSelection.description": "Legg til valgte linjer fra gjeldende fil",
   "command.input.focus": "Fokuser inndata",
