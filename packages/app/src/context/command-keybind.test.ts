@@ -43,7 +43,9 @@ describe("command keybind helpers", () => {
     expect(matchKeybind(prevMeta, new KeyboardEvent("keydown", { key: "{", metaKey: true, shiftKey: true }))).toBe(true)
     expect(matchKeybind(nextMeta, new KeyboardEvent("keydown", { key: "}", metaKey: true, shiftKey: true }))).toBe(true)
     // Unshifted brackets should not match
-    expect(matchKeybind(prevCtrl, new KeyboardEvent("keydown", { key: "[", ctrlKey: true, shiftKey: false }))).toBe(false)
+    expect(matchKeybind(prevCtrl, new KeyboardEvent("keydown", { key: "[", ctrlKey: true, shiftKey: false }))).toBe(
+      false,
+    )
   })
 
   test("formatKeybind returns human readable output", () => {

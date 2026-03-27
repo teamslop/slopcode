@@ -59,7 +59,11 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const reviewTab = createMemo(() => isDesktop())
   const contextOpen = createMemo(() => tabs().active() === "context" || tabs().all().includes("context"))
-  const openedTabs = createMemo(() => tabs().all().filter((t) => t !== "context" && t !== "review"))
+  const openedTabs = createMemo(() =>
+    tabs()
+      .all()
+      .filter((t) => t !== "context" && t !== "review"),
+  )
   const idle = { type: "idle" as const }
   const status = createMemo(() => sync.data.session_status[params.id ?? ""] ?? idle)
   const messages = createMemo(() => (params.id ? (sync.data.message[params.id] ?? []) : []))

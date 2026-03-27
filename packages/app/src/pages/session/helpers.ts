@@ -65,11 +65,7 @@ export const getTabReorderIndex = (tabs: readonly string[], from: string, to: st
   return toIndex
 }
 
-export const visibleTabs = (input: {
-  reviewTab: boolean
-  contextOpen: boolean
-  openedTabs: string[]
-}) => {
+export const visibleTabs = (input: { reviewTab: boolean; contextOpen: boolean; openedTabs: string[] }) => {
   const tabs: string[] = []
   if (input.reviewTab) tabs.push("review")
   if (input.contextOpen) tabs.push("context")
@@ -84,4 +80,3 @@ export const adjacentTab = (tabs: string[], active: string | undefined, offset: 
   const next = (index + offset + tabs.length) % tabs.length
   return tabs[next]
 }
-

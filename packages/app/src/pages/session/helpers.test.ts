@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { adjacentTab, createOpenReviewFile, createOpenSessionFileTab, focusTerminalById, getTabReorderIndex, visibleTabs } from "./helpers"
-
+import {
+  adjacentTab,
+  createOpenReviewFile,
+  createOpenSessionFileTab,
+  focusTerminalById,
+  getTabReorderIndex,
+  visibleTabs,
+} from "./helpers"
 
 describe("createOpenReviewFile", () => {
   test("opens and loads selected review file", () => {
@@ -131,4 +137,3 @@ describe("adjacentTab", () => {
     expect(adjacentTab([], "a", 1)).toBeUndefined()
   })
 })
-
