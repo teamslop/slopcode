@@ -48,6 +48,18 @@ async function interrupted(sessionID: string, parentID: string, timeout = 1000) 
   }
 }
 
+function bindAbort(signal: AbortSignal, sessionID: string) {
+  const abort = () => {
+    void SessionPrompt.cancel(sessionID, new DOMException("Aborted", "AbortError"))
+  }
+  if (signal.aborted) {
+    abort()
+    return () => {}
+  }
+  signal.addEventListener("abort", abort, { once: true })
+  return () => signal.removeEventListener("abort", abort)
+}
+
 const AutocompleteInput = z.object({
   model: z.object({
     providerID: z.string(),
@@ -1401,6 +1413,8 @@ export const SessionRoutes = lazy(() =>
           const sessionID = c.req.valid("param").sessionID
           const body = c.req.valid("json")
           const messageID = body.messageID ?? Identifier.ascending("message")
+          const clear = bindAbort(c.req.raw.signal, sessionID)
+          stream.onAbort(clear)
           try {
             const msg = await SessionPrompt.prompt({ ...body, sessionID, messageID })
             stream.write(JSON.stringify(msg))
@@ -1409,6 +1423,8 @@ export const SessionRoutes = lazy(() =>
             const msg = await interrupted(sessionID, messageID)
             if (!msg) throw error
             stream.write(JSON.stringify(msg))
+          } finally {
+            clear()
           }
         })
       },
@@ -1440,7 +1456,9 @@ export const SessionRoutes = lazy(() =>
         return stream(c, async () => {
           const sessionID = c.req.valid("param").sessionID
           const body = c.req.valid("json")
-          SessionPrompt.prompt({ ...body, sessionID })
+          void SessionPrompt.prompt({ ...body, sessionID }).catch((error) => {
+            log.error("async prompt failed", { sessionID, error })
+          })
         })
       },
     )
@@ -1478,6 +1496,7 @@ export const SessionRoutes = lazy(() =>
         const sessionID = c.req.valid("param").sessionID
         const body = c.req.valid("json")
         const messageID = body.messageID ?? Identifier.ascending("message")
+        const clear = bindAbort(c.req.raw.signal, sessionID)
         try {
           const msg = await SessionPrompt.command({ ...body, sessionID, messageID })
           return c.json(msg)
@@ -1486,6 +1505,8 @@ export const SessionRoutes = lazy(() =>
           const msg = await interrupted(sessionID, messageID)
           if (!msg) throw error
           return c.json(msg)
+        } finally {
+          clear()
         }
       },
     )
@@ -1517,8 +1538,13 @@ export const SessionRoutes = lazy(() =>
       async (c) => {
         const sessionID = c.req.valid("param").sessionID
         const body = c.req.valid("json")
-        const msg = await SessionPrompt.shell({ ...body, sessionID })
-        return c.json(msg)
+        const clear = bindAbort(c.req.raw.signal, sessionID)
+        try {
+          const msg = await SessionPrompt.shell({ ...body, sessionID })
+          return c.json(msg)
+        } finally {
+          clear()
+        }
       },
     )
     .post(

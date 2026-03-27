@@ -60,6 +60,9 @@ IMPORTANT:
 - This tool provides your final answer - no further actions are taken after calling it`
 
 const STRUCTURED_OUTPUT_SYSTEM_PROMPT = `IMPORTANT: The user has requested structured output. You MUST use the StructuredOutput tool to provide your final response. Do NOT respond with plain text - you MUST call the StructuredOutput tool with your answer formatted according to the schema.`
+const SHELL_OUTPUT_LIMIT = Truncate.MAX_BYTES
+const SHELL_METADATA_LIMIT = 30_000
+const SHELL_TIMEOUT = 5 * 60 * 1000
 
 export namespace SessionPrompt {
   const log = Log.create({ service: "session.prompt" })
@@ -2092,30 +2095,47 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       },
     })
 
+    const timeout = (await Config.get()).shell?.timeout_ms ?? SHELL_TIMEOUT
+    const decoder = new TextDecoder()
     let output = ""
-
-    proc.stdout?.on("data", (chunk) => {
-      output += chunk.toString()
-      if (part.state.status === "running") {
-        part.state.metadata = {
-          output: output,
-          description: "",
+    let clipped = 0
+    const format = (notes: string[] = []) => {
+      const meta = [
+        ...(clipped > 0
+          ? [`Output truncated after ${SHELL_OUTPUT_LIMIT} characters; ${clipped} additional characters omitted.`]
+          : []),
+        ...notes,
+      ]
+      const suffix = meta.length ? `\n\n<shell_metadata>\n${meta.join("\n")}\n</shell_metadata>` : ""
+      const text = output + suffix
+      if (text.length <= SHELL_METADATA_LIMIT) return text
+      return text.slice(0, SHELL_METADATA_LIMIT) + "\n\n..."
+    }
+    const append = (chunk: string | Uint8Array) => {
+      const text = typeof chunk === "string" ? chunk : decoder.decode(chunk)
+      if (clipped > 0) {
+        clipped += text.length
+      } else {
+        const remaining = SHELL_OUTPUT_LIMIT - output.length
+        if (text.length <= remaining) {
+          output += text
+        } else {
+          output += text.slice(0, remaining)
+          clipped += text.length - remaining
         }
-        Session.updatePart(part)
       }
-    })
-
-    proc.stderr?.on("data", (chunk) => {
-      output += chunk.toString()
-      if (part.state.status === "running") {
-        part.state.metadata = {
-          output: output,
-          description: "",
-        }
-        Session.updatePart(part)
+      if (part.state.status !== "running") return
+      part.state.metadata = {
+        output: format(),
+        description: "",
       }
-    })
+      void Session.updatePart(part)
+    }
 
+    proc.stdout?.on("data", append)
+    proc.stderr?.on("data", append)
+
+    let timedOut = false
     let aborted = false
     let exited = false
 
@@ -2130,22 +2150,54 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       aborted = true
       void kill()
     }
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true
+      void kill()
+    }, timeout + 100)
 
     abort.addEventListener("abort", abortHandler, { once: true })
 
-    await new Promise<void>((resolve) => {
-      proc.on("close", () => {
-        exited = true
+    const error = await new Promise<Error | undefined>((resolve) => {
+      const cleanup = () => {
+        clearTimeout(timeoutTimer)
         abort.removeEventListener("abort", abortHandler)
-        resolve()
+        proc.stdout?.off("data", append)
+        proc.stderr?.off("data", append)
+      }
+      proc.once("close", () => {
+        exited = true
+        cleanup()
+        resolve(undefined)
+      })
+      proc.once("error", (error) => {
+        exited = true
+        cleanup()
+        resolve(error)
       })
     })
 
-    if (aborted) {
-      output += "\n\n" + ["<metadata>", "User aborted the command", "</metadata>"].join("\n")
-    }
     msg.time.completed = Date.now()
     await Session.updateMessage(msg)
+    if (error) {
+      if (part.state.status === "running") {
+        part.state = {
+          status: "error",
+          input: part.state.input,
+          error: error.toString(),
+          time: {
+            ...part.state.time,
+            end: Date.now(),
+          },
+        }
+        await Session.updatePart(part)
+      }
+      throw error
+    }
+    const notes = [
+      ...(timedOut ? [`shell command terminated after exceeding timeout ${timeout} ms`] : []),
+      ...(aborted ? ["User aborted the command"] : []),
+    ]
+    const text = format(notes)
     if (part.state.status === "running") {
       part.state = {
         status: "completed",
@@ -2156,10 +2208,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         input: part.state.input,
         title: "",
         metadata: {
-          output,
+          output: text,
           description: "",
         },
-        output,
+        output: text,
       }
       await Session.updatePart(part)
     }

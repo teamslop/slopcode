@@ -236,6 +236,9 @@ export namespace Config {
     result.daemon = {
       idle_timeout_ms: result.daemon?.idle_timeout_ms ?? 30 * 60 * 1000,
     }
+    result.shell = {
+      timeout_ms: result.shell?.timeout_ms ?? 5 * 60 * 1000,
+    }
     result.plugin = deduplicatePlugins(result.plugin ?? [])
 
     return {
@@ -962,6 +965,20 @@ export namespace Config {
       ref: "DaemonConfig",
     })
 
+  export const Shell = z
+    .object({
+      timeout_ms: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Timeout in milliseconds for session shell commands before the process is terminated (default: 300000)."),
+    })
+    .strict()
+    .meta({
+      ref: "ShellConfig",
+    })
+
   export const Layout = z.enum(["auto", "stretch"]).meta({
     ref: "LayoutConfig",
   })
@@ -1026,6 +1043,7 @@ export namespace Config {
       logLevel: Log.Level.optional().describe("Log level"),
       server: Server.optional().describe("Server configuration for slopcode serve and web commands"),
       daemon: Daemon.optional().describe("Shared local daemon configuration for TUI sessions"),
+      shell: Shell.optional().describe("Shell command configuration for session-driven shell executions"),
       command: z
         .record(z.string(), Command)
         .optional()

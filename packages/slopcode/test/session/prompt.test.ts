@@ -717,3 +717,37 @@ describe("session.prompt queue mode", () => {
     })
   })
 })
+
+describe("session.prompt shell", () => {
+  test("terminates shell commands that exceed the configured timeout", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        shell: {
+          timeout_ms: 50,
+        },
+        agent: {
+          build: {
+            model: "openai/gpt-5.2",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "Shell Timeout Test" })
+        const result = await SessionPrompt.shell({
+          sessionID: session.id,
+          agent: "build",
+          command: "sleep 5",
+        })
+        const part = result.parts[0]
+        if (part.type !== "tool") throw new Error("expected tool part")
+        if (part.state.status !== "completed") throw new Error("expected completed tool state")
+        expect(part.state.output).toContain("shell command terminated after exceeding timeout 50 ms")
+      },
+    })
+  })
+})

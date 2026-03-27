@@ -1059,6 +1059,16 @@ export type DaemonConfig = {
   idle_timeout_ms?: number
 }
 
+/**
+ * Shell command configuration for session-driven shell executions
+ */
+export type ShellConfig = {
+  /**
+   * Timeout in milliseconds for session shell commands before the process is terminated (default: 300000).
+   */
+  timeout_ms?: number
+}
+
 export type PermissionActionConfig = "ask" | "allow" | "deny"
 
 export type PermissionObjectConfig = {
@@ -1330,6 +1340,7 @@ export type Config = {
   logLevel?: LogLevel
   server?: ServerConfig
   daemon?: DaemonConfig
+  shell?: ShellConfig
   /**
    * Command configuration, see https://slopcode.dev/docs/commands
    */
