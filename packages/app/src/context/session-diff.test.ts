@@ -39,12 +39,15 @@ describe("diffComplete", () => {
 
 describe("diffBatches", () => {
   test("sorts pending files by size and skips hydrated ones", () => {
-    const batches = diffBatches([
-      entry({ file: "hydrated.ts", additions: 1, deletions: 0, before: "a", after: "b", bytes: 50 }),
-      entry({ file: "large.ts", additions: 10, deletions: 4, bytes: 700 }),
-      entry({ file: "small.ts", additions: 1, deletions: 1, bytes: 100 }),
-      entry({ file: "medium.ts", additions: 4, deletions: 2, bytes: 400 }),
-    ], 500)
+    const batches = diffBatches(
+      [
+        entry({ file: "hydrated.ts", additions: 1, deletions: 0, before: "a", after: "b", bytes: 50 }),
+        entry({ file: "large.ts", additions: 10, deletions: 4, bytes: 700 }),
+        entry({ file: "small.ts", additions: 1, deletions: 1, bytes: 100 }),
+        entry({ file: "medium.ts", additions: 4, deletions: 2, bytes: 400 }),
+      ],
+      500,
+    )
 
     expect(batches).toEqual([["small.ts", "medium.ts"], ["large.ts"]])
   })

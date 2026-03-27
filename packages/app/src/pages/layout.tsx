@@ -717,7 +717,9 @@ export default function Layout(props: ParentProps) {
         const batchIDs = messageBatches(merged, store.part, 20)[0]
         if (!batchIDs || batchIDs.length === 0) return
 
-        const chunk = await retry(() => globalSDK.client.session.messageChunk({ directory, sessionID, messageIDs: batchIDs }))
+        const chunk = await retry(() =>
+          globalSDK.client.session.messageChunk({ directory, sessionID, messageIDs: batchIDs }),
+        )
         if (prefetchToken.value !== token) return
 
         batch(() => {

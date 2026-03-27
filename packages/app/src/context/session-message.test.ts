@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import type { Message } from "@slopcode-ai/sdk/v2/client"
 import { messageBatches, messagePartsComplete } from "./session-message"
 
-const msg = (id: string) => ({ id } as Message)
+const msg = (id: string) => ({ id }) as Message
 
 describe("messagePartsComplete", () => {
   test("returns false when any message is missing parts", () => {

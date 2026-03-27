@@ -193,7 +193,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           if (messagePartsComplete(messages, input.store.part)) return
           const batch = messageBatches(messages, input.store.part)[0]
           if (!batch || batch.length === 0) return
-          const result = await retry(() => input.client.session.messageChunk({ sessionID: input.sessionID, messageIDs: batch }))
+          const result = await retry(() =>
+            input.client.session.messageChunk({ sessionID: input.sessionID, messageIDs: batch }),
+          )
           batch.forEach((messageID) => input.setStore("part", messageID, []))
           for (const item of result.data ?? []) {
             input.setStore("part", item.messageID, sortParts(item.parts ?? []))

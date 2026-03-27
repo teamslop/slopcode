@@ -2713,6 +2713,138 @@
         ]
       }
     },
+    "/session/{sessionID}/diff/index": {
+      "get": {
+        "operationId": "session.diffIndex",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            },
+            "required": true
+          }
+        ],
+        "summary": "Get session diff index",
+        "description": "Get the file list and metadata for a session diff without loading full file contents.",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved diff index",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionDiffEntry"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createSlopcodeClient } from \"@slopcode-ai/sdk\n\nconst client = createSlopcodeClient()\nawait client.session.diffIndex({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/session/{sessionID}/diff/chunk": {
+      "post": {
+        "operationId": "session.diffChunk",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            },
+            "required": true
+          }
+        ],
+        "summary": "Get session diff chunk",
+        "description": "Get full diff contents for a subset of files in a session diff.",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved diff chunk",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionDiffEntry"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "minItems": 1,
+                    "maxItems": 128,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": ["files"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createSlopcodeClient } from \"@slopcode-ai/sdk\n\nconst client = createSlopcodeClient()\nawait client.session.diffChunk({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/session/{sessionID}/summarize": {
       "post": {
         "operationId": "session.summarize",
@@ -3034,6 +3166,186 @@
           {
             "lang": "js",
             "source": "import { createSlopcodeClient } from \"@slopcode-ai/sdk\n\nconst client = createSlopcodeClient()\nawait client.session.prompt({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/session/{sessionID}/message/index": {
+      "get": {
+        "operationId": "session.messageIndex",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sessionID",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "Session ID"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "summary": "Get session message index",
+        "description": "Retrieve message metadata for a session without loading full message parts.",
+        "responses": {
+          "200": {
+            "description": "List of message metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Message"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createSlopcodeClient } from \"@slopcode-ai/sdk\n\nconst client = createSlopcodeClient()\nawait client.session.messageIndex({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/session/{sessionID}/message/chunk": {
+      "post": {
+        "operationId": "session.messageChunk",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sessionID",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "Session ID"
+          }
+        ],
+        "summary": "Get session message chunk",
+        "description": "Retrieve message parts for a subset of messages in a session.",
+        "responses": {
+          "200": {
+            "description": "List of message parts grouped by message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "messageID": {
+                        "type": "string",
+                        "pattern": "^msg.*"
+                      },
+                      "parts": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/Part"
+                        }
+                      }
+                    },
+                    "required": ["messageID", "parts"]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "messageIDs": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^msg.*"
+                    }
+                  }
+                },
+                "required": ["messageIDs"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createSlopcodeClient } from \"@slopcode-ai/sdk\n\nconst client = createSlopcodeClient()\nawait client.session.messageChunk({\n  ...\n})"
           }
         ]
       }
@@ -11170,6 +11482,34 @@
           }
         },
         "required": ["name", "uri", "client"]
+      },
+      "SessionDiffEntry": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["added", "deleted", "modified"]
+          },
+          "before": {
+            "type": "string"
+          },
+          "after": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "number"
+          }
+        },
+        "required": ["file", "additions", "deletions"]
       },
       "TextPartInput": {
         "type": "object",

@@ -7,7 +7,11 @@ export function messagePartsComplete(messages: Message[] | undefined, part: Reco
   return messages.every((message) => part[message.id] !== undefined)
 }
 
-export function messageBatches(messages: Message[], part: Record<string, unknown[] | undefined>, size = messageBatchSize) {
+export function messageBatches(
+  messages: Message[],
+  part: Record<string, unknown[] | undefined>,
+  size = messageBatchSize,
+) {
   const pending = messages.filter((message) => part[message.id] === undefined).map((message) => message.id)
   const out: string[][] = []
   for (let i = pending.length; i > 0; i -= size) {

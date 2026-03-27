@@ -181,7 +181,9 @@ export namespace SessionSummary {
     }),
     async (input) => {
       const files = new Set(input.files)
-      return stored(input.sessionID).then((diffs) => diffs.filter((item) => files.has(item.file)).map((item) => entry(item, true)))
+      return stored(input.sessionID).then((diffs) =>
+        diffs.filter((item) => files.has(item.file)).map((item) => entry(item, true)),
+      )
     },
   )
 

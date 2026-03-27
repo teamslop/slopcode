@@ -628,7 +628,9 @@ export const SessionReview = (props: SessionReviewProps) => {
                 let wrapper: HTMLDivElement | undefined
 
                 const diff = createMemo(() => diffs().get(file))
-                const item = createMemo<ReviewDiff>(() => diff() ?? ({ file, additions: 0, deletions: 0 } satisfies ReviewDiff))
+                const item = createMemo<ReviewDiff>(
+                  () => diff() ?? ({ file, additions: 0, deletions: 0 } satisfies ReviewDiff),
+                )
 
                 const expanded = createMemo(() => open().includes(file))
                 const force = () => !!store.force[file]
