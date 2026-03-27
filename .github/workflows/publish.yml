@@ -239,9 +239,19 @@ jobs:
         run: |
           rm -rf packages/slopcode/dist
           mkdir -p packages/slopcode/dist
-          gh release download ${{ needs.version.outputs.tag }} --pattern "slopcode-cli-dist.tar.gz" --dir packages/slopcode/dist --repo ${{ needs.version.outputs.repo }}
-          tar -xzf packages/slopcode/dist/slopcode-cli-dist.tar.gz -C packages/slopcode/dist
-          rm packages/slopcode/dist/slopcode-cli-dist.tar.gz
+          for attempt in $(seq 1 30); do
+            if gh release download ${{ needs.version.outputs.tag }} --pattern "slopcode-cli-dist.tar.gz" --dir packages/slopcode/dist --repo ${{ needs.version.outputs.repo }}; then
+              tar -xzf packages/slopcode/dist/slopcode-cli-dist.tar.gz -C packages/slopcode/dist
+              rm packages/slopcode/dist/slopcode-cli-dist.tar.gz
+              exit 0
+            fi
+            rm -f packages/slopcode/dist/slopcode-cli-dist.tar.gz
+            if [ "$attempt" -eq 30 ]; then
+              echo "Timed out waiting for slopcode-cli-dist.tar.gz on release ${{ needs.version.outputs.tag }}" >&2
+              exit 1
+            fi
+            sleep 10
+          done
         env:
           GH_TOKEN: ${{ steps.committer.outputs.token }}
 
