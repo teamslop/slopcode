@@ -2,6 +2,9 @@ import { Prompt, type PromptRef } from "@tui/component/prompt"
 import { createMemo, Match, onMount, Show, Switch } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { useKeybind } from "@tui/context/keybind"
+import { useSessionTabs } from "../context/session-tabs"
+import { adjacentTab } from "../context/session-tabs-state"
+import { useKeyboard } from "@opentui/solid"
 import { Logo } from "../component/logo"
 import { Tips } from "../component/tips"
 import { Locale } from "@/util/locale"
@@ -26,6 +29,7 @@ export function Home() {
   const route = useRouteData("home")
   const promptRef = usePromptRef()
   const command = useCommandDialog()
+  const tabs = useSessionTabs()
   const mcp = createMemo(() => Object.keys(sync.data.mcp).length > 0)
   const mcpError = createMemo(() => {
     return Object.values(sync.data.mcp).some((x) => x.status === "failed")
@@ -57,6 +61,27 @@ export function Home() {
   ])
 
   const keybind = useKeybind()
+  const openTab = (offset: 1 | -1) => {
+    if (!tabs.visible()) return false
+    const next = adjacentTab(tabs.ids(), tabs.active(), offset)
+    if (!next) return false
+    tabs.open(next)
+    return true
+  }
+
+  useKeyboard((evt) => {
+    if (keybind.match("session_tabs_previous", evt)) {
+      if (!openTab(-1)) return
+      evt.preventDefault()
+      return
+    }
+
+    if (keybind.match("session_tabs_next", evt)) {
+      if (!openTab(1)) return
+      evt.preventDefault()
+    }
+  })
+
   const Hint = (
     <Show when={connectedMcpCount() > 0}>
       <box flexShrink={0} flexDirection="row" gap={1}>
