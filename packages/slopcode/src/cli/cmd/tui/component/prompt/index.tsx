@@ -50,6 +50,7 @@ import { useKV } from "../../context/kv"
 import { useTextareaKeybindings } from "../textarea-keybindings"
 import { DialogSkill } from "../dialog-skill"
 import { describePromptQueue, promptQueue } from "./queue"
+import { usePromptQueueState } from "./queue-state"
 
 export type PromptProps = {
   sessionID?: string
@@ -120,6 +121,7 @@ export function Prompt(props: PromptProps) {
   const dialog = useDialog()
   const toast = useToast()
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
+  const queue = usePromptQueueState(promptQueue, () => props.sessionID)
   const history = usePromptHistory()
   const historyScope = createMemo(() => ({
     dir: sync.data.path.directory || process.cwd(),
@@ -1088,7 +1090,7 @@ export function Prompt(props: PromptProps) {
 
   const placeholderText = createMemo(() => {
     if (props.sessionID) {
-      if (promptQueue.snapshot(props.sessionID).paused) {
+      if (queue.paused) {
         return "Press enter to resume, or type a prompt to inject it ahead of the queue"
       }
       return undefined
