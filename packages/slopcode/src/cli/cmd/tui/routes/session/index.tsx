@@ -2086,6 +2086,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
                     customBorderChars={SplitBorder.customBorderChars}
                     borderColor={color(item)}
                     paddingLeft={2}
+                    marginBottom={1}
                   >
                     <box flexDirection="row" justifyContent="space-between">
                       <text fg={item.label === "Paused" ? theme.textMuted : theme.text}>
