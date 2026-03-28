@@ -16,6 +16,12 @@ import { iife } from "@/util/iife"
 import { type SystemError } from "bun"
 import type { Provider } from "@/provider/provider"
 
+interface FetchDecompressionError extends Error {
+  code: "ZlibError"
+  errno: number
+  path: string
+}
+
 export namespace MessageV2 {
   export const OutputLengthError = NamedError.create("MessageOutputLengthError", z.object({}))
   export const AbortedError = NamedError.create("MessageAbortedError", z.object({ message: z.string() }))
@@ -873,7 +879,7 @@ export namespace MessageV2 {
     return result
   }
 
-  export function fromError(e: unknown, ctx: { providerID: string }) {
+  export function fromError(e: unknown, ctx: { providerID: string; aborted?: boolean }) {
     switch (true) {
       case e instanceof DOMException && e.name === "AbortError":
         return new MessageV2.AbortedError(
@@ -905,6 +911,23 @@ export namespace MessageV2 {
           },
           { cause: e },
         ).toObject()
+      case e instanceof Error && (e as FetchDecompressionError).code === "ZlibError": {
+        const error = e as FetchDecompressionError
+        if (ctx.aborted) {
+          return new MessageV2.AbortedError({ message: error.message }, { cause: error }).toObject()
+        }
+        return new MessageV2.APIError(
+          {
+            message: "Response decompression failed",
+            isRetryable: true,
+            metadata: {
+              code: error.code,
+              message: error.message,
+            },
+          },
+          { cause: error },
+        ).toObject()
+      }
       case APICallError.isInstance(e):
         const parsed = ProviderError.parseAPICallError({
           providerID: ctx.providerID,

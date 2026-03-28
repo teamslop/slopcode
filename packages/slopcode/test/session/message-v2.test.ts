@@ -921,4 +921,40 @@ describe("session.message-v2.fromError", () => {
       },
     })
   })
+
+  test("classifies ZlibError from fetch as retryable APIError", () => {
+    const error = Object.assign(
+      new Error(
+        'ZlibError fetching "https://slopcode.cloudflare.dev/anthropic/messages". For more information, pass `verbose: true` in the second argument to fetch()',
+      ),
+      {
+        code: "ZlibError" as const,
+        errno: 0,
+        path: "",
+      },
+    )
+
+    const result = MessageV2.fromError(error, { providerID: "test" }) as MessageV2.APIError
+
+    expect(MessageV2.APIError.isInstance(result)).toBe(true)
+    expect(result.data.isRetryable).toBe(true)
+    expect(result.data.message).toContain("decompression")
+  })
+
+  test("classifies ZlibError as AbortedError when abort context is provided", () => {
+    const error = Object.assign(
+      new Error(
+        'ZlibError fetching "https://slopcode.cloudflare.dev/anthropic/messages". For more information, pass `verbose: true` in the second argument to fetch()',
+      ),
+      {
+        code: "ZlibError" as const,
+        errno: 0,
+        path: "",
+      },
+    )
+
+    const result = MessageV2.fromError(error, { providerID: "test", aborted: true })
+
+    expect(result.name).toBe("MessageAbortedError")
+  })
 })
