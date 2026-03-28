@@ -420,7 +420,6 @@ describe("Keybind.parse", () => {
   })
 })
 
-
 describe("Keybind.nextLeader", () => {
   test("keeps leader active for unnamed keys", () => {
     expect(Keybind.nextLeader({ active: true })).toBe(true)
