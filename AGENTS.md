@@ -4,7 +4,7 @@
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
 - Before publishing a release or npm package, rebase the publish branch/worktree onto the latest remote base branch tip (`origin/dev` here, or `origin/main` in repos that use `main`) so npm publishes always start from the current base.
 - Prefer automation: execute requested actions without confirmation unless blocked by missing info or safety/irreversibility.
-- When publishing a release or npm package, update the GitHub release notes as part of the default flow and make sure the changelog is visible on `slopcode.dev` as well. Do not leave releases with placeholder notes; use concise highlights covering the shipped changes.
+- When publishing a release or npm package, update the GitHub release notes as part of the default flow and make sure the changelog is visible on `slopcode.dev` as well. Do not leave releases with placeholder notes; write clear changelogs as at most 3 very short bullet points covering the shipped changes.
 - The default release flow is `bun run release patch` from a clean worktree. Use `minor`, `major`, or an explicit version only when the user explicitly asks for a different bump.
 - `bun run release` prepares version changes and build artifacts locally, uploads the prebuilt assets to the GitHub release, then dispatches `.github/workflows/publish.yml` on `dev` for npm trusted publishing.
 - Do not use local `npm publish` as the normal release path. GitHub Actions should only handle the publish/finalize step, using the prebuilt assets and npm trusted publishing without OTP.
