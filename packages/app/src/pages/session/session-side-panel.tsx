@@ -320,7 +320,7 @@ export function SessionSidePanel(props: {
 
                 <Show when={reviewTab()}>
                   <Tabs.Content value="review" class="flex flex-col h-full overflow-hidden contain-strict">
-                    <Show when={activeTab() === "review"}>{props.reviewPanel()}</Show>
+                    {props.reviewPanel()}
                   </Tabs.Content>
                 </Show>
 
@@ -339,17 +339,13 @@ export function SessionSidePanel(props: {
 
                 <Show when={contextOpen()}>
                   <Tabs.Content value="context" class="flex flex-col h-full overflow-hidden contain-strict">
-                    <Show when={activeTab() === "context"}>
-                      <div class="relative pt-2 flex-1 min-h-0 overflow-hidden">
-                        <SessionContextTab />
-                      </div>
-                    </Show>
+                    <div class="relative pt-2 flex-1 min-h-0 overflow-hidden">
+                      <SessionContextTab />
+                    </div>
                   </Tabs.Content>
                 </Show>
 
-                <Show when={activeFileTab()} keyed>
-                  {(tab) => <FileTabContent tab={tab} />}
-                </Show>
+                <For each={openedTabs()}>{(tab) => <FileTabContent tab={tab} />}</For>
               </Tabs>
               <DragOverlay>
                 <Show when={store.activeDraggable} keyed>
