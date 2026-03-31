@@ -3,7 +3,7 @@ import type { ProviderMetadata } from "ai"
 
 export namespace ProviderLimit {
   export type Info = {
-    kind: "tokens" | "input" | "output"
+    kind: "tokens" | "input" | "output" | "requests"
     limit: number
     remaining: number
     consumed: number
@@ -46,6 +46,19 @@ export namespace ProviderLimit {
         "x-ratelimit-remaining-output-tokens",
         "ratelimit-remaining-output-tokens",
         "anthropic-ratelimit-output-tokens-remaining",
+      ],
+    },
+    {
+      kind: "requests" as const,
+      limit: [
+        "x-ratelimit-limit-requests",
+        "ratelimit-limit-requests",
+        "anthropic-ratelimit-requests-limit",
+      ],
+      remaining: [
+        "x-ratelimit-remaining-requests",
+        "ratelimit-remaining-requests",
+        "anthropic-ratelimit-requests-remaining",
       ],
     },
   ]
@@ -92,7 +105,7 @@ export namespace ProviderLimit {
           } satisfies Info,
         ]
       })
-      .sort((a, b) => b.consumedPct - a.consumedPct)[0]
+      .sort((a, b) => score(b.kind) - score(a.kind) || b.consumedPct - a.consumedPct)[0]
   }
 
   function normalize(input: Headers | Record<string, string | undefined>) {
@@ -100,6 +113,10 @@ export namespace ProviderLimit {
       return Object.fromEntries(Array.from(input.entries(), ([key, value]) => [key.toLowerCase(), value]))
     }
     return Object.fromEntries(Object.entries(input).map(([key, value]) => [key.toLowerCase(), value]))
+  }
+
+  function score(kind: Info["kind"]) {
+    return kind === "requests" ? 0 : 1
   }
 
   function first(headers: Record<string, string | undefined>, keys: string[]) {
