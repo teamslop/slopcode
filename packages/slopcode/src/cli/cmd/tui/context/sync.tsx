@@ -30,6 +30,38 @@ import { batch, onMount } from "solid-js"
 import { Log } from "@/util/log"
 import type { Path } from "@slopcode-ai/sdk"
 
+type Delta = {
+  sessionID: string
+  messageID: string
+  partID: string
+  field: string
+  delta: string
+}
+
+const deltaKey = (input: Delta) => `${input.messageID}:${input.partID}:${input.field}`
+
+function mergeByID<T extends { id: string }>(saved: T[], live?: T[]) {
+  const by = new Map(saved.map((item) => [item.id, item]))
+  for (const item of live ?? []) {
+    by.set(item.id, item)
+  }
+  return Array.from(by.values()).toSorted((a, b) => a.id.localeCompare(b.id))
+}
+
+function applyDelta(part: Part, input: Delta) {
+  const data = part as Record<string, unknown>
+  const value = data[input.field]
+  if (typeof value === "string") {
+    data[input.field] = value + input.delta
+    return true
+  }
+  if (value === undefined) {
+    data[input.field] = input.delta
+    return true
+  }
+  return false
+}
+
 export const { use: useSync, provider: SyncProvider } = createSimpleContext({
   name: "Sync",
   init: () => {
@@ -107,6 +139,40 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     const kv = useKV()
     const [autoaccept] = kv.signal<"none" | "edit">("permission_auto_accept", "edit")
     const fullSyncedSessions = new Set<string>()
+    const delta = new Map<string, Delta>()
+
+    function remember(input: Delta) {
+      const key = deltaKey(input)
+      const prev = delta.get(key)
+      if (prev) {
+        prev.delta += input.delta
+        return
+      }
+      delta.set(key, { ...input })
+    }
+
+    function replay(messageID: string, parts: Part[] | undefined) {
+      if (!parts) return
+      for (const [key, item] of delta) {
+        if (item.messageID !== messageID) continue
+        const match = Binary.search(parts, item.partID, (part) => part.id)
+        if (!match.found) continue
+        const part = parts[match.index]
+        if (!part || !applyDelta(part, item)) continue
+        delta.delete(key)
+      }
+    }
+
+    function replayStore(messageID: string) {
+      if (!store.part[messageID]) return
+      setStore(
+        "part",
+        messageID,
+        produce((draft) => {
+          replay(messageID, draft)
+        }),
+      )
+    }
 
     function groupPermission(list: PermissionRequest[]) {
       return list.reduce<Record<string, PermissionRequest[]>>((acc, item) => {
@@ -136,9 +202,14 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           if (match.found) draft.session[match.index] = session.data!
           if (!match.found) draft.session.splice(match.index, 0, session.data!)
           draft.todo[sessionID] = todo.data ?? []
-          draft.message[sessionID] = messages.data!.map((x) => x.info)
-          for (const message of messages.data!) {
-            draft.part[message.info.id] = message.parts
+          const list = messages.data ?? []
+          draft.message[sessionID] = mergeByID(
+            list.map((item) => item.info),
+            draft.message[sessionID],
+          )
+          for (const message of list) {
+            draft.part[message.info.id] = mergeByID(message.parts, draft.part[message.info.id])
+            replay(message.info.id, draft.part[message.info.id])
           }
           draft.session_diff[sessionID] = diff.data ?? []
         }),
@@ -349,11 +420,13 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           const parts = store.part[event.properties.part.messageID]
           if (!parts) {
             setStore("part", event.properties.part.messageID, [event.properties.part])
+            replayStore(event.properties.part.messageID)
             break
           }
           const result = Binary.search(parts, event.properties.part.id, (p) => p.id)
           if (result.found) {
             setStore("part", event.properties.part.messageID, result.index, reconcile(event.properties.part))
+            replayStore(event.properties.part.messageID)
             break
           }
           setStore(
@@ -363,22 +436,29 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
               draft.splice(result.index, 0, event.properties.part)
             }),
           )
+          replayStore(event.properties.part.messageID)
           break
         }
 
         case "message.part.delta": {
-          const parts = store.part[event.properties.messageID]
-          if (!parts) break
-          const result = Binary.search(parts, event.properties.partID, (p) => p.id)
-          if (!result.found) break
+          const input = event.properties
+          const parts = store.part[input.messageID]
+          if (!parts) {
+            remember(input)
+            break
+          }
+          const result = Binary.search(parts, input.partID, (p) => p.id)
+          if (!result.found) {
+            remember(input)
+            break
+          }
           setStore(
             "part",
-            event.properties.messageID,
+            input.messageID,
             produce((draft) => {
               const part = draft[result.index]
-              const field = event.properties.field as keyof typeof part
-              const existing = part[field] as string | undefined
-              ;(part[field] as string) = (existing ?? "") + event.properties.delta
+              if (!part || applyDelta(part, input)) return
+              remember(input)
             }),
           )
           break

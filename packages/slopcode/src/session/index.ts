@@ -778,7 +778,45 @@ export namespace Session {
       delta: z.string(),
     }),
     async (input) => {
-      Bus.publish(MessageV2.Event.PartDelta, input)
+      Database.use((db) => {
+        const row = db
+          .select()
+          .from(PartTable)
+          .where(
+            and(
+              eq(PartTable.id, input.partID),
+              eq(PartTable.message_id, input.messageID),
+              eq(PartTable.session_id, input.sessionID),
+            ),
+          )
+          .get()
+
+        if (row) {
+          const data = row.data as Record<string, unknown>
+          const value = data[input.field]
+          const next = typeof value === "string" ? value + input.delta : value === undefined ? input.delta : undefined
+          if (next !== undefined) {
+            const nextData = {
+              ...row.data,
+              [input.field]: next,
+            } as typeof row.data
+            db.update(PartTable)
+              .set({
+                data: nextData,
+              })
+              .where(
+                and(
+                  eq(PartTable.id, input.partID),
+                  eq(PartTable.message_id, input.messageID),
+                  eq(PartTable.session_id, input.sessionID),
+                ),
+              )
+              .run()
+          }
+        }
+
+        Database.effect(() => Bus.publish(MessageV2.Event.PartDelta, input))
+      })
     },
   )
 

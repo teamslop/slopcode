@@ -216,6 +216,71 @@ describe("session.prompt special characters", () => {
 })
 
 describe("session.prompt pause and resume", () => {
+  test("persists streamed text deltas before text-end", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        agent: {
+          build: {
+            model: "slopcode/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "Streaming Persistence" })
+        const gate = deferred<void>()
+
+        spyOn(LLM, "stream").mockImplementation(async () => {
+          return {
+            fullStream: (async function* () {
+              yield { type: "start" }
+              yield { type: "text-start", id: "txt-0" }
+              yield { type: "text-delta", id: "txt-0", text: "partial reply" }
+              await gate.promise
+              yield { type: "text-end", id: "txt-0" }
+              yield {
+                type: "finish-step",
+                finishReason: "stop",
+                usage: {
+                  inputTokens: 0,
+                  outputTokens: 0,
+                  totalTokens: 0,
+                  reasoningTokens: 0,
+                  cachedInputTokens: 0,
+                },
+                providerMetadata: {},
+              }
+              yield { type: "finish" }
+            })(),
+          } as unknown as Awaited<ReturnType<typeof LLM.stream>>
+        })
+
+        const prompt = SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "hello" }],
+        })
+
+        await eventually(async () => {
+          const messages = await Session.messages({ sessionID: session.id })
+          const assistant = messages.findLast(
+            (msg): msg is MessageV2.WithParts & { info: MessageV2.Assistant } => msg.info.role === "assistant",
+          )
+          return !!assistant && text(assistant) === "partial reply" && !assistant.info.time.completed
+        })
+
+        gate.resolve()
+        const result = await prompt
+        expect(text(result)).toBe("partial reply")
+        await Session.remove(session.id)
+      },
+    })
+  })
+
   test("pauses the active prompt, preserves the queue, and resumes the paused prompt first", async () => {
     await using tmp = await tmpdir({
       git: true,
