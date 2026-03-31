@@ -102,7 +102,7 @@ const run = async () => {
     await fs.mkdir(dir, { recursive: true })
     const index = await $`dpkg-scanpackages --arch ${arch} pool /dev/null`.cwd(root).text()
     await Bun.write(path.join(dir, "Packages"), index)
-    await Bun.write(path.join(dir, "Packages.gz"), gzipSync(index, { level: 9 }))
+    await Bun.write(path.join(dir, "Packages.gz"), Uint8Array.from(gzipSync(index, { level: 9 })))
   }
 
   await Promise.all(archs.map((arch) => build(arch)))

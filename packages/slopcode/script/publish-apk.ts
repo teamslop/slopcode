@@ -15,10 +15,10 @@ const source = process.env.GH_REPO ?? "teamslop/slopcode"
 const image = process.env.APK_REPO_IMAGE ?? "alpine:3.20"
 const enforce = process.env.SLOPCODE_ENFORCE_APK === "true"
 
-const tarEntry = (data: Uint8Array, file: string) => {
+const tarEntry = (data: Buffer | Uint8Array, file: string) => {
   let offset = 0
   while (offset + 512 <= data.length) {
-    const header = data.subarray(offset, offset + 512)
+    const header = Uint8Array.from(data.subarray(offset, offset + 512))
     const name = Buffer.from(header.subarray(0, 100)).toString("utf8").replace(/\0.*$/, "")
     if (!name) {
       return
@@ -29,7 +29,7 @@ const tarEntry = (data: Uint8Array, file: string) => {
     const start = offset + 512
     const end = start + size
     if (name === file) {
-      return data.subarray(start, end)
+      return Uint8Array.from(data.subarray(start, end))
     }
 
     offset = start + Math.ceil(size / 512) * 512

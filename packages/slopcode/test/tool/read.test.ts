@@ -375,9 +375,11 @@ describe("tool.read truncation", () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
         // 1x1 red PNG
-        const png = Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==",
-          "base64",
+        const png = Uint8Array.from(
+          Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==",
+            "base64",
+          ),
         )
         await Bun.write(path.join(dir, "image.png"), png)
       },
@@ -515,7 +517,7 @@ describe("tool.read binary detection", () => {
   test("rejects text extension files with null bytes", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
-        const bytes = Buffer.from([0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x00, 0x77, 0x6f, 0x72, 0x6c, 0x64])
+        const bytes = new Uint8Array([0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x00, 0x77, 0x6f, 0x72, 0x6c, 0x64])
         await Bun.write(path.join(dir, "null-byte.txt"), bytes)
       },
     })
