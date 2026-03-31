@@ -12,3 +12,16 @@ export type RichSegment =
       kind: "plain"
       text: string
     }
+
+export type RenderSegment = RichSegment & {
+  id?: string
+  streaming?: boolean
+}
+
+export type RichTextStream = {
+  text: string
+  boundary: number
+  sealed: RenderSegment[]
+  tail: RenderSegment[]
+  next: number
+}

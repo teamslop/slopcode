@@ -1,11 +1,11 @@
 import { RGBA, SyntaxStyle } from "@opentui/core"
 import { For, Match, Switch } from "solid-js"
 import { Flag } from "@/flag/flag"
-import type { RichSegment } from "./types"
+import type { RenderSegment } from "./types"
 
 type Props = {
   conceal: boolean
-  segments: RichSegment[]
+  segments: RenderSegment[]
   syntaxStyle: SyntaxStyle
   text: RGBA
 }
@@ -16,11 +16,14 @@ export function RichSegments(props: Props) {
       <For each={props.segments}>
         {(segment) => (
           <Switch>
+            <Match when={segment.streaming}>
+              <text fg={props.text}>{segment.text}</text>
+            </Match>
             <Match when={segment.kind === "markdown" && Flag.SLOPCODE_EXPERIMENTAL_MARKDOWN}>
               <markdown
                 conceal={props.conceal}
                 content={segment.kind === "markdown" ? segment.text : ""}
-                streaming={true}
+                streaming={segment.streaming ?? false}
                 syntaxStyle={props.syntaxStyle}
               />
             </Match>
@@ -31,7 +34,7 @@ export function RichSegments(props: Props) {
                 drawUnstyledText={false}
                 fg={props.text}
                 filetype="markdown"
-                streaming={true}
+                streaming={segment.streaming ?? false}
                 syntaxStyle={props.syntaxStyle}
               />
             </Match>
@@ -42,7 +45,7 @@ export function RichSegments(props: Props) {
                 drawUnstyledText={false}
                 fg={props.text}
                 filetype={segment.kind === "code" ? segment.filetype : "text"}
-                streaming={true}
+                streaming={segment.streaming ?? false}
                 syntaxStyle={props.syntaxStyle}
               />
             </Match>

@@ -85,8 +85,9 @@ import { DialogExportOptions } from "../../ui/dialog-export-options"
 import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
 import { ensureDefaultParsers } from "@/cli/render/parsers"
-import { segmentRichText } from "@/cli/render/segment"
+import { segmentRichText, updateRichTextStream } from "@/cli/render/segment"
 import { RichSegments } from "@/cli/render/tui"
+import type { RichTextStream } from "@/cli/render/types"
 import { useTuiConfig } from "../../context/tui-config"
 
 ensureDefaultParsers()
@@ -2379,9 +2380,18 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
   const ctx = use()
   const { theme, syntax } = useTheme()
   const selected = createMemo(() => ctx.isHistoryPartSelected(props.part.id))
-  const segments = createMemo(() => segmentRichText(props.part.text.trim()))
+  const done = createMemo(() => {
+    if (!props.message.finish) return false
+    return !["tool-calls", "unknown"].includes(props.message.finish)
+  })
+  let state: RichTextStream | undefined
+  const stream = createMemo(() => {
+    state = updateRichTextStream(state, props.part.text, done())
+    return state
+  })
+  const segments = createMemo(() => [...stream().sealed, ...stream().tail])
   return (
-    <Show when={props.part.text.trim()}>
+    <Show when={segments().length}>
       <box
         id={"text-" + props.part.id}
         paddingLeft={2}
