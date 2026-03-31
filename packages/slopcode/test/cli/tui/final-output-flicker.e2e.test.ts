@@ -256,7 +256,9 @@ async function run(mode: "hidden" | "visible") {
   const child = Bun.spawn([process.execPath, "--cwd", pkgDir, file, mode], {
     cwd: pkgDir,
     env: {
-      ...Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined)),
+      ...Object.fromEntries(
+        Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+      ),
       COLUMNS: "72",
       LINES: "24",
       TERM: "xterm-256color",
