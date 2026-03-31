@@ -17,6 +17,8 @@ import { PermissionNext } from "@/permission/next"
 import { Question } from "@/question"
 import { Instance } from "@/project/instance"
 import { abortAfterAny } from "@/util/abort"
+import { ProviderLimit } from "@/provider/limit"
+import { mergeDeep } from "remeda"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
@@ -254,10 +256,12 @@ export namespace SessionProcessor {
                     break
 
                   case "finish-step":
+                    const tokenLimit = typeof stream.limit === "function" ? stream.limit() : undefined
+                    const metadata = mergeDeep(value.providerMetadata ?? {}, ProviderLimit.metadata(tokenLimit) ?? {})
                     const usage = Session.getUsage({
                       model: input.model,
                       usage: value.usage,
-                      metadata: value.providerMetadata,
+                      metadata,
                     })
                     input.assistantMessage.finish = value.finishReason
                     input.assistantMessage.cost += usage.cost
@@ -271,6 +275,7 @@ export namespace SessionProcessor {
                       type: "step-finish",
                       tokens: usage.tokens,
                       cost: usage.cost,
+                      metadata,
                     })
                     await Session.updateMessage(input.assistantMessage)
                     if (snapshot) {

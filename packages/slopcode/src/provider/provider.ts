@@ -44,6 +44,7 @@ import { fromNodeProviderChain } from "@aws-sdk/credential-providers"
 import { GoogleAuth } from "google-auth-library"
 import { ProviderTransform } from "./transform"
 import { Installation } from "../installation"
+import { ProviderLimit } from "./limit"
 
 export namespace Provider {
   const log = Log.create({ service: "provider" })
@@ -1081,11 +1082,15 @@ export namespace Provider {
           }
         }
 
-        return fetchFn(input, {
+        const response = await fetchFn(input, {
           ...opts,
           // @ts-ignore see here: https://github.com/oven-sh/bun/issues/16682
           timeout: false,
         })
+        if (response.ok) {
+          ProviderLimit.capture(response.headers)
+        }
+        return response
       }
 
       const bundledFn = BUNDLED_PROVIDERS[model.api.npm]

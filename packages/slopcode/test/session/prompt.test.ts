@@ -281,6 +281,80 @@ describe("session.prompt pause and resume", () => {
     })
   })
 
+  test("persists token limit metadata on step-finish parts", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        agent: {
+          build: {
+            model: "slopcode/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({ title: "Token Limit Metadata" })
+
+        spyOn(LLM, "stream").mockImplementation(async () => {
+          return {
+            fullStream: (async function* () {
+              yield { type: "start" }
+              yield { type: "text-start", id: "txt-0" }
+              yield { type: "text-delta", id: "txt-0", text: "reply" }
+              yield { type: "text-end", id: "txt-0" }
+              yield {
+                type: "finish-step",
+                finishReason: "stop",
+                usage: {
+                  inputTokens: 0,
+                  outputTokens: 0,
+                  totalTokens: 0,
+                  reasoningTokens: 0,
+                  cachedInputTokens: 0,
+                },
+                providerMetadata: {},
+              }
+              yield { type: "finish" }
+            })(),
+            limit() {
+              return {
+                kind: "tokens" as const,
+                limit: 1000,
+                remaining: 370,
+                consumed: 630,
+                consumedPct: 63,
+              }
+            },
+          } as unknown as Awaited<ReturnType<typeof LLM.stream>>
+        })
+
+        const result = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "hello" }],
+        })
+
+        const finish = result.parts.find((part): part is MessageV2.StepFinishPart => part.type === "step-finish")
+        expect(finish?.metadata).toMatchObject({
+          slopcode: {
+            tokenLimit: {
+              kind: "tokens",
+              limit: 1000,
+              remaining: 370,
+              consumed: 630,
+              consumedPct: 63,
+            },
+          },
+        })
+
+        await Session.remove(session.id)
+      },
+    })
+  })
+
   test("pauses the active prompt, preserves the queue, and resumes the paused prompt first", async () => {
     await using tmp = await tmpdir({
       git: true,

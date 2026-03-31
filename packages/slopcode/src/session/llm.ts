@@ -22,6 +22,7 @@ import { SystemPrompt } from "./system"
 import { Flag } from "@/flag/flag"
 import { PermissionNext } from "@/permission/next"
 import { Auth } from "@/auth"
+import { ProviderLimit } from "@/provider/limit"
 
 export namespace LLM {
   const log = Log.create({ service: "llm" })
@@ -42,7 +43,9 @@ export namespace LLM {
     maxOutputTokens?: number
   }
 
-  export type StreamOutput = StreamTextResult<ToolSet, unknown>
+  export type StreamOutput = StreamTextResult<ToolSet, unknown> & {
+    limit(): ProviderLimit.Info | undefined
+  }
 
   export async function stream(input: StreamInput) {
     const l = log
@@ -65,7 +68,7 @@ export namespace LLM {
     ])
     const isCodex = provider.id === "openai" && auth?.type === "oauth"
 
-    const system = []
+    const system: string[] = []
     system.push(
       [
         // use agent prompt otherwise provider prompt
@@ -175,88 +178,96 @@ export namespace LLM {
       })
     }
 
-    return streamText({
-      onError(error) {
-        l.error("stream error", {
-          error,
-        })
-      },
-      async experimental_repairToolCall(failed) {
-        const lower = failed.toolCall.toolName.toLowerCase()
-        if (lower !== failed.toolCall.toolName && tools[lower]) {
-          l.info("repairing tool call", {
-            tool: failed.toolCall.toolName,
-            repaired: lower,
+    const limit = ProviderLimit.create()
+    const stream = ProviderLimit.provide(limit, () =>
+      streamText({
+        onError(error) {
+          l.error("stream error", {
+            error,
           })
+        },
+        async experimental_repairToolCall(failed) {
+          const lower = failed.toolCall.toolName.toLowerCase()
+          if (lower !== failed.toolCall.toolName && tools[lower]) {
+            l.info("repairing tool call", {
+              tool: failed.toolCall.toolName,
+              repaired: lower,
+            })
+            return {
+              ...failed.toolCall,
+              toolName: lower,
+            }
+          }
           return {
             ...failed.toolCall,
-            toolName: lower,
+            input: JSON.stringify({
+              tool: failed.toolCall.toolName,
+              error: failed.error.message,
+            }),
+            toolName: "invalid",
           }
-        }
-        return {
-          ...failed.toolCall,
-          input: JSON.stringify({
-            tool: failed.toolCall.toolName,
-            error: failed.error.message,
-          }),
-          toolName: "invalid",
-        }
-      },
-      temperature: params.temperature,
-      topP: params.topP,
-      topK: params.topK,
-      providerOptions: ProviderTransform.providerOptions(input.model, params.options),
-      activeTools: Object.keys(tools).filter((x) => x !== "invalid"),
-      tools,
-      toolChoice: input.toolChoice,
-      maxOutputTokens,
-      abortSignal: input.abort,
-      headers: {
-        ...(input.model.providerID.startsWith("slopcode")
-          ? {
-              "x-slopcode-project": Instance.project.id,
-              "x-slopcode-session": input.sessionID,
-              "x-slopcode-request": input.user.id,
-              "x-slopcode-client": Flag.SLOPCODE_CLIENT,
-            }
-          : input.model.providerID !== "anthropic"
-            ? {
-                "User-Agent": `slopcode/${Installation.VERSION}`,
-              }
-            : undefined),
-        ...input.model.headers,
-        ...headers,
-      },
-      maxRetries: input.retries ?? 0,
-      messages: [
-        ...system.map(
-          (x): ModelMessage => ({
-            role: "system",
-            content: x,
-          }),
-        ),
-        ...input.messages,
-      ],
-      model: wrapLanguageModel({
-        model: language,
-        middleware: [
-          {
-            async transformParams(args) {
-              if (args.type === "stream") {
-                // @ts-expect-error
-                args.params.prompt = ProviderTransform.message(args.params.prompt, input.model, options)
-              }
-              return args.params
-            },
-          },
-        ],
-      }),
-      experimental_telemetry: {
-        isEnabled: cfg.experimental?.openTelemetry,
-        metadata: {
-          userId: cfg.username ?? "unknown",
-          sessionId: input.sessionID,
         },
+        temperature: params.temperature,
+        topP: params.topP,
+        topK: params.topK,
+        providerOptions: ProviderTransform.providerOptions(input.model, params.options),
+        activeTools: Object.keys(tools).filter((x) => x !== "invalid"),
+        tools,
+        toolChoice: input.toolChoice,
+        maxOutputTokens,
+        abortSignal: input.abort,
+        headers: {
+          ...(input.model.providerID.startsWith("slopcode")
+            ? {
+                "x-slopcode-project": Instance.project.id,
+                "x-slopcode-session": input.sessionID,
+                "x-slopcode-request": input.user.id,
+                "x-slopcode-client": Flag.SLOPCODE_CLIENT,
+              }
+            : input.model.providerID !== "anthropic"
+              ? {
+                  "User-Agent": `slopcode/${Installation.VERSION}`,
+                }
+              : undefined),
+          ...input.model.headers,
+          ...headers,
+        },
+        maxRetries: input.retries ?? 0,
+        messages: [
+          ...system.map(
+            (x): ModelMessage => ({
+              role: "system",
+              content: x,
+            }),
+          ),
+          ...input.messages,
+        ],
+        model: wrapLanguageModel({
+          model: language,
+          middleware: [
+            {
+              async transformParams(args) {
+                if (args.type === "stream") {
+                  // @ts-expect-error
+                  args.params.prompt = ProviderTransform.message(args.params.prompt, input.model, options)
+                }
+                return args.params
+              },
+            },
+          ],
+        }),
+        experimental_telemetry: {
+          isEnabled: cfg.experimental?.openTelemetry,
+          metadata: {
+            userId: cfg.username ?? "unknown",
+            sessionId: input.sessionID,
+          },
+        },
+      }),
+    )
+    return Object.assign(stream, {
+      limit() {
+        return limit.value
       },
     })
   }
