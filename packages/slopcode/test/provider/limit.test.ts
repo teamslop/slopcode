@@ -34,12 +34,35 @@ describe("provider.limit", () => {
     })
   })
 
-  test("returns undefined when token headers are missing", () => {
+  test("falls back to request headers when token headers are missing", () => {
     expect(
       ProviderLimit.parse({
         "x-ratelimit-limit-requests": "10",
         "x-ratelimit-remaining-requests": "2",
       }),
-    ).toBeUndefined()
+    ).toEqual({
+      kind: "requests",
+      limit: 10,
+      remaining: 2,
+      consumed: 8,
+      consumedPct: 80,
+    })
+  })
+
+  test("prefers token limits over request limits", () => {
+    expect(
+      ProviderLimit.parse({
+        "x-ratelimit-limit-requests": "10",
+        "x-ratelimit-remaining-requests": "0",
+        "x-ratelimit-limit-tokens": "1000",
+        "x-ratelimit-remaining-tokens": "370",
+      }),
+    ).toEqual({
+      kind: "tokens",
+      limit: 1000,
+      remaining: 370,
+      consumed: 630,
+      consumedPct: 63,
+    })
   })
 })

@@ -25,7 +25,7 @@ function assistant(id: string, model: { providerID: string; modelID: string }): 
   }
 }
 
-function finish(consumedPct?: number): Part {
+function finish(consumedPct?: number, kind: "tokens" | "requests" = "tokens"): Part {
   return {
     id: "part_1",
     messageID: "msg_1",
@@ -46,6 +46,7 @@ function finish(consumedPct?: number): Part {
           metadata: {
             slopcode: {
               tokenLimit: {
+                kind,
                 consumedPct,
               },
             },
@@ -98,5 +99,19 @@ describe("prompt token limit", () => {
     })
 
     expect(value).toBe(63)
+  })
+
+  test("renders request fallback metadata", () => {
+    const model = { providerID: "openai", modelID: "gpt-5.4" }
+    const value = TokenLimit.consumed({
+      model,
+      messages: [assistant("msg_new", model)],
+      parts: {
+        msg_new: [{ ...finish(80, "requests"), messageID: "msg_new" }],
+      },
+    })
+
+    expect(value).toBe(80)
+    expect(TokenLimit.label(value)).toBe("80% limit consumed")
   })
 })
