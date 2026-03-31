@@ -50,6 +50,7 @@ import { useKV } from "../../context/kv"
 import { useTextareaKeybindings } from "../textarea-keybindings"
 import { DialogSkill } from "../dialog-skill"
 import { describePromptQueue, promptQueue } from "./queue"
+import * as TokenLimit from "./token-limit"
 
 export type PromptProps = {
   sessionID?: string
@@ -1085,6 +1086,15 @@ export function Prompt(props: PromptProps) {
     const current = local.model.variant.current()
     return !!current
   })
+  const tokenLimit = createMemo(() =>
+    TokenLimit.label(
+      TokenLimit.consumed({
+        messages: props.sessionID ? sync.data.message[props.sessionID] ?? [] : [],
+        parts: sync.data.part,
+        model: local.model.current(),
+      }),
+    ),
+  )
 
   const placeholderText = createMemo(() => {
     if (props.sessionID) {
@@ -1433,6 +1443,14 @@ export function Prompt(props: PromptProps) {
                     <text>
                       <span style={{ fg: theme.warning, bold: true }}>{local.model.variant.current()}</span>
                     </text>
+                  </Show>
+                  <Show when={tokenLimit()}>
+                    {(value) => (
+                      <>
+                        <text fg={theme.textMuted}>·</text>
+                        <text fg={theme.textMuted}>{value()}</text>
+                      </>
+                    )}
                   </Show>
                 </box>
               </Show>

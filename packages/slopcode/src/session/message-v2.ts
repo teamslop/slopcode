@@ -266,6 +266,7 @@ export namespace MessageV2 {
         write: z.number(),
       }),
     }),
+    metadata: z.record(z.string(), z.any()).optional(),
   }).meta({
     ref: "StepFinishPart",
   })

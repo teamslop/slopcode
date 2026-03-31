@@ -464,6 +464,9 @@ export type StepFinishPart = {
       write: number
     }
   }
+  metadata?: {
+    [key: string]: unknown
+  }
 }
 
 export type SnapshotPart = {
