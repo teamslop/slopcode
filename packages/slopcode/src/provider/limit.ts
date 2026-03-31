@@ -20,11 +20,7 @@ export namespace ProviderLimit {
     {
       kind: "tokens" as const,
       limit: ["x-ratelimit-limit-tokens", "ratelimit-limit-tokens", "anthropic-ratelimit-tokens-limit"],
-      remaining: [
-        "x-ratelimit-remaining-tokens",
-        "ratelimit-remaining-tokens",
-        "anthropic-ratelimit-tokens-remaining",
-      ],
+      remaining: ["x-ratelimit-remaining-tokens", "ratelimit-remaining-tokens", "anthropic-ratelimit-tokens-remaining"],
     },
     {
       kind: "input" as const,

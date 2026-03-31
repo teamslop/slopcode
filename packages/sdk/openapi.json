@@ -8285,6 +8285,13 @@
               }
             },
             "required": ["input", "output", "reasoning", "cache"]
+          },
+          "metadata": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
           }
         },
         "required": ["id", "sessionID", "messageID", "type", "reason", "cost", "tokens"]

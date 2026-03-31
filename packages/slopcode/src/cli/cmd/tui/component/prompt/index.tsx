@@ -1089,7 +1089,7 @@ export function Prompt(props: PromptProps) {
   const tokenLimit = createMemo(() =>
     TokenLimit.label(
       TokenLimit.consumed({
-        messages: props.sessionID ? sync.data.message[props.sessionID] ?? [] : [],
+        messages: props.sessionID ? (sync.data.message[props.sessionID] ?? []) : [],
         parts: sync.data.part,
         model: local.model.current(),
       }),
