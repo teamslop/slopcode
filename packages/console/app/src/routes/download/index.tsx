@@ -118,20 +118,20 @@ export default function Download() {
             <div data-component="section-content">
               <button
                 data-component="cli-row"
-                onClick={handleCopyClick("curl -fsSL https://slopcode.dev/install | bash")}
+                onClick={handleCopyClick(config.install.curl)}
               >
                 <code>
-                  curl -fsSL https://<strong>slopcode.dev/install</strong> | bash
+                  curl -fsSL https://<strong>{config.urls.install_display}</strong> | bash
                 </code>
                 <CopyStatus />
               </button>
-              <button data-component="cli-row" onClick={handleCopyClick("npm i -g slopcode")}>
+              <button data-component="cli-row" onClick={handleCopyClick(config.install.npm)}>
                 <code>
                   npm i -g <strong>slopcode</strong>
                 </code>
                 <CopyStatus />
               </button>
-              <button data-component="cli-row" onClick={handleCopyClick("bun install -g slopcode")}>
+              <button data-component="cli-row" onClick={handleCopyClick(config.install.bun)}>
                 <code>
                   bun install -g <strong>slopcode</strong>
                 </code>
@@ -139,7 +139,7 @@ export default function Download() {
               </button>
               <button
                 data-component="cli-row"
-                onClick={handleCopyClick("nix profile install github:teamslop/slopcode#slopcode")}
+                onClick={handleCopyClick(config.install.nix)}
               >
                 <code>
                   nix profile install <strong>github:teamslop/slopcode#slopcode</strong>
@@ -148,20 +148,20 @@ export default function Download() {
               </button>
               <button
                 data-component="cli-row"
-                onClick={handleCopyClick("curl -fsSL https://teamslop.github.io/apt-slopcode/install.sh | sudo bash")}
+                onClick={handleCopyClick(config.install.apt)}
               >
                 <code>
                   curl -fsSL https://<strong>teamslop.github.io/apt-slopcode/install.sh</strong> | sudo bash
                 </code>
                 <CopyStatus />
               </button>
-              <button data-component="cli-row" onClick={handleCopyClick("brew install teamslop/slopcode/slopcode")}>
+              <button data-component="cli-row" onClick={handleCopyClick(config.install.brew)}>
                 <code>
                   brew install <strong>teamslop/slopcode/slopcode</strong>
                 </code>
                 <CopyStatus />
               </button>
-              <button data-component="cli-row" onClick={handleCopyClick("paru -S slopcode")}>
+              <button data-component="cli-row" onClick={handleCopyClick(config.install.paru)}>
                 <code>
                   paru -S <strong>slopcode</strong>
                 </code>
@@ -175,7 +175,7 @@ export default function Download() {
               <span>[2]</span> {i18n.t("download.section.desktop")}
             </div>
             <div data-component="section-content">
-              <button data-component="cli-row" onClick={handleCopyClick("brew install --cask slopcode-desktop")}>
+              <button data-component="cli-row" onClick={handleCopyClick(config.install.desktop_brew)}>
                 <code>
                   brew install --cask <strong>slopcode-desktop</strong>
                 </code>
@@ -452,7 +452,7 @@ export default function Download() {
             <li>
               <Faq question={i18n.t("home.faq.q3")}>
                 {i18n.t("download.faq.a3.beforeLocal")}{" "}
-                <a href={language.route("/docs/providers/#lm-studio")} target="_blank">
+                <a href={language.route("/docs/providers/#lm-studio")} target="_blank" rel="noopener noreferrer">
                   {i18n.t("download.faq.a3.localLink")}
                 </a>{" "}
                 {i18n.t("download.faq.a3.afterLocal.beforeZen")}{" "}
@@ -483,11 +483,11 @@ export default function Download() {
             <li>
               <Faq question={i18n.t("home.faq.q8")}>
                 {i18n.t("home.faq.a8.p1")}{" "}
-                <a href={config.github.repoUrl} target="_blank">
+                <a href={config.github.repoUrl} target="_blank" rel="noopener noreferrer">
                   {i18n.t("nav.github")}
                 </a>{" "}
                 {i18n.t("home.faq.a8.p2")}{" "}
-                <a href={`${config.github.repoUrl}?tab=MIT-1-ov-file#readme`} target="_blank">
+                <a href={config.github.licenseUrl} target="_blank" rel="noopener noreferrer">
                   {i18n.t("home.faq.a8.mitLicense")}
                 </a>
                 {i18n.t("home.faq.a8.p3")}

@@ -4,15 +4,13 @@ import { Title, Meta } from "@solidjs/meta"
 import video from "../asset/lander/slopcode-min.mp4"
 import videoPoster from "../asset/lander/slopcode-poster.png"
 import { IconCopy, IconCheck } from "../component/icon"
-import { A, createAsync } from "@solidjs/router"
+import { A } from "@solidjs/router"
 import { EmailSignup } from "~/component/email-signup"
 import { Tabs } from "@kobalte/core/tabs"
 import { Faq } from "~/component/faq"
 import { Header } from "~/component/header"
 import { Footer } from "~/component/footer"
 import { Legal } from "~/component/legal"
-import { github } from "~/lib/github"
-import { createMemo } from "solid-js"
 import { config } from "~/config"
 import { useI18n } from "~/context/i18n"
 import { useLanguage } from "~/context/language"
@@ -30,12 +28,9 @@ function CopyStatus() {
 export default function Home() {
   const i18n = useI18n()
   const language = useLanguage()
-  const githubData = createAsync(() => github())
-  const release = createMemo(() => githubData()?.release)
-
   const handleCopyClick = (event: Event) => {
     const button = event.currentTarget as HTMLButtonElement
-    const text = button.textContent
+    const text = button.dataset.command ?? button.textContent
     if (text) {
       navigator.clipboard.writeText(text)
       button.setAttribute("data-copied", "")
@@ -74,11 +69,6 @@ export default function Home() {
             </div>
 
             <div data-slot="hero-copy">
-              {/*<a data-slot="releases"*/}
-              {/*   href={release()?.url ?? `${config.github.repoUrl}/releases`}*/}
-              {/*   target="_blank">*/}
-              {/*  What’s new in {release()?.name ?? "the latest release"}*/}
-              {/*</a>*/}
               <h1>{i18n.t("home.hero.title")}</h1>
               <p>
                 {i18n.t("home.hero.subtitle.a")} <span data-slot="br"></span>
@@ -120,18 +110,18 @@ export default function Home() {
                 </Tabs.List>
                 <div data-slot="panels">
                   <Tabs.Content as="pre" data-slot="panel" value="curl">
-                    <button data-copy data-slot="command" onClick={handleCopyClick}>
+                    <button data-command={config.install.curl} data-copy data-slot="command" onClick={handleCopyClick}>
                       <span data-slot="command-script">
                         <span>curl -fsSL </span>
                         <span data-slot="protocol">https://</span>
-                        <span data-slot="highlight">slopcode.dev/install</span>
+                        <span data-slot="highlight">{config.urls.install_display}</span>
                         <span> | bash</span>
                       </span>
                       <CopyStatus />
                     </button>
                   </Tabs.Content>
                   <Tabs.Content as="pre" data-slot="panel" value="npm">
-                    <button data-copy data-slot="command" onClick={handleCopyClick}>
+                    <button data-command={config.install.npm} data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
                         <span data-slot="protocol">npm i -g </span>
                         <span data-slot="highlight">slopcode</span>
@@ -140,7 +130,7 @@ export default function Home() {
                     </button>
                   </Tabs.Content>
                   <Tabs.Content as="pre" data-slot="panel" value="bun">
-                    <button data-copy data-slot="command" onClick={handleCopyClick}>
+                    <button data-command={config.install.bun} data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
                         <span data-slot="protocol">bun install -g </span>
                         <span data-slot="highlight">slopcode</span>
@@ -149,7 +139,7 @@ export default function Home() {
                     </button>
                   </Tabs.Content>
                   <Tabs.Content as="pre" data-slot="panel" value="nix">
-                    <button data-copy data-slot="command" onClick={handleCopyClick}>
+                    <button data-command={config.install.nix} data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
                         <span data-slot="protocol">nix profile install </span>
                         <span data-slot="highlight">github:teamslop/slopcode#slopcode</span>
@@ -158,7 +148,7 @@ export default function Home() {
                     </button>
                   </Tabs.Content>
                   <Tabs.Content as="pre" data-slot="panel" value="apt">
-                    <button data-copy data-slot="command" onClick={handleCopyClick}>
+                    <button data-command={config.install.apt} data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
                         <span data-slot="protocol">curl -fsSL </span>
                         <span data-slot="highlight">teamslop.github.io/apt-slopcode/install.sh</span>
@@ -168,7 +158,7 @@ export default function Home() {
                     </button>
                   </Tabs.Content>
                   <Tabs.Content as="pre" data-slot="panel" value="brew">
-                    <button data-copy data-slot="command" onClick={handleCopyClick}>
+                    <button data-command={config.install.brew} data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
                         <span data-slot="protocol">brew install </span>
                         <span data-slot="highlight">teamslop/slopcode/slopcode</span>
@@ -177,7 +167,7 @@ export default function Home() {
                     </button>
                   </Tabs.Content>
                   <Tabs.Content as="pre" data-slot="panel" value="paru">
-                    <button data-copy data-slot="command" onClick={handleCopyClick}>
+                    <button data-command={config.install.paru} data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
                         <span data-slot="protocol">paru -S </span>
                         <span data-slot="highlight">slopcode</span>
@@ -709,7 +699,7 @@ export default function Home() {
                   {i18n.t("home.faq.a3.p1")} {i18n.t("home.faq.a3.p2.beforeZen")}{" "}
                   <A href={language.route("/zen")}>{i18n.t("nav.zen")}</A>
                   {i18n.t("home.faq.a3.p2.afterZen")} {i18n.t("home.faq.a3.p3")} {i18n.t("home.faq.a3.p4.beforeLocal")}{" "}
-                  <a href={language.route("/docs/providers/#lm-studio")} target="_blank">
+                  <a href={language.route("/docs/providers/#lm-studio")} target="_blank" rel="noopener noreferrer">
                     {i18n.t("home.faq.a3.p4.localLink")}
                   </a>
                   .
@@ -742,11 +732,11 @@ export default function Home() {
               <li>
                 <Faq question={i18n.t("home.faq.q8")}>
                   {i18n.t("home.faq.a8.p1")}{" "}
-                  <a href={config.github.repoUrl} target="_blank">
+                  <a href={config.github.repoUrl} target="_blank" rel="noopener noreferrer">
                     {i18n.t("nav.github")}
                   </a>{" "}
                   {i18n.t("home.faq.a8.p2")}{" "}
-                  <a href={`${config.github.repoUrl}?tab=MIT-1-ov-file#readme`} target="_blank">
+                  <a href={config.github.licenseUrl} target="_blank" rel="noopener noreferrer">
                     {i18n.t("home.faq.a8.mitLicense")}
                   </a>
                   {i18n.t("home.faq.a8.p3")}

@@ -21,7 +21,7 @@ export function Footer() {
   return (
     <footer data-component="footer">
       <div data-slot="cell">
-        <a href={config.github.repoUrl} target="_blank">
+        <a href={config.github.repoUrl} target="_blank" rel="noopener noreferrer">
           {i18n.t("footer.github")} <span>[{starCount()}]</span>
         </a>
       </div>
@@ -35,7 +35,7 @@ export function Footer() {
         <a href={language.route("/discord")}>{i18n.t("footer.discord")}</a>
       </div>
       <div data-slot="cell">
-        <a href={config.social.twitter}>{i18n.t("footer.x")}</a>
+        <a href={config.social.twitter} target="_blank" rel="noopener noreferrer">{i18n.t("footer.x")}</a>
       </div>
     </footer>
   )

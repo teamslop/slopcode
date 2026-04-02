@@ -5,6 +5,7 @@ import logoLight from "../asset/logo-ornate-light.svg"
 import logoDark from "../asset/logo-ornate-dark.svg"
 import IMG_SPLASH from "../asset/lander/screenshot-splash.png"
 import { IconCopy, IconCheck } from "../component/icon"
+import { config } from "~/config"
 import { useI18n } from "~/context/i18n"
 import { useLanguage } from "~/context/language"
 
@@ -25,7 +26,7 @@ export default function Home() {
     const commands = document.querySelectorAll("[data-copy]")
     for (const button of commands) {
       const callback = () => {
-        const text = button.textContent
+        const text = button.getAttribute("data-command") ?? button.textContent
         if (text) {
           navigator.clipboard.writeText(text)
           button.setAttribute("data-copied", "")
@@ -63,11 +64,11 @@ export default function Home() {
             <a href="/auth">{i18n.t("temp.zen")}</a>
           </div>
           <div data-slot="right">
-            <button data-copy data-slot="command">
+            <button data-command={config.install.curl} data-copy data-slot="command">
               <span>
                 <span>curl -fsSL </span>
                 <span data-slot="protocol">https://</span>
-                <span data-slot="highlight">slopcode.dev/install</span>
+                <span data-slot="highlight">{config.urls.install_display}</span>
                 <span> | bash</span>
               </span>
               <CopyStatus />
@@ -111,7 +112,7 @@ export default function Home() {
         <section data-component="install">
           <div data-component="method">
             <h3 data-component="title">npm</h3>
-            <button data-copy data-slot="button">
+            <button data-command={config.install.npm} data-copy data-slot="button">
               <span>
                 npm install -g <strong>slopcode</strong>
               </span>
@@ -120,7 +121,7 @@ export default function Home() {
           </div>
           <div data-component="method">
             <h3 data-component="title">bun</h3>
-            <button data-copy data-slot="button">
+            <button data-command={config.install.bun} data-copy data-slot="button">
               <span>
                 bun install -g <strong>slopcode</strong>
               </span>
@@ -129,7 +130,7 @@ export default function Home() {
           </div>
           <div data-component="method">
             <h3 data-component="title">apt</h3>
-            <button data-copy data-slot="button">
+            <button data-command={config.install.apt} data-copy data-slot="button">
               <span>
                 curl -fsSL https://<strong>teamslop.github.io/apt-slopcode/install.sh</strong> | sudo bash
               </span>
@@ -138,18 +139,18 @@ export default function Home() {
           </div>
           <div data-component="method">
             <h3 data-component="title">homebrew</h3>
-            <button data-copy data-slot="button">
+            <button data-command={config.install.brew} data-copy data-slot="button">
               <span>
-                brew install <strong>slopcode</strong>
+                brew install <strong>teamslop/slopcode/slopcode</strong>
               </span>
               <CopyStatus />
             </button>
           </div>
           <div data-component="method">
             <h3 data-component="title">paru</h3>
-            <button data-copy data-slot="button">
+            <button data-command={config.install.paru} data-copy data-slot="button">
               <span>
-                paru -S <strong>slopcode-bin</strong>
+                paru -S <strong>slopcode</strong>
               </span>
               <CopyStatus />
             </button>
@@ -167,13 +168,13 @@ export default function Home() {
 
         <footer data-component="footer">
           <div data-slot="cell">
-            <a href="https://x.com/slopcode">{i18n.t("footer.x")}</a>
+            <a href={config.social.twitter} target="_blank" rel="noopener noreferrer">{i18n.t("footer.x")}</a>
           </div>
           <div data-slot="cell">
-            <a href="http://github.com/teamslop/slopcode">{i18n.t("footer.github")}</a>
+            <a href={config.github.repoUrl} target="_blank" rel="noopener noreferrer">{i18n.t("footer.github")}</a>
           </div>
           <div data-slot="cell">
-            <a href="https://slopcode.dev/discord">{i18n.t("footer.discord")}</a>
+            <a href={language.route("/discord")}>{i18n.t("footer.discord")}</a>
           </div>
         </footer>
       </div>
