@@ -2,6 +2,8 @@ import { defineConfig, PluginOption } from "vite"
 import { solidStart } from "@solidjs/start/config"
 import { nitro } from "nitro/vite"
 
+const preset = process.env.NITRO_PRESET || "cloudflare_module"
+
 export default defineConfig({
   plugins: [
     solidStart({
@@ -9,10 +11,14 @@ export default defineConfig({
     }) as PluginOption,
     nitro({
       compatibilityDate: "2024-09-19",
-      preset: "cloudflare_module",
-      cloudflare: {
-        nodeCompat: true,
-      },
+      preset,
+      ...(preset === "cloudflare_module"
+        ? {
+            cloudflare: {
+              nodeCompat: true,
+            },
+          }
+        : {}),
     }),
   ],
   server: {
@@ -20,7 +26,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      external: ["cloudflare:workers"],
+      external: preset === "cloudflare_module" ? ["cloudflare:workers"] : [],
     },
     minify: false,
   },
