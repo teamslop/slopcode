@@ -3,7 +3,6 @@ import {
   createEffect,
   createMemo,
   type JSX,
-  onMount,
   createSignal,
   onCleanup,
   on,
@@ -51,7 +50,12 @@ import { useKV } from "../../context/kv"
 import { useTextareaKeybindings } from "../textarea-keybindings"
 import { DialogSkill } from "../dialog-skill"
 import { describePromptQueue, promptQueue } from "./queue"
-import { layoutPromptFooterShortcuts } from "./footer-layout"
+import {
+  layoutPromptFooter,
+  type PromptFooterItem,
+  type PromptFooterPart,
+  type PromptFooterTone,
+} from "./footer-layout"
 
 export type PromptProps = {
   sessionID?: string
@@ -1102,26 +1106,6 @@ export function Prompt(props: PromptProps) {
     return `Ask anything... "${PLACEHOLDERS[store.placeholder % PLACEHOLDERS.length]}"`
   })
   const dimensions = useTerminalDimensions()
-  const compact = createMemo(() => dimensions().width < 100)
-  const tight = createMemo(() => dimensions().width < 80)
-  const statusWidth = createMemo(() => {
-    if (status().type === "idle") return undefined
-    if (!compact()) return undefined
-    return Math.max(20, Math.floor(dimensions().width / 2) - 4)
-  })
-  const chipGap = createMemo(() => (tight() ? 0 : compact() ? 1 : 2))
-  const chipPad = createMemo(() => (compact() ? 0 : 1))
-  const label = (full: string, short: string = full, hideOnTight = false) => {
-    if (tight() && hideOnTight) return ""
-    if (compact()) return short
-    return full
-  }
-  const muted = (full: string, short: string = full, hideOnTight = false) => {
-    const text = label(full, short, hideOnTight)
-    if (!text) return ""
-    return <span style={{ fg: theme.textMuted }}> {text}</span>
-  }
-
   const spinnerDef = createMemo(() => {
     const color = local.agent.color(local.agent.current().name)
     return createBlockSpinner({ color })
@@ -1173,107 +1157,210 @@ export function Prompt(props: PromptProps) {
     if (next > 0) return next
     return Math.max(0, dimensions().width - 5)
   })
+  const dense = createMemo(() => footerWidth() < 100)
+  const active = createMemo(() => status().type !== "idle")
+  const retry = createMemo(() => {
+    const next = status()
+    if (next.type !== "retry") return
+    return next
+  })
+  const retryTruncated = createMemo(() => {
+    const next = retry()
+    if (!next) return false
+    const text =
+      next.message.includes("exceeded your current quota") && next.message.includes("gemini")
+        ? "gemini is way too hot right now"
+        : next.message
+    return text.length > 120
+  })
+  const [seconds, setSeconds] = createSignal(0)
 
-  const busy = createMemo(() => status().type !== "idle" && status().type !== "retry")
+  createEffect(() => {
+    const next = retry()?.next
+    setSeconds(next ? Math.max(0, Math.round((next - Date.now()) / 1000)) : 0)
+    if (!next) return
+    const timer = setInterval(() => {
+      const current = retry()?.next
+      if (!current) return
+      setSeconds(Math.max(0, Math.round((current - Date.now()) / 1000)))
+    }, 1000)
+
+    onCleanup(() => clearInterval(timer))
+  })
+
+  const leadInset = createMemo(() => (dense() ? 0 : 1))
   const spinnerWidth = createMemo(() => {
     if (kv.get("animations_enabled", true)) return Bun.stringWidth(spinnerDef().frames[0] ?? "")
     return Bun.stringWidth("[⋯]")
   })
   const leadWidth = createMemo(() => {
-    if (!busy()) return 0
-    return spinnerWidth() + (compact() ? 0 : 1)
+    if (!active()) return 0
+    return spinnerWidth() + leadInset()
   })
-  const leadGap = createMemo(() => (busy() ? 1 : 0))
-  const shortcuts = createMemo(() => {
-    const items = [] as Array<{
-      id: string
-      key: string
-      full: string
-      short?: string
-      required?: boolean
-    }>
+  const labels = (...values: Array<string | undefined>) => {
+    return Array.from(new Set(values.filter((value): value is string => value !== undefined)))
+  }
+  const box = (input: {
+    id: string
+    key: string
+    labels: Array<string | undefined>
+    required?: boolean
+    keyTone?: PromptFooterTone
+    labelTone?: PromptFooterTone
+  }) => {
+    return {
+      id: input.id,
+      required: input.required,
+      variants: labels(...input.labels).map((label) => ({
+        box: true,
+        parts: [
+          { text: input.key, tone: input.keyTone ?? "text" },
+          ...(label ? [{ text: label, tone: input.labelTone ?? "muted" }] : []),
+        ],
+      })),
+    } satisfies PromptFooterItem
+  }
+  const group = (input: {
+    id: string
+    required?: boolean
+    left: { id: string, text: string }
+    right: { id: string, text: string }
+    labels: Array<string | undefined>
+  }) => {
+    return {
+      id: input.id,
+      required: input.required,
+      variants: labels(...input.labels).map((label) => {
+        const parts: PromptFooterPart[] = [
+          { id: input.left.id, text: input.left.text, tone: "text", box: true },
+          { id: input.right.id, text: input.right.text, tone: "text", box: true },
+        ]
+        if (label) parts.push({ text: label, tone: "muted" })
+        return {
+          gap: 1,
+          parts,
+        }
+      }),
+    } satisfies PromptFooterItem
+  }
+  const retryText = createMemo(() => {
+    const next = retry()
+    if (!next) return []
+    const text =
+      next.message.includes("exceeded your current quota") && next.message.includes("gemini")
+        ? "gemini is way too hot right now"
+        : next.message
+    const clipped = text.length > 80 ? text.slice(0, 80) + "..." : text
+    const wait = formatDuration(seconds())
+    const verbose = wait ? `retrying in ${wait} attempt #${next.attempt}` : `retrying attempt #${next.attempt}`
+    const terse = wait ? `${wait} #${next.attempt}` : `#${next.attempt}`
+    return labels(
+      `${text}${retryTruncated() ? " (click to expand)" : ""} [${verbose}]`,
+      `${clipped} [${verbose}]`,
+      `${Locale.truncate(clipped, 28)} [${terse}]`,
+      `${Locale.truncate(clipped, 18)} [${terse}]`,
+      Locale.truncate(clipped, 18),
+    )
+  })
+  const items = createMemo(() => {
+    const list: PromptFooterItem[] = []
+    const interrupt = box({
+      id: "interrupt",
+      key: "esc",
+      labels: [store.interrupt > 0 ? "again to interrupt" : "interrupt", store.interrupt > 0 ? "again" : "stop"],
+      required: true,
+      keyTone: store.interrupt > 0 ? "primary" : "text",
+      labelTone: store.interrupt > 0 ? "primary" : "muted",
+    })
 
-    if (busy()) {
-      items.push({
-        id: "interrupt",
-        key: "esc",
-        full: store.interrupt > 0 ? "again to interrupt" : "interrupt",
-        short: store.interrupt > 0 ? "again" : "stop",
-        required: true,
+    if (retry()) {
+      list.push({
+        id: "retry",
+        variants: retryText().map((text) => ({ parts: [{ id: "retry", text, tone: "error" }] })),
       })
+      list.push(interrupt)
+      return list
     }
+
+    if (active()) list.push(interrupt)
+
+    if (props.historyMode) {
+      list.push(box({ id: "history-toggle", key: keybind.print("history_mode_toggle"), labels: ["edit mode", "edit"], required: true }))
+      list.push(
+        group({
+          id: "history-prompt",
+          left: { id: "history-previous", text: "↑" },
+          right: { id: "history-next", text: "↓" },
+          labels: ["nav. prompt", "prompt", ""],
+          required: true,
+        }),
+      )
+      list.push(
+        group({
+          id: "history-trace",
+          left: { id: "history-left", text: "←" },
+          right: { id: "history-right", text: "→" },
+          labels: ["nav. trace", "trace", ""],
+        }),
+      )
+      list.push(box({ id: "expand", key: "space", labels: ["expand", ""] }))
+      return list
+    }
+
+    if (store.mode === "shell") {
+      list.push(box({ id: "shell", key: "esc", labels: ["exit shell mode", "shell", ""], required: true }))
+      return list
+    }
+
     if (local.model.variant.list().length > 0) {
-      items.push({
-        id: "variant",
-        key: keybind.print("variant_cycle"),
-        full: "variants",
-        short: "var",
-      })
+      list.push(box({ id: "variant", key: keybind.print("variant_cycle"), labels: ["variants", "var"] }))
     }
-    items.push({
-      id: "agent",
-      key: keybind.print("agent_cycle"),
-      full: "agents",
-      short: "agent",
-    })
+    list.push(box({ id: "agent", key: keybind.print("agent_cycle"), labels: ["agents", "agent"] }))
     if (props.showHistoryHint !== false && history.has(historyScope())) {
-      items.push({
-        id: "history",
-        key: keybind.print("history_mode_toggle"),
-        full: "history",
-        short: "hist",
-      })
+      list.push(box({ id: "history", key: keybind.print("history_mode_toggle"), labels: ["history", "hist"] }))
     }
-    items.push({
-      id: "command",
-      key: keybind.print("command_list"),
-      full: "commands",
-      short: "cmd",
-    })
-    return items
+    list.push(box({ id: "command", key: keybind.print("command_list"), labels: ["commands", "cmd"] }))
+    return list
   })
-  const shortcutWidth = createMemo(() => Math.max(0, footerWidth() - leadWidth() - leadGap()))
-  const shortcutLayout = createMemo(() => {
-    return layoutPromptFooterShortcuts({
-      width: shortcutWidth(),
-      items: shortcuts(),
+  const leadGap = createMemo(() => (active() && items().length > 0 ? 1 : 0))
+  const footerLayout = createMemo(() => {
+    return layoutPromptFooter({
+      width: Math.max(0, footerWidth() - leadWidth() - leadGap()),
+      items: items(),
       gap: 1,
       pads: [1, 0],
     })
   })
-  const click = (id: string) => {
-    if (id === "interrupt") {
-      run("interrupt", () => command.trigger("session.interrupt"))
-      return
-    }
-    if (id === "variant") {
-      run("variant", () => command.trigger("variant.cycle"))
-      return
-    }
-    if (id === "agent") {
-      run("agent", () => command.trigger("agent.cycle"))
-      return
-    }
-    if (id === "history") {
-      run("history", () => command.trigger("session.history.toggle"))
-      return
-    }
-    if (id === "command") {
-      run("command", () => command.show())
-    }
+  const actions = {
+    agent: () => run("agent", () => command.trigger("agent.cycle")),
+    command: () => run("command", () => command.show()),
+    history: () => run("history", () => command.trigger("session.history.toggle")),
+    "history-left": () => run("history-left", () => command.trigger("session.history.left")),
+    "history-next": () => run("history-next", () => command.trigger("session.history.next")),
+    "history-previous": () => run("history-previous", () => command.trigger("session.history.previous")),
+    "history-right": () => run("history-right", () => command.trigger("session.history.right")),
+    "history-toggle": () => run("history-toggle", () => command.trigger("session.history.toggle")),
+    interrupt: () => run("interrupt", () => command.trigger("session.interrupt")),
+    retry: () => {
+      const next = retry()
+      if (!next || !retryTruncated()) return
+      DialogAlert.show(dialog, "Retry Error", next.message)
+    },
+    variant: () => run("variant", () => command.trigger("variant.cycle")),
   }
-  const colors = (id: string) => {
-    if (id === "interrupt" && store.interrupt > 0) {
-      return {
-        key: theme.primary,
-        label: theme.primary,
-      }
-    }
-    return {
-      key: theme.text,
-      label: theme.textMuted,
-    }
+  const clickable = new Set(Object.keys(actions))
+  const tone = (part: PromptFooterPart) => {
+    if (part.tone === "error") return theme.error
+    if (part.tone === "muted") return theme.textMuted
+    if (part.tone === "primary") return theme.primary
+    if (part.tone === "warning") return theme.warning
+    return theme.text
   }
+  const click = (id?: string) => {
+    if (!id || !clickable.has(id)) return
+    actions[id as keyof typeof actions]()
+  }
+  const focus = () => input?.focus()
 
 
   return (
@@ -1568,241 +1655,101 @@ export function Prompt(props: PromptProps) {
             </box>
           </box>
         </box>
-        <Switch>
-          <Match when={status().type === "retry"}>
-            <box flexDirection="row">
-              <box
-                flexDirection="row"
-                gap={compact() ? 0 : 1}
-                flexGrow={1}
-                flexShrink={1}
-                minWidth={0}
-                maxWidth={statusWidth()}
-                justifyContent="flex-start"
-                alignItems="center"
-              >
-                <box flexShrink={0} flexDirection="row" gap={compact() ? 0 : 1} alignItems="center">
-                  <box marginLeft={compact() ? 0 : 1}>
-                    <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>[⋯]</text>}>
-                      <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={80} />
-                    </Show>
-                  </box>
-                  <box flexDirection="row" gap={compact() ? 0 : 1} flexShrink={1} minWidth={0}>
-                    {(() => {
-                      const retry = createMemo(() => {
-                        const s = status()
-                        if (s.type !== "retry") return
-                        return s
-                      })
-                      const message = createMemo(() => {
-                        const r = retry()
-                        if (!r) return
-                        if (r.message.includes("exceeded your current quota") && r.message.includes("gemini"))
-                          return "gemini is way too hot right now"
-                        if (r.message.length > 80) return r.message.slice(0, 80) + "..."
-                        return r.message
-                      })
-                      const isTruncated = createMemo(() => {
-                        const r = retry()
-                        if (!r) return false
-                        return r.message.length > 120
-                      })
-                      const [seconds, setSeconds] = createSignal(0)
-                      onMount(() => {
-                        const timer = setInterval(() => {
-                          const next = retry()?.next
-                          if (next) setSeconds(Math.round((next - Date.now()) / 1000))
-                        }, 1000)
-
-                        onCleanup(() => {
-                          clearInterval(timer)
-                        })
-                      })
-                      const handleMessageClick = () => {
-                        const r = retry()
-                        if (!r) return
-                        if (isTruncated()) {
-                          DialogAlert.show(dialog, "Retry Error", r.message)
-                        }
-                      }
-
-                      const retryText = () => {
-                        const r = retry()
-                        if (!r) return ""
-                        const baseMessage = compact()
-                          ? Locale.truncate(message() ?? "", tight() ? 18 : 28)
-                          : (message() ?? "")
-                        const truncatedHint = isTruncated() && !compact() ? " (click to expand)" : ""
-                        const duration = formatDuration(seconds())
-                        const retryInfo = compact()
-                          ? ` [${duration ? `${duration} ` : ""}#${r.attempt}]`
-                          : ` [retrying ${duration ? `in ${duration} ` : ""}attempt #${r.attempt}]`
-                        return baseMessage + truncatedHint + retryInfo
-                      }
-
-                      return (
-                        <Show when={retry()}>
-                          <box onMouseUp={handleMessageClick}>
-                            <text fg={theme.error} wrapMode="none">
-                              {retryText()}
+        <box flexDirection="row" gap={leadGap()} alignItems="center">
+          <Show when={active()}>
+            <box flexShrink={0} width={leadWidth()} alignItems="center">
+              <box marginLeft={leadInset()}>
+                <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>[⋯]</text>}>
+                  <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={80} />
+                </Show>
+              </box>
+            </box>
+          </Show>
+          {(() => {
+            const layout = footerLayout()
+            return (
+              <box flexDirection="row" flexShrink={0} width={layout.width}>
+                <For each={layout.items}>
+                  {(item, index) => {
+                    const gap = layout.gaps[index()] ?? 0
+                    const hit = clickable.has(item.id)
+                    return (
+                      <>
+                        <Show
+                          when={item.box}
+                          fallback={
+                            <box flexDirection="row">
+                              <For each={item.parts}>
+                                {(part, offset) => {
+                                  const next = part.id ? clickable.has(part.id) : false
+                                  return (
+                                    <>
+                                      <Show when={offset() > 0 && item.gap > 0}>
+                                        <text>{" ".repeat(item.gap)}</text>
+                                      </Show>
+                                      <Show
+                                        when={part.box}
+                                        fallback={
+                                          <box
+                                            onMouseDown={next ? focus : undefined}
+                                            onMouseUp={next ? () => click(part.id) : undefined}
+                                          >
+                                            <text fg={tone(part)} wrapMode="none">
+                                              {part.text}
+                                            </text>
+                                          </box>
+                                        }
+                                      >
+                                        <box
+                                          paddingLeft={layout.pad}
+                                          paddingRight={layout.pad}
+                                          onMouseDown={next ? focus : undefined}
+                                          onMouseOver={next ? () => setHover(part.id!) : undefined}
+                                          onMouseOut={next ? () => setHover(undefined) : undefined}
+                                          onMouseUp={next ? () => click(part.id) : undefined}
+                                          backgroundColor={next ? chip(part.id!) : undefined}
+                                        >
+                                          <text fg={tone(part)} wrapMode="none">
+                                            {part.text}
+                                          </text>
+                                        </box>
+                                      </Show>
+                                    </>
+                                  )
+                                }}
+                              </For>
+                            </box>
+                          }
+                        >
+                          <box
+                            paddingLeft={layout.pad}
+                            paddingRight={layout.pad}
+                            onMouseDown={hit ? focus : undefined}
+                            onMouseOver={hit ? () => setHover(item.id) : undefined}
+                            onMouseOut={hit ? () => setHover(undefined) : undefined}
+                            onMouseUp={hit ? () => click(item.id) : undefined}
+                            backgroundColor={hit ? chip(item.id) : undefined}
+                          >
+                            <text wrapMode="none">
+                              <For each={item.parts}>
+                                {(part, offset) => (
+                                  <span style={{ fg: tone(part) }}>{(offset() > 0 ? " ".repeat(item.gap) : "") + part.text}</span>
+                                )}
+                              </For>
                             </text>
                           </box>
                         </Show>
-                      )
-                    })()}
-                  </box>
-                </box>
-                <box
-                  paddingLeft={chipPad()}
-                  paddingRight={chipPad()}
-                  onMouseDown={() => input?.focus()}
-                  onMouseOver={() => setHover("interrupt")}
-                  onMouseOut={() => setHover(undefined)}
-                  onMouseUp={() => run("interrupt", () => command.trigger("session.interrupt"))}
-                  backgroundColor={chip("interrupt")}
-                >
-                  <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
-                    esc{" "}
-                    <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
-                      {store.interrupt > 0
-                        ? label("again to interrupt", "again", true)
-                        : label("interrupt", "stop", true)}
-                    </span>
-                  </text>
-                </box>
-              </box>
-            </box>
-          </Match>
-          <Match when={true}>
-            <box flexDirection="row" gap={leadGap()} alignItems="center">
-              <Show when={busy()}>
-                <box flexShrink={0} width={leadWidth()} alignItems="center">
-                  <box marginLeft={compact() ? 0 : 1}>
-                    <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>[⋯]</text>}>
-                      <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={80} />
-                    </Show>
-                  </box>
-                </box>
-              </Show>
-              <Switch>
-                <Match when={props.historyMode}>
-                  <box gap={chipGap()} flexDirection="row" flexShrink={0}>
-                    <box
-                      paddingLeft={chipPad()}
-                      paddingRight={chipPad()}
-                      onMouseDown={() => input?.focus()}
-                      onMouseOver={() => setHover("history-toggle")}
-                      onMouseOut={() => setHover(undefined)}
-                      onMouseUp={() => run("history-toggle", () => command.trigger("session.history.toggle"))}
-                      backgroundColor={chip("history-toggle")}
-                    >
-                      <text fg={theme.text}>
-                        {keybind.print("history_mode_toggle")}
-                        {muted("edit mode", "edit", true)}
-                      </text>
-                    </box>
-                    <box flexDirection="row" alignItems="center" gap={compact() ? 0 : 1}>
-                      <box
-                        paddingLeft={chipPad()}
-                        paddingRight={chipPad()}
-                        onMouseDown={() => input?.focus()}
-                        onMouseOver={() => setHover("history-previous")}
-                        onMouseOut={() => setHover(undefined)}
-                        onMouseUp={() => run("history-previous", () => command.trigger("session.history.previous"))}
-                        backgroundColor={chip("history-previous")}
-                      >
-                        <text fg={theme.text}>↑</text>
-                      </box>
-                      <box
-                        paddingLeft={chipPad()}
-                        paddingRight={chipPad()}
-                        onMouseDown={() => input?.focus()}
-                        onMouseOver={() => setHover("history-next")}
-                        onMouseOut={() => setHover(undefined)}
-                        onMouseUp={() => run("history-next", () => command.trigger("session.history.next"))}
-                        backgroundColor={chip("history-next")}
-                      >
-                        <text fg={theme.text}>↓</text>
-                      </box>
-                      <text fg={theme.textMuted}>{label("nav. prompt", "prompt", true)}</text>
-                    </box>
-                    <box flexDirection="row" alignItems="center" gap={compact() ? 0 : 1}>
-                      <box
-                        paddingLeft={chipPad()}
-                        paddingRight={chipPad()}
-                        onMouseDown={() => input?.focus()}
-                        onMouseOver={() => setHover("history-left")}
-                        onMouseOut={() => setHover(undefined)}
-                        onMouseUp={() => run("history-left", () => command.trigger("session.history.left"))}
-                        backgroundColor={chip("history-left")}
-                      >
-                        <text fg={theme.text}>←</text>
-                      </box>
-                      <box
-                        paddingLeft={chipPad()}
-                        paddingRight={chipPad()}
-                        onMouseDown={() => input?.focus()}
-                        onMouseOver={() => setHover("history-right")}
-                        onMouseOut={() => setHover(undefined)}
-                        onMouseUp={() => run("history-right", () => command.trigger("session.history.right"))}
-                        backgroundColor={chip("history-right")}
-                      >
-                        <text fg={theme.text}>→</text>
-                      </box>
-                      <text fg={theme.textMuted}>{label("nav. trace", "trace", true)}</text>
-                    </box>
-                    <text fg={theme.text}>
-                      space
-                      {muted("expand", "expand", true)}
-                    </text>
-                  </box>
-                </Match>
-                <Match when={store.mode === "normal"}>
-                  {(() => {
-                    const layout = shortcutLayout()
-                    return (
-                      <box flexDirection="row" flexShrink={0} width={layout.width}>
-                        <For each={layout.items}>
-                          {(item, index) => {
-                            const tone = colors(item.id)
-                            const gap = layout.gaps[index()] ?? 0
-                            return (
-                              <>
-                                <box
-                                  paddingLeft={layout.pad}
-                                  paddingRight={layout.pad}
-                                  onMouseDown={() => input?.focus()}
-                                  onMouseOver={() => setHover(item.id)}
-                                  onMouseOut={() => setHover(undefined)}
-                                  onMouseUp={() => click(item.id)}
-                                  backgroundColor={chip(item.id)}
-                                >
-                                  <text fg={tone.key}>
-                                    {item.key}
-                                    <span style={{ fg: tone.label }}>{item.label ? ` ${item.label}` : ""}</span>
-                                  </text>
-                                </box>
-                                <Show when={gap > 0}>
-                                  <text>{" ".repeat(gap)}</text>
-                                </Show>
-                              </>
-                            )
-                          }}
-                        </For>
-                      </box>
+                        <Show when={gap > 0}>
+                          <text>{" ".repeat(gap)}</text>
+                        </Show>
+                      </>
                     )
-                  })()}
-                </Match>
-                <Match when={store.mode === "shell"}>
-                  <text fg={theme.text}>
-                    esc
-                    {muted("exit shell mode", "shell", true)}
-                  </text>
-                </Match>
-              </Switch>
-            </box>
-          </Match>
-        </Switch>
+                  }}
+                </For>
+              </box>
+            )
+          })()}
+        </box>
       </box>
     </>
   )
