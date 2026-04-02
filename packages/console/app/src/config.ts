@@ -41,6 +41,7 @@ export const config = {
     paru: "paru -S slopcode",
   },
   social: {
+    desktop_feedback: "https://discord.gg/h5TNnkFVNy",
     discord: "https://discord.gg/slopcode",
     twitter: "https://x.com/slopcode",
   },
