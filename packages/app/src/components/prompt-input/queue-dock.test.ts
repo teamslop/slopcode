@@ -20,6 +20,9 @@ beforeAll(async () => {
   mock.module("@/context/sdk", () => ({
     useSDK: () => ({ directory: "/repo/main" }),
   }))
+  mock.module("@/context/sync", () => ({
+    useSync: () => ({ data: { session_status: {} } }),
+  }))
 
   const mod = await import("./queue-dock")
   promptQueueRows = mod.promptQueueRows
@@ -27,22 +30,34 @@ beforeAll(async () => {
 })
 
 describe("prompt queue dock", () => {
-  test("stays hidden when only the active item exists", () => {
+  test("shows when only the active item exists", () => {
     expect(
       promptQueueVisible({
+        active: {
+          key: "session",
+          id: "active-1",
+          summary: "working prompt",
+          time: { queued: 1, started: 1 },
+          ready: () => true,
+          done: () => false,
+          run: async () => undefined,
+          reject: () => undefined,
+        },
         queue: [],
       }),
-    ).toBe(false)
+    ).toBe(true)
   })
 
   test("shows when queued items exist", () => {
     expect(
       promptQueueVisible({
+        active: undefined,
         queue: [
           {
             key: "session",
             id: "queued-1",
             summary: "queued prompt",
+            time: { queued: 1 },
             ready: () => false,
             done: () => false,
             run: async () => undefined,
@@ -60,6 +75,7 @@ describe("prompt queue dock", () => {
           key: "session",
           id: "active-1",
           summary: "first prompt",
+          time: { queued: 1, started: 1 },
           ready: () => true,
           done: () => false,
           run: async () => undefined,
@@ -70,6 +86,7 @@ describe("prompt queue dock", () => {
             key: "session",
             id: "queued-1",
             summary: "second prompt",
+            time: { queued: 1 },
             ready: () => false,
             done: () => false,
             run: async () => undefined,
@@ -83,12 +100,14 @@ describe("prompt queue dock", () => {
         label: "Active",
         summary: "first prompt",
         detail: undefined,
+        time: { queued: 1, started: 1 },
       },
       {
         id: "queued-1",
         label: "Queued",
         summary: "second prompt",
         detail: undefined,
+        time: { queued: 1 },
       },
     ])
   })

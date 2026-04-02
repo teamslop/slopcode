@@ -598,9 +598,14 @@ export type SessionStatus =
       attempt: number
       message: string
       next: number
+      since: number
+      updated: number
     }
   | {
       type: "busy"
+      phase: "starting" | "running" | "compacting"
+      since: number
+      updated: number
     }
 
 export type EventSessionStatus = {

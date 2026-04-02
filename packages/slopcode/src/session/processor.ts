@@ -70,7 +70,7 @@ export namespace SessionProcessor {
                 abort.throwIfAborted()
                 switch (value.type) {
                   case "start":
-                    SessionStatus.set(input.sessionID, { type: "busy" })
+                    SessionStatus.busy(input.sessionID, "running")
                     break
 
                   case "reasoning-start":
@@ -377,8 +377,7 @@ export namespace SessionProcessor {
               if (retry !== undefined) {
                 attempt++
                 const delay = SessionRetry.delay(attempt, error.name === "APIError" ? error : undefined)
-                SessionStatus.set(input.sessionID, {
-                  type: "retry",
+                SessionStatus.retry(input.sessionID, {
                   attempt,
                   message: retry,
                   next: Date.now() + delay,

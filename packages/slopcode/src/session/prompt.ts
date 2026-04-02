@@ -667,7 +667,7 @@ export namespace SessionPrompt {
       let step = 0
       const session = await Session.get(sessionID)
       while (true) {
-        SessionStatus.set(sessionID, { type: "busy" })
+        SessionStatus.busy(sessionID, "starting")
         log.info("loop", { step, sessionID })
         if (abort.aborted) {
           if (held(state()[sessionID], state()[sessionID]?.current)) {
@@ -934,6 +934,7 @@ export namespace SessionPrompt {
 
         // pending compaction
         if (task?.type === "compaction") {
+          SessionStatus.busy(sessionID, "compacting")
           const result = await SessionCompaction.process({
             messages: msgs,
             parentID: lastUser.id,
@@ -951,6 +952,7 @@ export namespace SessionPrompt {
           lastFinished.summary !== true &&
           (await SessionCompaction.isOverflow({ tokens: lastFinished.tokens, model }))
         ) {
+          SessionStatus.busy(sessionID, "compacting")
           await SessionCompaction.create({
             sessionID,
             agent: lastUser.agent,

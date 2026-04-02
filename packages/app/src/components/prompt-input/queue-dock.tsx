@@ -2,9 +2,10 @@ import { useParams } from "@solidjs/router"
 import { Button } from "@slopcode-ai/ui/button"
 import { DockTray } from "@slopcode-ai/ui/dock-surface"
 import { IconButton } from "@slopcode-ai/ui/icon-button"
-import { For, Show, createEffect, createMemo, on, onCleanup } from "solid-js"
+import { For, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useSDK } from "@/context/sdk"
+import { useSync } from "@/context/sync"
 import { promptQueue, promptQueueKey, type PromptQueueItem } from "./queue"
 
 type Row = {
@@ -12,10 +13,24 @@ type Row = {
   label: string
   summary: string
   detail?: string
+  time: PromptQueueItem["time"]
 }
 
-export function promptQueueVisible(input: { queue: PromptQueueItem[] }) {
-  return input.queue.length > 0
+const STALL_MS = 15_000
+
+function age(ms: number) {
+  const secs = Math.max(0, Math.round(ms / 1000))
+  if (secs < 60) return `${secs}s`
+  const mins = Math.floor(secs / 60)
+  const rest = secs % 60
+  if (mins < 60) return rest > 0 ? `${mins}m ${rest}s` : `${mins}m`
+  const hours = Math.floor(mins / 60)
+  const left = mins % 60
+  return left > 0 ? `${hours}h ${left}m` : `${hours}h`
+}
+
+export function promptQueueVisible(input: { active?: PromptQueueItem; queue: PromptQueueItem[] }) {
+  return !!input.active || input.queue.length > 0
 }
 
 export function promptQueueRows(input: { active?: PromptQueueItem; queue: PromptQueueItem[] }) {
@@ -26,6 +41,7 @@ export function promptQueueRows(input: { active?: PromptQueueItem; queue: Prompt
           label: "Active",
           summary: input.active.summary,
           detail: input.active.detail,
+          time: input.active.time,
         },
       ]
     : []
@@ -37,6 +53,7 @@ export function promptQueueRows(input: { active?: PromptQueueItem; queue: Prompt
       label: "Queued",
       summary: item.summary,
       detail: item.detail,
+      time: item.time,
     })),
   ]
 }
@@ -46,11 +63,13 @@ const LIMIT = 4
 export function PromptQueueDock() {
   const params = useParams()
   const sdk = useSDK()
+  const syncState = useSync()
   const [store, setStore] = createStore({
     active: undefined as PromptQueueItem | undefined,
     queue: [] as PromptQueueItem[],
     collapsed: false,
   })
+  const [now, setNow] = createSignal(Date.now())
 
   const key = createMemo(() => {
     if (!params.id) return
@@ -89,7 +108,37 @@ export function PromptQueueDock() {
   const hidden = createMemo(() => Math.max(0, rows().length - LIMIT))
   const preview = createMemo(() => store.active?.summary ?? store.queue[0]?.summary ?? "")
   const clearable = createMemo(() => store.queue.length > 0)
-  const visible = createMemo(() => promptQueueVisible({ queue: store.queue }))
+  const visible = createMemo(() => promptQueueVisible({ active: store.active, queue: store.queue }))
+  const status = createMemo(() => syncState.data.session_status[params.id ?? ""])
+
+  createEffect(() => {
+    if (!visible()) return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    onCleanup(() => window.clearInterval(timer))
+  })
+
+  const meta = (item: Row) => {
+    const current = status()
+    if (item.label === "Queued") {
+      return [`Queued - ${age(now() - item.time.queued)}`, item.detail].filter(Boolean).join(" - ")
+    }
+    if (current?.type === "retry") {
+      return [`Retrying in ${age(Math.max(0, current.next - now()))}`, item.detail].filter(Boolean).join(" - ")
+    }
+    const start = current?.type === "busy" ? current.since : (item.time.started ?? item.time.queued)
+    const elapsed = age(now() - start)
+    if (current?.type === "busy" && current.phase === "compacting") {
+      return [`Compacting - ${elapsed}`, item.detail].filter(Boolean).join(" - ")
+    }
+    if (current?.type === "busy" && current.phase === "running") {
+      return [`${now() - start >= STALL_MS ? "Still running..." : "Running"} - ${elapsed}`, item.detail]
+        .filter(Boolean)
+        .join(" - ")
+    }
+    return [`${now() - start >= STALL_MS ? "Still starting..." : "Starting"} - ${elapsed}`, item.detail]
+      .filter(Boolean)
+      .join(" - ")
+  }
 
   const toggle = () => setStore("collapsed", (value: boolean) => !value)
 
@@ -191,8 +240,8 @@ export function PromptQueueDock() {
                 </span>
                 <div class="min-w-0 flex-1">
                   <div class="text-13-regular text-text-strong truncate">{item.summary}</div>
-                  <Show when={item.detail}>
-                    <div class="text-12-regular text-text-weak truncate">{item.detail}</div>
+                  <Show when={meta(item)}>
+                    <div class="text-12-regular text-text-weak truncate">{meta(item)}</div>
                   </Show>
                 </div>
                 <Show when={item.label === "Queued"}>

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { PermissionRequest, QuestionRequest, Session } from "@slopcode-ai/sdk/v2/client"
-import { sessionPermissionRequest, sessionQuestionRequest } from "./session-request-tree"
+import { sessionPermissionRequest, sessionQuestionRequest, sessionWaiting } from "./session-request-tree"
 
 const session = (input: { id: string; parentID?: string }) =>
   ({
@@ -101,5 +101,43 @@ describe("sessionQuestionRequest", () => {
     }
 
     expect(sessionQuestionRequest(sessions, questions, "root")?.id).toBe("q-grand")
+  })
+})
+
+describe("sessionWaiting", () => {
+  test("returns true for matching child permissions and questions", () => {
+    const sessions = [session({ id: "root" }), session({ id: "child", parentID: "root" })]
+
+    expect(
+      sessionWaiting({
+        session: sessions,
+        permission: { child: [permission("perm-child", "child")] },
+        question: {},
+        sessionID: "root",
+      }),
+    ).toBe(true)
+
+    expect(
+      sessionWaiting({
+        session: sessions,
+        permission: {},
+        question: { child: [question("q-child", "child")] },
+        sessionID: "root",
+      }),
+    ).toBe(true)
+  })
+
+  test("returns false when matching permissions are filtered out", () => {
+    const sessions = [session({ id: "root" }), session({ id: "child", parentID: "root" })]
+
+    expect(
+      sessionWaiting({
+        session: sessions,
+        permission: { root: [permission("perm-root", "root")] },
+        question: {},
+        sessionID: "root",
+        includePermission: () => false,
+      }),
+    ).toBe(false)
   })
 })

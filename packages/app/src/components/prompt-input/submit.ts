@@ -327,6 +327,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       images: images.length,
       comments: commentItems.length,
     })
+    const time = { queued: Date.now(), started: undefined as number | undefined }
 
     const messageID = Identifier.ascending("message")
     const { requestParts, optimisticParts } = buildRequestParts({
@@ -390,7 +391,12 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       if (!worktree || worktree.status !== "pending") return true
 
       if (sessionDirectory === projectDirectory) {
-        sync.set("session_status", session.id, { type: "busy" })
+        sync.set("session_status", session.id, {
+          type: "busy",
+          phase: "starting",
+          since: Date.now(),
+          updated: Date.now(),
+        })
       }
 
       const controller = new AbortController()
@@ -441,6 +447,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     }
 
     const send = async () => {
+      time.started ??= Date.now()
       const ok = await waitForWorktree()
       if (!ok) return
       await client.session.promptAsync({
@@ -459,6 +466,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         id: messageID,
         summary: queued.summary,
         detail: queued.detail,
+        time,
         ready: () => idle(sessionStore as Store, session.id),
         done: () => done(sessionStore as Store, session.id, messageID),
         run: send,

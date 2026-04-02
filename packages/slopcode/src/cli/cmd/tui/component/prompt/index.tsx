@@ -23,6 +23,7 @@ import { EmptyBorder } from "@tui/component/border"
 import { useSDK } from "@tui/context/sdk"
 import { useRoute } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
+import { sessionWaiting } from "@tui/context/session-tabs-state"
 import { Identifier } from "@/id/id"
 import { createStore, produce, unwrap } from "solid-js/store"
 import { useKeybind } from "@tui/context/keybind"
@@ -121,6 +122,32 @@ export function Prompt(props: PromptProps) {
   const dialog = useDialog()
   const toast = useToast()
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
+  const waiting = createMemo(() =>
+    sessionWaiting({
+      sessionID: props.sessionID,
+      sessions: sync.data.session,
+      permission: sync.data.permission,
+      question: sync.data.question,
+    }),
+  )
+  const [now, setNow] = createSignal(Date.now())
+
+  createEffect(() => {
+    if (!waiting() && status().type === "idle") return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    onCleanup(() => {
+      clearInterval(timer)
+    })
+  })
+
+  const busyText = createMemo(() => {
+    const current = status()
+    if (current.type !== "busy") return
+    const elapsed = formatDuration(Math.max(0, Math.round((now() - current.since) / 1000))) || "0s"
+    if (current.phase === "compacting") return `compacting ${elapsed}`
+    if (current.phase === "running") return `${now() - current.since >= 15_000 ? "still running..." : "running"} ${elapsed}`
+    return `${now() - current.since >= 15_000 ? "still starting..." : "starting"} ${elapsed}`
+  })
   const history = usePromptHistory()
   const historyScope = createMemo(() => ({
     dir: sync.data.path.directory || process.cwd(),
@@ -897,7 +924,9 @@ export function Prompt(props: PromptProps) {
       )
     } else {
       const paused = queueMode === "serial" ? promptQueue.snapshot(sessionID).paused : undefined
+      const time = { queued: Date.now(), started: undefined as number | undefined }
       const send = async () => {
+        time.started ??= Date.now()
         await sdk.client.session.promptAsync({
           sessionID,
           ...selectedModel,
@@ -932,6 +961,7 @@ export function Prompt(props: PromptProps) {
           agent,
           summary: queued.summary,
           detail: queued.detail,
+          time,
           ready: () => idle(sync.data as QueueStore, sessionID) && !promptQueue.snapshot(sessionID).paused,
           done: () => done(sync.data as QueueStore, sessionID, messageID),
           run: send,
@@ -1114,7 +1144,7 @@ export function Prompt(props: PromptProps) {
   const tight = createMemo(() => dimensions().width < 80)
   const tiny = createMemo(() => dimensions().width < 72)
   const statusWidth = createMemo(() => {
-    if (status().type === "idle") return undefined
+    if (!waiting() && status().type === "idle") return undefined
     if (!compact()) return undefined
     return Math.max(20, Math.floor(dimensions().width / 2) - 4)
   })
@@ -1458,7 +1488,7 @@ export function Prompt(props: PromptProps) {
           </box>
         </box>
         <box flexDirection="row" justifyContent="space-between" gap={chipGap()}>
-          <Show when={status().type !== "idle"} fallback={<text />}>
+          <Show when={waiting() || status().type !== "idle"} fallback={<text />}>
             <box
               flexDirection="row"
               gap={compact() ? 0 : 1}
@@ -1471,11 +1501,24 @@ export function Prompt(props: PromptProps) {
             >
               <box flexShrink={0} flexDirection="row" gap={compact() ? 0 : 1} alignItems="center">
                 <box marginLeft={compact() ? 0 : 1}>
-                  <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>[⋯]</text>}>
-                    <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={80} />
+                  <Show
+                    when={waiting()}
+                    fallback={
+                      <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>[⋯]</text>}>
+                        <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={80} />
+                      </Show>
+                    }
+                  >
+                    <text fg={theme.textMuted}>■</text>
                   </Show>
                 </box>
                 <box flexDirection="row" gap={compact() ? 0 : 1} flexShrink={1} minWidth={0}>
+                  <Show when={waiting()}>
+                    <text fg={theme.textMuted}>waiting for input</text>
+                  </Show>
+                  <Show when={busyText()}>
+                    <text fg={theme.textMuted}>{busyText()}</text>
+                  </Show>
                   {(() => {
                     const retry = createMemo(() => {
                       const s = status()

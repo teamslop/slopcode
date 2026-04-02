@@ -41,11 +41,12 @@ const root = (id: string, sessions: SessionFamilyMember[]) => {
 }
 
 export function sessionWaiting(input: {
-  sessionID: string
+  sessionID?: string
   sessions: SessionFamilyMember[]
   permission: PendingMap
   question: PendingMap
 }) {
+  if (!input.sessionID) return false
   const root = input.sessions.find((session) => session.id === input.sessionID)?.parentID ?? input.sessionID
   return Array.from(
     new Set(

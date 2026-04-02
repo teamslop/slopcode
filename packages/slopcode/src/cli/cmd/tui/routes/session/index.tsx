@@ -35,6 +35,7 @@ import { promptQueue, type PromptQueueItem } from "@tui/component/prompt/queue"
 import type { AssistantMessage, Part, ToolPart, UserMessage, TextPart, ReasoningPart } from "@slopcode-ai/sdk/v2"
 import { useLocal } from "@tui/context/local"
 import { Locale } from "@/util/locale"
+import { formatDuration } from "@/util/format"
 import type { Tool } from "@/tool/tool"
 import type { ReadTool } from "@/tool/read"
 import type { WriteTool } from "@/tool/write"
@@ -56,7 +57,7 @@ import type { DialogContext } from "@tui/ui/dialog"
 import { useKeybind } from "@tui/context/keybind"
 import { Header } from "./header"
 import { SessionStrip } from "./session-strip"
-import { adjacentTab } from "@tui/context/session-tabs-state"
+import { adjacentTab, sessionWaiting } from "@tui/context/session-tabs-state"
 import { parsePatch } from "diff"
 import { useDialog } from "../../ui/dialog"
 import { TodoItem } from "../../component/todo-item"
@@ -333,7 +334,16 @@ export function Session() {
   })
 
   const follow = createMemo(() => !history() || target() === "prompt")
+  const waiting = createMemo(() =>
+    sessionWaiting({
+      sessionID: route.sessionID,
+      sessions: sync.data.session,
+      permission: sync.data.permission,
+      question: sync.data.question,
+    }),
+  )
   const busy = createMemo(() => {
+    if (waiting()) return false
     const status = sync.data.session_status?.[route.sessionID]
     return status ? status.type !== "idle" : false
   })
@@ -1941,12 +1951,14 @@ type QueueRow = {
   agent: string
   summary: string
   detail?: string
+  time: PromptQueueItem["time"]
 }
 
 const initial = (value: string) => value.trim().charAt(0).toUpperCase() || "?"
 
 function PromptQueuePanel(props: { sessionID: string }) {
   const local = useLocal()
+  const syncState = useSync()
   const { theme } = useTheme()
   const renderer = useRenderer()
   const [store, setStore] = createStore({
@@ -1955,22 +1967,32 @@ function PromptQueuePanel(props: { sessionID: string }) {
     queue: [] as PromptQueueItem[],
     collapsed: false,
   })
+  const [now, setNow] = createSignal(Date.now())
 
-  const sync = () => {
+  createEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    onCleanup(() => {
+      clearInterval(timer)
+    })
+  })
+
+  const refresh = () => {
     const next = promptQueue.snapshot(props.sessionID)
     setStore("active", next.active)
     setStore("paused", next.paused)
     setStore("queue", next.queue)
   }
 
-  createEffect(on(() => props.sessionID, sync))
+  createEffect(on(() => props.sessionID, refresh))
 
   const off = promptQueue.subscribe((key: string) => {
     if (key !== props.sessionID) return
-    sync()
+    refresh()
   })
 
   onCleanup(off)
+
+  const status = createMemo(() => syncState.data.session_status?.[props.sessionID])
 
   const rows = createMemo<QueueRow[]>(() => {
     const active = store.active
@@ -1982,6 +2004,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
             agent: store.active.agent,
             summary: store.active.summary,
             detail: store.active.detail,
+            time: store.active.time,
           },
         ]
       : []
@@ -1995,6 +2018,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
             agent: store.paused.agent,
             summary: store.paused.summary,
             detail: store.paused.detail,
+            time: store.paused.time,
           },
         ]
       : []
@@ -2009,6 +2033,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
         agent: item.agent,
         summary: item.summary,
         detail: item.detail,
+        time: item.time,
       })),
     ]
   })
@@ -2025,6 +2050,28 @@ function PromptQueuePanel(props: { sessionID: string }) {
     if (item.label === "Paused") return theme.textMuted
     return item.mode === "shell" ? theme.primary : local.agent.color(item.agent)
   }
+  const meta = (item: QueueRow) => {
+    const base = item.label === "Active" ? status() : undefined
+    const start = base?.type === "busy" ? base.since : (item.time.started ?? item.time.queued)
+    const elapsed = formatDuration(Math.max(0, Math.round((now() - start) / 1000))) || "0s"
+    if (item.label === "Queued") return [`queued ${elapsed}`, item.detail].filter(Boolean).join(" - ")
+    if (item.label === "Paused") return [`paused ${elapsed}`, item.detail].filter(Boolean).join(" - ")
+    if (base?.type === "retry") {
+      const delay = formatDuration(Math.max(0, Math.round((base.next - now()) / 1000))) || "0s"
+      return [`retrying in ${delay}`, item.detail].filter(Boolean).join(" - ")
+    }
+    if (base?.type === "busy" && base.phase === "compacting") {
+      return [`compacting ${elapsed}`, item.detail].filter(Boolean).join(" - ")
+    }
+    if (base?.type === "busy" && base.phase === "running") {
+      return [`${now() - start >= 15_000 ? "still running..." : "running"} ${elapsed}`, item.detail]
+        .filter(Boolean)
+        .join(" - ")
+    }
+    return [`${now() - start >= 15_000 ? "still starting..." : "starting"} ${elapsed}`, item.detail]
+      .filter(Boolean)
+      .join(" - ")
+  }
 
   const toggle = () => {
     setStore("collapsed", (value) => !value)
@@ -2039,7 +2086,7 @@ function PromptQueuePanel(props: { sessionID: string }) {
   }
 
   return (
-    <Show when={!!store.paused || store.queue.length > 0}>
+    <Show when={!!store.active || !!store.paused || store.queue.length > 0}>
       <box
         backgroundColor={theme.backgroundPanel}
         marginBottom={1}
@@ -2108,8 +2155,8 @@ function PromptQueuePanel(props: { sessionID: string }) {
                         </box>
                       </Show>
                     </box>
-                    <Show when={item.detail}>
-                      <text fg={theme.textMuted}>{item.detail}</text>
+                    <Show when={meta(item)}>
+                      <text fg={theme.textMuted}>{meta(item)}</text>
                     </Show>
                   </box>
                 )

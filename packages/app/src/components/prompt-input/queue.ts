@@ -5,6 +5,10 @@ export type PromptQueueItem = {
   id: string
   summary: string
   detail?: string
+  time: {
+    queued: number
+    started?: number
+  }
   ready: () => boolean
   done: () => boolean
   run: () => Promise<void>

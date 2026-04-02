@@ -50,3 +50,17 @@ export function sessionQuestionRequest(
 ) {
   return sessionTreeRequest(session, request, sessionID, include)
 }
+
+export function sessionWaiting(input: {
+  session: Session[]
+  permission: Record<string, PermissionRequest[] | undefined>
+  question: Record<string, QuestionRequest[] | undefined>
+  sessionID?: string
+  includePermission?: (item: PermissionRequest) => boolean
+  includeQuestion?: (item: QuestionRequest) => boolean
+}) {
+  return (
+    !!sessionPermissionRequest(input.session, input.permission, input.sessionID, input.includePermission) ||
+    !!sessionQuestionRequest(input.session, input.question, input.sessionID, input.includeQuestion)
+  )
+}

@@ -7,6 +7,10 @@ export type PromptQueueItem = {
   agent: string
   summary: string
   detail?: string
+  time: {
+    queued: number
+    started?: number
+  }
   ready: () => boolean
   done: () => boolean
   run: () => Promise<void>

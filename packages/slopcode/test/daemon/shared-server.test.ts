@@ -116,7 +116,7 @@ describe("shared daemon server", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        SessionStatus.set("session_test", { type: "busy" })
+        SessionStatus.busy("session_test", "running")
       },
     })
 
@@ -160,8 +160,8 @@ describe("shared daemon server", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        SessionStatus.set("session_b", { type: "busy" })
-        SessionStatus.set("session_a", { type: "busy" })
+        SessionStatus.busy("session_b", "running")
+        SessionStatus.busy("session_a", "running")
       },
     })
 
