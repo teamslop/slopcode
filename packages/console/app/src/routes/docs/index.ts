@@ -1,23 +1,9 @@
 import type { APIEvent } from "@solidjs/start/server"
-import { Resource } from "@slopcode-ai/console-resource"
-import { docs, localeFromRequest, tag } from "~/lib/language"
+import { proxy } from "~/lib/docs"
 
-async function handler(evt: APIEvent) {
-  const req = evt.request.clone()
-  const url = new URL(req.url)
-  const locale = localeFromRequest(req)
-  const host = Resource.App.stage === "production" ? "docs.slopcode.ai" : "docs.dev.slopcode.ai"
-  const targetUrl = `https://${host}${docs(locale, url.pathname)}${url.search}`
-
-  const headers = new Headers(req.headers)
-  headers.set("accept-language", tag(locale))
-
-  const response = await fetch(targetUrl, {
-    method: req.method,
-    headers,
-    body: req.body,
-  })
-  return response
+function handler(evt: APIEvent) {
+  const url = new URL(evt.request.url)
+  return proxy(evt.request, url.pathname)
 }
 
 export const GET = handler

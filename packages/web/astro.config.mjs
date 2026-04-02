@@ -306,12 +306,12 @@ function configSchema() {
                 },
                 {
                   source: "/auth",
-                  destination: "https://opencode.ai/auth",
+                  destination: config.console,
                   permanent: false,
                 },
                 {
                   source: "/auth/:path*",
-                  destination: "https://opencode.ai/auth/:path*",
+                  destination: `${config.console}/:path*`,
                   permanent: false,
                 },
               ],

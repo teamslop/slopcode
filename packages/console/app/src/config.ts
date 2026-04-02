@@ -1,9 +1,11 @@
+import { site } from "~/lib/site"
+
 /**
  * Application-wide constants and configuration
  */
 export const config = {
   // Base URL
-  baseUrl: "https://slopcode.dev",
+  baseUrl: site(),
 
   // GitHub
   github: {
