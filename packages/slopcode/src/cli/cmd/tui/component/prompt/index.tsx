@@ -145,7 +145,8 @@ export function Prompt(props: PromptProps) {
     if (current.type !== "busy") return
     const elapsed = formatDuration(Math.max(0, Math.round((now() - current.since) / 1000))) || "0s"
     if (current.phase === "compacting") return `compacting ${elapsed}`
-    if (current.phase === "running") return `${now() - current.since >= 15_000 ? "still running..." : "running"} ${elapsed}`
+    if (current.phase === "running")
+      return `${now() - current.since >= 15_000 ? "still running..." : "running"} ${elapsed}`
     return `${now() - current.since >= 15_000 ? "still starting..." : "starting"} ${elapsed}`
   })
   const history = usePromptHistory()

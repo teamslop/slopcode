@@ -8675,9 +8675,15 @@
               },
               "next": {
                 "type": "number"
+              },
+              "since": {
+                "type": "number"
+              },
+              "updated": {
+                "type": "number"
               }
             },
-            "required": ["type", "attempt", "message", "next"]
+            "required": ["type", "attempt", "message", "next", "since", "updated"]
           },
           {
             "type": "object",
@@ -8685,9 +8691,19 @@
               "type": {
                 "type": "string",
                 "const": "busy"
+              },
+              "phase": {
+                "type": "string",
+                "enum": ["starting", "running", "compacting"]
+              },
+              "since": {
+                "type": "number"
+              },
+              "updated": {
+                "type": "number"
               }
             },
-            "required": ["type"]
+            "required": ["type", "phase", "since", "updated"]
           }
         ]
       },
