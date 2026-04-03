@@ -1,6 +1,4 @@
-import { Resource } from "@slopcode-ai/console-resource"
 import { docs, localeFromRequest, tag } from "~/lib/language"
-import { urls } from "~/lib/site"
 
 function trim(url: string) {
   return url.endsWith("/") ? url.slice(0, -1) : url
@@ -8,7 +6,7 @@ function trim(url: string) {
 
 function site() {
   if (import.meta.env.VITE_DOCS_URL) return trim(import.meta.env.VITE_DOCS_URL)
-  return urls(Resource.App.stage).docs
+  return "https://www.slopcode.dev"
 }
 
 export function proxy(request: Request, path: string) {

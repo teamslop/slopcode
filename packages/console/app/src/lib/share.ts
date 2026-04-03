@@ -1,13 +1,10 @@
-import { Resource } from "@slopcode-ai/console-resource"
-import { urls } from "~/lib/site"
-
 function trim(url: string) {
   return url.endsWith("/") ? url.slice(0, -1) : url
 }
 
 function site() {
   if (import.meta.env.VITE_SHARE_URL) return trim(import.meta.env.VITE_SHARE_URL)
-  return urls(Resource.App.stage).share
+  return "https://share.slopcode.dev"
 }
 
 export function proxy(request: Request) {
