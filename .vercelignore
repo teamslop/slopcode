@@ -1,0 +1,15 @@
+.git/
+.github/
+.sst/
+.slopcode/
+.sysroot/
+.turbo/
+node_modules/
+**/node_modules/
+**/.vercel/
+**/.output/
+**/dist/
+packages/slopcode/dist/
+packages/web/dist-root-owned/
+packages/web/dist-root-owned.bak/
+packages/web/dist-root-owned.bak.blocked/

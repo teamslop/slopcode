@@ -8,8 +8,9 @@
     "dev": "vite dev --host 0.0.0.0",
     "dev:remote": "VITE_AUTH_URL=https://auth.dev.slopcode.ai VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51RtuLNE7fOCwHSD4mewwzFejyytjdGoSDK7CAvhbffwaZnPbNb2rwJICw6LTOXCmWO320fSNXvb5NzI08RZVkAxd00syfqrW7t bun sst shell --stage=dev bun dev",
     "build": "bun ./script/generate-sitemap.ts && vite build && bun ../../slopcode/script/schema.ts ./.output/public/config.json ./.output/public/tui.json",
-    "build:vercel": "bun ./script/generate-sitemap.ts && vite build && bun ../../slopcode/script/schema.ts ./.output/public/config.json ./.output/public/tui.json && bun ./script/build-vercel.ts",
+    "build:vercel": "bun ./script/generate-sitemap.ts && NITRO_PRESET=vercel vite build && bun ../../slopcode/script/schema.ts ./.vercel/output/static/config.json ./.vercel/output/static/tui.json",
     "deploy:vercel": "bun run build:vercel && vercel deploy --prebuilt",
+    "vercel-build": "bun run build:vercel",
     "start": "vite start"
   },
   "dependencies": {

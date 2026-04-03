@@ -15,7 +15,9 @@
     "prepare": "husky",
     "random": "echo 'Random script'",
     "hello": "echo 'Hello World!'",
-    "test": "echo 'do not run tests from root' && exit 1"
+    "test": "echo 'do not run tests from root' && exit 1",
+    "vercel-build": "bun run vercel-build:site",
+    "vercel-build:site": "bun run --cwd packages/console/app build:vercel && rm -rf .vercel/output && mkdir -p .vercel && cp -R packages/console/app/.vercel/output .vercel/output"
   },
   "workspaces": {
     "packages": [
